@@ -1,99 +1,214 @@
+import { useState } from 'react';
 import { Link, useRouter } from '@tanstack/react-router';
-import { FolderOpen, Users, Calendar, Receipt, Settings, Scale, LogOut } from 'lucide-react';
+import {
+  LayoutDashboard,
+  FolderOpen,
+  Calendar,
+  CalendarCheck,
+  Users,
+  Settings,
+  LogOut,
+  PanelLeftClose,
+  PanelLeftOpen,
+  ChevronDown,
+  X,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 
+export interface SidebarProps {
+  collapsed: boolean;
+  mobileOpen: boolean;
+  onToggle: () => void;
+  onMobileClose: () => void;
+}
+
 const navItems = [
-  { label: 'Expedientes', href: '/expedientes', icon: FolderOpen },
+  { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+  { label: 'Listado de Expedientes', href: '/expedientes', icon: FolderOpen },
+  { label: 'Calendario de Vencimientos', href: '/agenda', icon: Calendar },
+  { label: 'Agenda (Citas)', href: '/agenda', icon: CalendarCheck },
   { label: 'Clientes', href: '/clientes', icon: Users },
-  { label: 'Agenda', href: '/agenda', icon: Calendar },
 ];
 
-const bottomNavItems = [
-  { label: 'Facturación', href: '/expedientes', icon: Receipt },
-  { label: 'Configuración', href: '/expedientes', icon: Settings },
+const configSubItems = [
+  { label: 'Categorías', href: '/expedientes' },
+  { label: 'Recursos', href: '/expedientes' },
+  { label: 'Servicios', href: '/expedientes' },
+  { label: 'Usuarios y Roles', href: '/expedientes' },
 ];
 
-export function Sidebar() {
-  const { userEmail, logout } = useAuth();
+interface ContentProps {
+  collapsed: boolean;
+  configOpen: boolean;
+  setConfigOpen: (v: boolean) => void;
+  onLogout: () => void;
+  onToggle?: () => void;
+}
+
+function SidebarContent({ collapsed, configOpen, setConfigOpen, onLogout, onToggle }: ContentProps) {
+  return (
+    <div className="flex h-full flex-col">
+      <div className={cn('flex items-center justify-center px-4 py-4 shrink-0', collapsed && 'py-3')}>
+        <img
+          src="/logo.png"
+          alt="Bufete Melián"
+          className={cn('object-contain', collapsed ? 'h-10 w-10' : 'h-24 w-auto max-w-[200px]')}
+        />
+      </div>
+
+      <div className="mx-4 h-px bg-blue-800/50 mb-4" />
+
+      <nav className="flex-1 overflow-y-auto overflow-x-hidden px-3 space-y-0.5 scrollbar-none"
+        style={{ scrollbarWidth: 'none' }}
+      >
+        {navItems.map((item) => (
+          <Link
+            key={item.label}
+            to={item.href}
+            className={cn(
+              'flex items-center gap-3 rounded-lg px-3 py-2.5 text-blue-100 hover:text-white hover:bg-white/5 transition-colors',
+              '[&.active]:bg-white/10 [&.active]:text-white',
+              collapsed && 'justify-center px-2',
+            )}
+            title={collapsed ? item.label : undefined}
+          >
+            <item.icon className="h-[22px] w-[22px] shrink-0" />
+            {!collapsed && <span className="text-sm font-medium">{item.label}</span>}
+          </Link>
+        ))}
+
+        <div className="mt-2">
+          <button
+            onClick={() => !collapsed && setConfigOpen(!configOpen)}
+            className={cn(
+              'flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-blue-100 hover:text-white hover:bg-white/5 transition-colors',
+              collapsed && 'justify-center px-2',
+            )}
+            title={collapsed ? 'Configuración' : undefined}
+          >
+            <Settings className="h-[22px] w-[22px] shrink-0" />
+            {!collapsed && (
+              <>
+                <span className="text-sm font-medium flex-1 text-left">Configuración</span>
+                <ChevronDown
+                  className={cn('h-4 w-4 transition-transform duration-200', configOpen && 'rotate-180')}
+                />
+              </>
+            )}
+          </button>
+
+          {!collapsed && configOpen && (
+            <div className="ml-6 mt-1 pl-3 border-l border-white/10 space-y-0.5">
+              <p className="px-3 pt-2 pb-1 text-[10px] font-bold text-blue-300/60 uppercase tracking-widest">
+                Expediente
+              </p>
+              {configSubItems.map((sub) => (
+                <Link
+                  key={sub.label}
+                  to={sub.href}
+                  className="flex items-center gap-3 rounded-lg px-3 py-1.5 text-blue-200 hover:text-white hover:bg-white/5 transition-colors"
+                >
+                  <span className="h-1.5 w-1.5 rounded-full bg-blue-400 shrink-0" />
+                  <span className="text-sm font-normal">{sub.label}</span>
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
+      </nav>
+
+      <div className="border-t border-blue-800/50 bg-blue-900/20 px-3 py-3 shrink-0">
+        {collapsed ? (
+          <div className="flex flex-col items-center gap-1">
+            {onToggle && (
+              <button
+                onClick={onToggle}
+                aria-label="Expandir sidebar"
+                className="rounded-lg p-2 text-white/40 hover:text-white hover:bg-white/5 transition-colors"
+              >
+                <PanelLeftOpen className="h-5 w-5" />
+              </button>
+            )}
+            <button
+              onClick={onLogout}
+              title="Cerrar Sesión"
+              className="rounded-lg p-2 text-white/40 hover:text-white hover:bg-white/5 transition-colors"
+            >
+              <LogOut className="h-5 w-5" />
+            </button>
+          </div>
+        ) : (
+          <div className="flex items-center justify-between">
+            <button
+              onClick={onLogout}
+              className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-blue-100 hover:text-white hover:bg-white/5 transition-colors"
+            >
+              <LogOut className="h-[18px] w-[18px] shrink-0" />
+              <span className="text-sm font-medium">Cerrar Sesión</span>
+            </button>
+            {onToggle && (
+              <button
+                onClick={onToggle}
+                aria-label="Colapsar sidebar"
+                className="rounded-lg p-2 text-white/30 hover:text-white/80 hover:bg-white/5 transition-colors"
+              >
+                <PanelLeftClose className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export function Sidebar({ collapsed, mobileOpen, onToggle, onMobileClose }: SidebarProps) {
+  const { logout } = useAuth();
   const router = useRouter();
+  const [configOpen, setConfigOpen] = useState(true);
 
   const handleLogout = () => {
     logout();
     void router.navigate({ to: '/login', replace: true });
   };
 
-  const initials = userEmail ? userEmail.charAt(0).toUpperCase() : 'U';
-  const displayName = userEmail ?? 'Usuario';
+  const contentProps: ContentProps = {
+    collapsed,
+    configOpen,
+    setConfigOpen,
+    onLogout: handleLogout,
+    onToggle,
+  };
 
   return (
-    <aside className="flex h-screen w-60 flex-col bg-[#0f172a] text-white flex-shrink-0">
-      <div className="flex items-center gap-2.5 px-5 py-5 border-b border-white/10">
-        <div className="flex h-8 w-8 items-center justify-center rounded-md bg-blue-500">
-          <Scale className="h-4 w-4 text-white" />
-        </div>
-        <span className="text-base font-semibold tracking-tight">Bufete Marta</span>
-      </div>
+    <>
+      {/* Desktop sidebar */}
+      <aside
+        className={cn(
+          'hidden lg:flex flex-col h-screen bg-[#1e3a8a] text-white flex-shrink-0 shadow-xl relative transition-all duration-300 ease-in-out z-10',
+          collapsed ? 'w-16' : 'w-72',
+        )}
+      >
+        <SidebarContent {...contentProps} />
+      </aside>
 
-      <nav className="flex-1 px-3 py-4 space-y-1">
-        <p className="px-2 pb-1 text-[10px] font-semibold uppercase tracking-widest text-slate-500">
-          Principal
-        </p>
-        {navItems.map((item) => (
-          <NavLink key={item.href} {...item} />
-        ))}
-      </nav>
-
-      <div className="px-3 pb-4 space-y-1">
-        <p className="px-2 pb-1 text-[10px] font-semibold uppercase tracking-widest text-slate-500">
-          Gestión
-        </p>
-        {bottomNavItems.map((item) => (
-          <NavLink key={item.label} {...item} />
-        ))}
-      </div>
-
-      <div className="border-t border-white/10 px-4 py-4">
-        <div className="flex items-center gap-3">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-600 text-xs font-bold">
-            {initials}
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium">{displayName}</p>
-          </div>
-          <button
-            type="button"
-            onClick={handleLogout}
-            title="Cerrar sesión"
-            className="text-slate-400 hover:text-white transition-colors"
-          >
-            <LogOut className="h-4 w-4" />
-          </button>
-        </div>
-      </div>
-    </aside>
-  );
-}
-
-function NavLink({
-  label,
-  href,
-  icon: Icon,
-}: {
-  label: string;
-  href: string;
-  icon: React.ElementType;
-}) {
-  return (
-    <Link
-      to={href}
-      className={cn(
-        'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-slate-300 transition-colors hover:bg-white/10 hover:text-white',
-        '[&.active]:bg-blue-600/20 [&.active]:text-blue-400',
-      )}
-    >
-      <Icon className="h-4 w-4 shrink-0" />
-      {label}
-    </Link>
+      {/* Mobile sidebar */}
+      <aside
+        className={cn(
+          'fixed inset-y-0 left-0 z-30 flex flex-col w-72 bg-[#1e3a8a] text-white shadow-2xl lg:hidden transition-transform duration-300 ease-in-out',
+          mobileOpen ? 'translate-x-0' : '-translate-x-full',
+        )}
+      >
+        <button
+          onClick={onMobileClose}
+          aria-label="Cerrar menú"
+          className="absolute right-4 top-4 text-blue-200 hover:text-white transition-colors z-10 p-1"
+        >
+          <X className="h-5 w-5" />
+        </button>
+        <SidebarContent {...contentProps} collapsed={false} />
+      </aside>
+    </>
   );
 }

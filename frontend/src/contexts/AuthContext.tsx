@@ -33,6 +33,11 @@ function isTokenValid(token: string): boolean {
   return payload.exp * 1000 > Date.now();
 }
 
+export function isSessionActive(): boolean {
+  const token = localStorage.getItem(TOKEN_KEY);
+  return !!token && isTokenValid(token);
+}
+
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {

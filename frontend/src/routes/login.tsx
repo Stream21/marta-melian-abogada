@@ -1,10 +1,11 @@
 import { createFileRoute, redirect } from '@tanstack/react-router';
 import { LoginPage } from '@/pages/LoginPage';
+import { isSessionActive } from '@/contexts/AuthContext';
 
 export const Route = createFileRoute('/login')({
-  beforeLoad: ({ context }) => {
-    if (context.auth.isAuthenticated) {
-      throw redirect({ to: '/expedientes' });
+  beforeLoad: () => {
+    if (isSessionActive()) {
+      throw redirect({ to: '/dashboard' });
     }
   },
   component: LoginPage,

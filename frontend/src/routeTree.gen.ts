@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
+import { Route as AppDashboardRouteImport } from './routes/_app/dashboard'
 import { Route as AppClientesRouteImport } from './routes/_app/clientes'
 import { Route as AppAgendaRouteImport } from './routes/_app/agenda'
 import { Route as AppExpedientesIndexRouteImport } from './routes/_app/expedientes/index'
@@ -29,6 +30,11 @@ const AppRoute = AppRouteImport.update({
 const AppIndexRoute = AppIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppDashboardRoute = AppDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
   getParentRoute: () => AppRoute,
 } as any)
 const AppClientesRoute = AppClientesRouteImport.update({
@@ -58,6 +64,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/agenda': typeof AppAgendaRoute
   '/clientes': typeof AppClientesRoute
+  '/dashboard': typeof AppDashboardRoute
   '/expedientes/$expedienteId': typeof AppExpedientesExpedienteIdRoute
   '/expedientes/': typeof AppExpedientesIndexRoute
 }
@@ -65,6 +72,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/agenda': typeof AppAgendaRoute
   '/clientes': typeof AppClientesRoute
+  '/dashboard': typeof AppDashboardRoute
   '/': typeof AppIndexRoute
   '/expedientes/$expedienteId': typeof AppExpedientesExpedienteIdRoute
   '/expedientes': typeof AppExpedientesIndexRoute
@@ -75,6 +83,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/_app/agenda': typeof AppAgendaRoute
   '/_app/clientes': typeof AppClientesRoute
+  '/_app/dashboard': typeof AppDashboardRoute
   '/_app/': typeof AppIndexRoute
   '/_app/expedientes/$expedienteId': typeof AppExpedientesExpedienteIdRoute
   '/_app/expedientes/': typeof AppExpedientesIndexRoute
@@ -86,6 +95,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/agenda'
     | '/clientes'
+    | '/dashboard'
     | '/expedientes/$expedienteId'
     | '/expedientes/'
   fileRoutesByTo: FileRoutesByTo
@@ -93,6 +103,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/agenda'
     | '/clientes'
+    | '/dashboard'
     | '/'
     | '/expedientes/$expedienteId'
     | '/expedientes'
@@ -102,6 +113,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/_app/agenda'
     | '/_app/clientes'
+    | '/_app/dashboard'
     | '/_app/'
     | '/_app/expedientes/$expedienteId'
     | '/_app/expedientes/'
@@ -133,6 +145,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof AppIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/dashboard': {
+      id: '/_app/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof AppDashboardRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/clientes': {
@@ -169,6 +188,7 @@ declare module '@tanstack/react-router' {
 interface AppRouteChildren {
   AppAgendaRoute: typeof AppAgendaRoute
   AppClientesRoute: typeof AppClientesRoute
+  AppDashboardRoute: typeof AppDashboardRoute
   AppIndexRoute: typeof AppIndexRoute
   AppExpedientesExpedienteIdRoute: typeof AppExpedientesExpedienteIdRoute
   AppExpedientesIndexRoute: typeof AppExpedientesIndexRoute
@@ -177,6 +197,7 @@ interface AppRouteChildren {
 const AppRouteChildren: AppRouteChildren = {
   AppAgendaRoute: AppAgendaRoute,
   AppClientesRoute: AppClientesRoute,
+  AppDashboardRoute: AppDashboardRoute,
   AppIndexRoute: AppIndexRoute,
   AppExpedientesExpedienteIdRoute: AppExpedientesExpedienteIdRoute,
   AppExpedientesIndexRoute: AppExpedientesIndexRoute,

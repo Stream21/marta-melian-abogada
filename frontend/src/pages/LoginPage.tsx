@@ -20,7 +20,7 @@ export function LoginPage() {
     try {
       const { token } = await loginRequest(email, password);
       login(token);
-      await router.navigate({ to: '/expedientes' });
+      await router.navigate({ to: '/dashboard' });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al iniciar sesión.');
     } finally {
@@ -29,24 +29,31 @@ export function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] font-sans flex items-center justify-center p-4">
-      <section className="w-full max-w-lg bg-white p-8 sm:p-12 shadow-sm border border-gray-100 rounded-lg">
-        <div className="w-full max-w-md">
-          {/* Branding */}
-          <div className="mb-10 text-center">
-            <h2 className="text-xl font-light tracking-[0.5em] text-[#1e3a8a] uppercase mb-1">
-              Marta Melián Guerra
-            </h2>
-            <p className="text-[9px] tracking-widest text-gray-400 uppercase">
+    <div className="min-h-screen bg-[#f0f4f8] font-sans flex items-center justify-center p-4">
+      <section className="w-full max-w-sm lg:max-w-4xl overflow-hidden rounded-2xl shadow-xl border border-gray-200/60 flex flex-col lg:flex-row">
+
+        {/* Logo panel */}
+        <div className="bg-gradient-to-b from-[#1e3a8a] to-[#162d6e] flex flex-col items-center justify-center py-10 px-8 lg:w-2/5 lg:py-0 lg:px-12 lg:min-h-[520px]">
+          <img
+            src="/logo.png"
+            alt="Bufete Melián"
+            className="h-28 w-auto object-contain lg:h-44"
+          />
+          <div className="mt-6 text-center">
+            <div className="h-px w-8 bg-white/20 mx-auto mb-4" />
+            <p className="text-blue-200/60 text-[10px] lg:text-[11px] tracking-[0.25em] uppercase font-medium">
               Servicios Jurídicos Profesionales
             </p>
-            <div className="h-px w-12 bg-gray-100 mx-auto mt-6" />
           </div>
+        </div>
+
+        {/* Form panel */}
+        <div className="bg-white px-8 py-10 lg:w-3/5 lg:px-14 lg:py-0 lg:min-h-[520px] flex flex-col justify-center">
 
           {/* Header */}
-          <div className="mb-8 text-center">
-            <h1 className="text-2xl font-semibold text-[#1e3a8a] mb-2">Iniciar Sesión</h1>
-            <p className="text-gray-500 text-sm">Bienvenido al portal de gestión privada.</p>
+          <div className="mb-8">
+            <h1 className="text-xl lg:text-2xl font-semibold text-gray-800 mb-1.5">Iniciar Sesión</h1>
+            <p className="text-gray-400 text-sm">Accede al portal de gestión privada.</p>
           </div>
 
           {/* Error message */}
