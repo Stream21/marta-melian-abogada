@@ -1,0 +1,9 @@
+api_auth_login:
+    path: /api/auth/login
+    methods: [POST]
+
+controllers:
+    resource:
+        path: ../src/Infrastructure/Symfony/Controller/
+        namespace: App\Infrastructure\Symfony\Controller
+    type: attribute

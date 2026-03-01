@@ -1,0 +1,45 @@
+# Stack: Symfony, React, Hexagonal Architecture & Docker
+
+## 1. Arquitectura Hexagonal (Core Rules)
+- **Domain Layer**: Debe ser pura. Sin dependencias de frameworks (Symfony/Doctrine). Contiene Entidades de Dominio, Value Objects, Excepciones de Dominio e interfaces de Repositorios.
+- **Application Layer**: Contiene los casos de uso (Services), Commands y Queries. Orquesta el flujo de datos sin lógica de persistencia.
+- **Infrastructure Layer**: Implementaciones técnicas. Aquí van los Repositorios de Doctrine, Controllers de Symfony, Clientes API y la UI de React.
+- **Inversión de Dependencias**: La capa de Dominio nunca depende de la Infraestructura.
+
+## 2. Backend (Symfony & PHP)
+- **PHP 8.2+**: Uso obligatorio de tipos estrictos (`declare(strict_types=1);`), propiedades `readonly` y Atributos.
+- **Doctrine**: Mapeo por atributos en la capa de Infraestructura. Evitar lógica de persistencia en las entidades de dominio.
+- **Validación**: Usar el componente de validación de Symfony en DTOs de entrada.
+- **Seguridad**: Implementar permisos mediante Voters.
+
+## 3. Frontend (React & TypeScript)
+- **TypeScript**: Tipado estricto. Prohibido el uso de `any`. Siempre con punto y coma al final de las instrucciones (`semi: true`). Comillas simples. Prettier configurado en `frontend/.prettierrc`.
+- **Estructura**: Componentes funcionales con Arrow Functions. Separar lógica en Custom Hooks.
+- **Estado**: TanStack Query para llamadas al servidor y Zustand o Context para estado local.
+- **Estilos**: Tailwind CSS como primera opción.
+
+### 3.1 Estructura de carpetas (TanStack Router)
+- `src/routes/` — stubs finos: solo `createFileRoute` + import. Sin JSX ni lógica. Máximo ~10 líneas.
+- `src/pages/` — componente de página completo con lógica y composición. Máximo ~150 líneas.
+- `src/components/<dominio>/` — componentes reutilizables por dominio (ej. `expedientes/`, `billing/`).
+- `src/components/ui/` — primitivos shadcn/ui. No modificar directamente.
+- `src/components/layout/` — Sidebar, Topbar y elementos estructurales.
+- `src/contexts/` — React Contexts. `src/hooks/` — Custom hooks. `src/api/` — cliente API tipado.
+
+### 3.2 TanStack Router — layout routes y navegación
+- El prefijo `_` en fichero/carpeta indica layout route: no añade segmento a la URL.
+- Los valores de `to` y `redirect` usan la **URL real**, nunca el ID interno de la ruta.
+  - ✅ `redirect({ to: '/expedientes' })` — ❌ `redirect({ to: '/_app/expedientes/' })`
+
+## 4. Docker Environment
+- **Contexto**: El proyecto corre sobre Docker en WSL Ubuntu.
+- **Versión**: Usar siempre `docker-compose` (con guión), NO `docker compose`. El entorno no tiene el plugin moderno de Compose.
+- **Comandos PHP**: `docker-compose exec php php bin/console ...` y `docker-compose exec php composer ...`
+- **Levantar servicios**: `docker-compose up -d`
+- **Logs**: `docker-compose logs -f <servicio>`
+- **Paths**: Las rutas dentro del contenedor son `/app/...`, distintas del host.
+
+## 5. Calidad de Código
+- Aplicar principios SOLID y DRY.
+- Seguir estándares PSR-12 para PHP.
+- Generar tests unitarios para Domain/Application y tests de integración para Infrastructure.

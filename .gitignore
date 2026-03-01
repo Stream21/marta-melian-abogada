@@ -1,0 +1,28 @@
+/.phpunit.cache
+/bin/
+/config/secrets/prod/prod.decrypt.private.php
+/public/bundles/
+/public/build/
+/var/
+/vendor/
+.env.local
+.env.local.php
+.env.*.local
+/composer.lock
+/node_modules/
+/frontend/dist/
+/frontend/node_modules/
+
+###> symfony/framework-bundle ###
+/.env.local
+/.env.local.php
+/.env.*.local
+/config/secrets/prod/prod.decrypt.private.php
+/public/bundles/
+/var/
+/vendor/
+###< symfony/framework-bundle ###
+
+###> lexik/jwt-authentication-bundle ###
+/config/jwt/*.pem
+###< lexik/jwt-authentication-bundle ###

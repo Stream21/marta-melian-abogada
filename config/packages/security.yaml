@@ -1,0 +1,37 @@
+security:
+    password_hashers:
+        App\Infrastructure\Persistence\Doctrine\Entity\DoctrineUser:
+            algorithm: bcrypt
+
+    providers:
+        app_users:
+            entity:
+                class: App\Infrastructure\Persistence\Doctrine\Entity\DoctrineUser
+                property: email
+
+    firewalls:
+        dev:
+            pattern: ^/(_(profiler|wdt)|css|images|js)/
+            security: false
+
+        login:
+            pattern: ^/api/auth/login$
+            stateless: true
+            json_login:
+                check_path: /api/auth/login
+                username_path: email
+                password_path: password
+                success_handler: lexik_jwt_authentication.handler.authentication_success
+                failure_handler: lexik_jwt_authentication.handler.authentication_failure
+
+        api:
+            pattern: ^/
+            stateless: true
+            jwt: ~
+
+    access_control:
+        - { path: ^/api/auth/login, roles: PUBLIC_ACCESS }
+        - { path: ^/health, roles: PUBLIC_ACCESS }
+        - { path: ^/api/mock, roles: PUBLIC_ACCESS }
+        - { path: ^/api/webhooks, roles: PUBLIC_ACCESS }
+        - { path: ^/api, roles: IS_AUTHENTICATED_FULLY }

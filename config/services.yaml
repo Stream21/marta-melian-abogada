@@ -1,0 +1,73 @@
+parameters:
+
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+
+    App\:
+        resource: '../src/'
+        exclude:
+            - '../src/Domain/'
+            - '../src/Kernel.php'
+
+    # Domain: no autowire por defecto (puro). Bindings de interfaces:
+    App\Domain\Repository\UserRepositoryInterface: '@App\Infrastructure\Persistence\Doctrine\Repository\DoctrineUserRepository'
+    App\Domain\Repository\ExpedienteRepositoryInterface: '@App\Infrastructure\Persistence\Doctrine\Repository\ExpedienteRepository'
+    App\Domain\Repository\PaymentRepositoryInterface: '@App\Infrastructure\Persistence\Doctrine\Repository\PaymentRepository'
+    App\Domain\Repository\InvoiceRepositoryInterface: '@App\Infrastructure\Persistence\Doctrine\Repository\InvoiceRepository'
+    App\Application\Port\HoldedPort: '@App\Infrastructure\ApiClient\HoldedService'
+    App\Application\Port\StripePort: '@App\Infrastructure\ApiClient\StripeService'
+    App\Application\Port\TwilioPort: '@App\Infrastructure\ApiClient\TwilioService'
+    App\Application\Port\ExpedienteFileStoragePort: '@App\Infrastructure\Storage\ExpedienteFileStorage'
+
+    App\Infrastructure\ApiClient\HoldedService:
+        arguments:
+            $holdedApiKey: '%env(HOLDED_API_KEY)%'
+            $holdedBaseUrl: '%env(HOLDED_BASE_URL)%'
+
+    App\Infrastructure\ApiClient\StripeService:
+        arguments:
+            $stripeSecretKey: '%env(STRIPE_SECRET_KEY)%'
+
+    App\Infrastructure\ApiClient\TwilioService:
+        arguments:
+            $accountSid: '%env(TWILIO_ACCOUNT_SID)%'
+            $authToken: '%env(TWILIO_AUTH_TOKEN)%'
+            $whatsAppFrom: '%env(TWILIO_WHATSAPP_FROM)%'
+
+    App\Infrastructure\Storage\ExpedienteFileStorage:
+        arguments:
+            $projectDir: '%kernel.project_dir%'
+
+    App\Application\UseCase\GeneratePaymentLinkUseCase:
+        arguments:
+            $frontendSuccessUrl: '%env(FRONTEND_SUCCESS_URL)%'
+            $frontendCancelUrl: '%env(FRONTEND_CANCEL_URL)%'
+
+    App\Application\UseCase\CreateSubscription3MonthsUseCase:
+        arguments:
+            $frontendSuccessUrl: '%env(FRONTEND_SUCCESS_URL)%'
+            $frontendCancelUrl: '%env(FRONTEND_CANCEL_URL)%'
+
+    App\Application\UseCase\HandleStripeWebhookUseCase:
+        arguments:
+            $stripeWebhookSecret: '%env(STRIPE_WEBHOOK_SECRET)%'
+
+    App\Infrastructure\Symfony\Controller\ExpedienteInvoiceController:
+        arguments:
+            $projectDir: '%kernel.project_dir%'
+
+    App\Infrastructure\ApiClient\HoldedApiClient:
+        arguments:
+            $holdedApiUrl: '%env(HOLDED_API_URL)%'
+            $holdedMockKey: '%env(HOLDED_MOCK_KEY)%'
+
+    App\Infrastructure\Symfony\Controller\HoldedMockController:
+        arguments:
+            $projectDir: '%kernel.project_dir%'
+            $holdedMockKey: '%env(HOLDED_MOCK_KEY)%'
+
+    App\Application\Service\PaymentFacadeService:
+        arguments:
+            $projectDir: '%kernel.project_dir%'
