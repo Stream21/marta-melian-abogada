@@ -23,7 +23,6 @@ export default {
         sm: 'calc(var(--radius) - 4px)',
       },
       colors: {
-        'marta-navy': '#1e3a8a',
         background: 'hsl(var(--background))',
         foreground: 'hsl(var(--foreground))',
         card: {
@@ -68,4 +67,4 @@ export default {
     },
   },
   plugins: [],
-}
+};

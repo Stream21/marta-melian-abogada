@@ -19,7 +19,7 @@ export function ClientList({ selectedContactId, onSelectContact }: ClientListPro
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-12 text-slate-400">
+      <div className="flex items-center justify-center py-12 text-muted-foreground">
         <Loader2 className="mr-2 h-5 w-5 animate-spin" />
         <span className="text-sm">Cargando clientes…</span>
       </div>
@@ -37,7 +37,7 @@ export function ClientList({ selectedContactId, onSelectContact }: ClientListPro
 
   if (contacts.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-12 text-slate-400">
+      <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
         <UserCheck className="mb-2 h-8 w-8" />
         <p className="text-sm">No hay clientes registrados en Holded.</p>
       </div>
@@ -45,34 +45,34 @@ export function ClientList({ selectedContactId, onSelectContact }: ClientListPro
   }
 
   return (
-    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+    <div className="panel">
       <table className="w-full text-sm">
         <thead>
-          <tr className="border-b border-slate-100 bg-slate-50 text-left text-xs font-medium uppercase tracking-wide text-slate-500">
-            <th className="px-4 py-3">Nombre</th>
-            <th className="px-4 py-3">Email</th>
-            <th className="px-4 py-3">NIF / Código</th>
+          <tr className="border-b bg-muted/50 text-left">
+            <th className="px-4 py-3 section-label">Nombre</th>
+            <th className="px-4 py-3 section-label">Email</th>
+            <th className="px-4 py-3 section-label">NIF / Código</th>
             <th className="px-4 py-3"></th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-slate-100">
+        <tbody className="divide-y divide-border">
           {contacts.map((contact) => {
             const isSelected = contact.id === selectedContactId;
             return (
               <tr
                 key={contact.id}
-                className={`transition-colors ${isSelected ? 'bg-indigo-50' : 'hover:bg-slate-50'}`}
+                className={`transition-colors ${isSelected ? 'bg-primary/5' : 'hover:bg-muted/50'}`}
               >
-                <td className="px-4 py-3 font-medium text-slate-800">{contact.name}</td>
-                <td className="px-4 py-3 text-slate-600">{contact.email}</td>
-                <td className="px-4 py-3 font-mono text-slate-500">{contact.code || '—'}</td>
+                <td className="px-4 py-3 font-medium text-foreground">{contact.name}</td>
+                <td className="px-4 py-3 text-muted-foreground">{contact.email}</td>
+                <td className="px-4 py-3 font-mono text-muted-foreground">{contact.code || '—'}</td>
                 <td className="px-4 py-3 text-right">
                   <button
                     onClick={() => onSelectContact(contact)}
                     className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
                       isSelected
-                        ? 'bg-indigo-600 text-white'
-                        : 'border border-indigo-200 text-indigo-600 hover:bg-indigo-50'
+                        ? 'bg-primary text-primary-foreground'
+                        : 'border border-primary/20 text-primary hover:bg-primary/5'
                     }`}
                   >
                     {isSelected ? 'Seleccionado' : 'Emitir Factura'}

@@ -1,0 +1,43 @@
+---
+description: Hexagonal Architecture layers and folder structure for the backend
+alwaysApply: true
+---
+
+# Hexagonal Architecture
+
+## Layers
+
+- **Domain** (`src/Domain/`): Pura. Sin dependencias de frameworks. Entidades, Value Objects, Excepciones, interfaces de Repositorios, Eventos.
+- **Application** (`src/Application/`): Casos de uso (UseCase/), DTOs, Ports (interfaces), Services. Depende solo de Domain.
+- **Infrastructure** (`src/Infrastructure/`): Implementaciones técnicas — Doctrine, Controllers Symfony, Voters, ApiClients, UI React.
+
+## Dependency Rule
+
+Domain nunca importa Infrastructure ni Application.
+Application nunca importa Infrastructure.
+Los Controllers son delgados: reciben request → llaman UseCase → devuelven respuesta.
+
+## Backend folder structure
+
+```
+src/
+├── Domain/
+│   ├── Entity/         # Aggregates
+│   ├── Repository/     # Interfaces (puertos)
+│   ├── ValueObject/
+│   └── Exception/
+├── Application/
+│   ├── UseCase/        # Commands / Queries
+│   ├── DTO/
+│   ├── Port/           # Interfaces para infra
+│   └── Service/
+└── Infrastructure/
+    ├── Symfony/
+    │   ├── Controller/
+    │   ├── Voter/
+    │   └── Validator/
+    ├── Persistence/Doctrine/
+    │   ├── Entity/     # Mapeo DB
+    │   └── Repository/ # Implementaciones
+    └── ApiClient/
+```

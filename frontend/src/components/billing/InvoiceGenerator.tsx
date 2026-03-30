@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { FileText, Loader2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { api, type MockContact, type QuickInvoiceResponse } from '../../api/client';
 
 interface InvoiceGeneratorProps {
@@ -41,15 +42,15 @@ export function InvoiceGenerator({ contact, onInvoiceCreated }: InvoiceGenerator
   };
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+    <div className="panel p-6">
       <div className="mb-5 flex items-center gap-2">
         <FileText className="h-5 w-5 text-indigo-600" />
-        <h3 className="font-semibold text-slate-800">Nueva Factura</h3>
+        <h3 className="font-semibold text-foreground">Nueva Factura</h3>
       </div>
 
-      <div className="mb-4 rounded-lg bg-slate-50 px-4 py-2 text-sm text-slate-600">
-        Cliente: <span className="font-medium text-slate-800">{contact.name}</span>
-        {contact.email && <span className="ml-2 text-slate-400">({contact.email})</span>}
+      <div className="mb-4 rounded-lg bg-muted/50 px-4 py-2 text-sm text-muted-foreground">
+        Cliente: <span className="font-medium text-foreground">{contact.name}</span>
+        {contact.email && <span className="ml-2 text-muted-foreground/60">({contact.email})</span>}
       </div>
 
       {error && (
@@ -60,19 +61,19 @@ export function InvoiceGenerator({ contact, onInvoiceCreated }: InvoiceGenerator
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="mb-1 block text-sm font-medium text-slate-700">Concepto *</label>
+          <label className="mb-1 block text-sm font-medium text-foreground">Concepto *</label>
           <input
             type="text"
             required
             value={concepto}
             onChange={(e) => setConcepto(e.target.value)}
             placeholder="Ej. Honorarios consulta jurídica"
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800 placeholder-slate-400 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+            className="input-field"
           />
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium text-slate-700">Importe (€) *</label>
+          <label className="mb-1 block text-sm font-medium text-foreground">Importe (€) *</label>
           <input
             type="number"
             required
@@ -81,29 +82,29 @@ export function InvoiceGenerator({ contact, onInvoiceCreated }: InvoiceGenerator
             value={importe}
             onChange={(e) => setImporte(e.target.value)}
             placeholder="0.00"
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800 placeholder-slate-400 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+            className="input-field"
           />
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium text-slate-700">Teléfono WhatsApp</label>
+          <label className="mb-1 block text-sm font-medium text-foreground">Teléfono WhatsApp</label>
           <input
             type="tel"
             value={telefono}
             onChange={(e) => setTelefono(e.target.value)}
             placeholder="+34 600 000 000"
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800 placeholder-slate-400 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+            className="input-field"
           />
         </div>
 
-        <button
+        <Button
           type="submit"
           disabled={submitting}
-          className="flex w-full items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-indigo-700 disabled:opacity-60"
+          className="w-full"
         >
-          {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
+          {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           {submitting ? 'Generando…' : 'Generar Factura'}
-        </button>
+        </Button>
       </form>
     </div>
   );

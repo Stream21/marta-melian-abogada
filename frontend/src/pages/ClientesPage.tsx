@@ -19,8 +19,8 @@ export function ClientesPage() {
       <div className="mb-8 flex items-center gap-3">
         <Users className="h-7 w-7 text-indigo-600" />
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Clientes</h1>
-          <p className="mt-0.5 text-sm text-slate-500">
+          <h1 className="page-title">Clientes</h1>
+          <p className="page-subtitle">
             Selecciona un cliente para emitir una factura directa.
           </p>
         </div>
@@ -44,7 +44,7 @@ export function ClientesPage() {
               {lastInvoice && <InvoiceViewer invoice={lastInvoice} />}
             </>
           ) : (
-            <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-slate-300 py-16 text-center text-slate-400">
+            <div className="flex flex-col items-center justify-center rounded-xl border border-dashed py-16 text-center text-muted-foreground">
               <Users className="mb-3 h-8 w-8" />
               <p className="text-sm">Selecciona un cliente de la lista para generar una factura.</p>
             </div>

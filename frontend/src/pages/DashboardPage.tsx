@@ -5,12 +5,12 @@ import { ActividadReciente } from '@/components/dashboard/ActividadReciente';
 
 export function DashboardPage() {
   return (
-    <div className="flex flex-col min-h-full bg-gray-50">
-      <div className="bg-white border-b border-gray-200 px-6 md:px-8 py-2 shrink-0">
+    <div className="flex flex-col min-h-full bg-muted/30">
+      <div className="bg-card border-b px-6 md:px-8 py-2 shrink-0">
         <nav className="flex items-center gap-2 text-[12px]">
-          <span className="text-gray-400">Dashboard</span>
-          <ChevronRight className="h-3.5 w-3.5 text-gray-300" />
-          <span className="text-gray-600 font-medium">Inicio</span>
+          <span className="text-muted-foreground">Dashboard</span>
+          <ChevronRight className="h-3.5 w-3.5 text-border" />
+          <span className="text-foreground font-medium">Inicio</span>
         </nav>
       </div>
 

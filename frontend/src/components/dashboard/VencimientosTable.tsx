@@ -71,8 +71,8 @@ const tipoStyles: Record<string, string> = {
 const fechaConfig: Record<string, { icon: React.ElementType; color: string }> = {
   hoy: { icon: CalendarX, color: 'bg-red-50 text-red-700 border-red-100' },
   manana: { icon: Clock, color: 'bg-orange-50 text-orange-700 border-orange-100' },
-  proximos: { icon: CalendarDays, color: 'bg-gray-50 text-gray-600 border-gray-200' },
-  semana: { icon: CalendarRange, color: 'bg-gray-50 text-gray-600 border-gray-200' },
+  proximos: { icon: CalendarDays, color: 'bg-muted text-muted-foreground border-border' },
+  semana: { icon: CalendarRange, color: 'bg-muted text-muted-foreground border-border' },
 };
 
 const columns: ColumnDef<Vencimiento>[] = [
@@ -82,10 +82,10 @@ const columns: ColumnDef<Vencimiento>[] = [
     header: 'Cliente / Expediente',
     cell: ({ row }) => (
       <div className="flex flex-col">
-        <span className="font-semibold text-gray-900 group-hover:text-[#1e3a8a] transition-colors leading-snug">
+        <span className="font-semibold text-foreground group-hover:text-primary transition-colors leading-snug">
           {row.original.cliente}
         </span>
-        <span className="text-xs text-gray-400 font-mono mt-0.5">{row.original.expediente}</span>
+        <span className="text-xs text-muted-foreground font-mono mt-0.5">{row.original.expediente}</span>
       </div>
     ),
   },
@@ -98,7 +98,7 @@ const columns: ColumnDef<Vencimiento>[] = [
       const tipo = getValue<string>();
       return (
         <span
-          className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold border uppercase tracking-tight ${tipoStyles[tipo] ?? 'bg-gray-50 text-gray-700 border-gray-100'}`}
+          className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold border uppercase tracking-tight ${tipoStyles[tipo] ?? 'bg-muted text-foreground border-border'}`}
         >
           {tipo}
         </span>
@@ -115,7 +115,7 @@ const columns: ColumnDef<Vencimiento>[] = [
       const isAbogado = val === 'Acción Abogado';
       return (
         <span
-          className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-bold border uppercase tracking-wide ${isAbogado ? 'bg-blue-100 text-[#1e3a8a] border-blue-200' : 'bg-orange-100 text-orange-700 border-orange-200'}`}
+          className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-bold border uppercase tracking-wide ${isAbogado ? 'bg-primary/10 text-primary border-primary/20' : 'bg-orange-100 text-orange-700 border-orange-200'}`}
         >
           {val}
         </span>
@@ -149,7 +149,7 @@ const columns: ColumnDef<Vencimiento>[] = [
     enableSorting: false,
     cell: () => (
       <div className="text-right">
-        <button className="text-sm font-bold text-[#1e3a8a] hover:text-blue-900 hover:underline">
+        <button className="link-brand hover:underline">
           Ver detalle
         </button>
       </div>
@@ -185,12 +185,12 @@ const filterableColumns: FilterableColumn[] = [
 
 export function VencimientosTable() {
   return (
-    <div className="bg-white rounded-xl border border-gray-100 shadow-sm flex flex-col h-full overflow-hidden">
-      <div className="flex items-center gap-3 p-6 border-b border-gray-100">
-        <div className="p-2 bg-blue-50 rounded-lg text-[#1e3a8a]">
+    <div className="panel flex flex-col h-full">
+      <div className="panel-header">
+        <div className="panel-header-icon">
           <CalendarClock className="h-5 w-5" />
         </div>
-        <h3 className="text-gray-900 text-lg font-bold leading-tight">Próximos Vencimientos</h3>
+        <h3 className="panel-title">Próximos Vencimientos</h3>
       </div>
 
       <DataTable
@@ -201,11 +201,8 @@ export function VencimientosTable() {
         pageSize={10}
       />
 
-      <div className="p-4 border-t border-gray-100 bg-gray-50/50 text-center">
-        <a
-          href="#"
-          className="text-sm text-[#1e3a8a] font-bold hover:text-blue-900 flex items-center justify-center gap-2"
-        >
+      <div className="panel-footer">
+        <a href="#" className="link-brand flex items-center justify-center gap-2">
           Ver calendario completo
           <ArrowRight className="h-4 w-4" />
         </a>

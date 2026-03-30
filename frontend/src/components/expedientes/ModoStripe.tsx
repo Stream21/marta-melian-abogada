@@ -26,7 +26,7 @@ export function ModoStripe({ expedienteId }: ModoStripeProps) {
   };
 
   return (
-    <div className="rounded-lg border border-slate-200 bg-white">
+    <div className="panel">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -37,28 +37,28 @@ export function ModoStripe({ expedienteId }: ModoStripeProps) {
             <Link2 className="h-4 w-4 text-violet-600" />
           </div>
           <div>
-            <p className="text-sm font-semibold text-slate-800">
+            <p className="text-sm font-semibold text-foreground">
               Modo 2 — Pasarela de Pago (Stripe)
             </p>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-muted-foreground">
               Genera un enlace de pago Stripe para enviar al cliente.
             </p>
           </div>
         </div>
         {open ? (
-          <ChevronUp className="h-4 w-4 text-slate-400" />
+          <ChevronUp className="h-4 w-4 text-muted-foreground" />
         ) : (
-          <ChevronDown className="h-4 w-4 text-slate-400" />
+          <ChevronDown className="h-4 w-4 text-muted-foreground" />
         )}
       </button>
 
       {open && (
-        <div className="border-t border-slate-100 px-5 pb-5 pt-4">
+        <div className="border-t px-5 pb-5 pt-4">
           <form onSubmit={handleSubmit} className="flex flex-wrap items-end gap-3">
             <div className="w-36">
               <Label
                 htmlFor="stripe-amount"
-                className="mb-1.5 block text-xs font-medium text-slate-600"
+                className="mb-1.5 block text-xs font-medium text-muted-foreground"
               >
                 Importe (€)
               </Label>
@@ -75,7 +75,7 @@ export function ModoStripe({ expedienteId }: ModoStripeProps) {
             <div className="flex-1 min-w-48">
               <Label
                 htmlFor="stripe-phone"
-                className="mb-1.5 block text-xs font-medium text-slate-600"
+                className="mb-1.5 block text-xs font-medium text-muted-foreground"
               >
                 Teléfono cliente (WhatsApp)
               </Label>
@@ -115,7 +115,7 @@ export function ModoStripe({ expedienteId }: ModoStripeProps) {
           )}
 
           {mutation.isError && (
-            <p className="mt-3 text-sm text-red-500">
+            <p className="mt-3 text-sm text-destructive">
               Error al generar el enlace. Inténtalo de nuevo.
             </p>
           )}

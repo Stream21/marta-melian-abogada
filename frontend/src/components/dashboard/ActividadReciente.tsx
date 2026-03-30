@@ -64,25 +64,25 @@ const actividades: Actividad[] = [
 
 export function ActividadReciente() {
   return (
-    <div className="bg-white rounded-xl border border-gray-100 shadow-sm flex flex-col h-full overflow-hidden">
-      <div className="flex items-center justify-between p-6 border-b border-gray-100">
+    <div className="panel flex flex-col h-full">
+      <div className="panel-header justify-between">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-blue-50 rounded-lg text-[#1e3a8a]">
+          <div className="panel-header-icon">
             <History className="h-5 w-5" />
           </div>
-          <h3 className="text-gray-900 text-lg font-bold leading-tight">Actividad Reciente</h3>
+          <h3 className="panel-title">Actividad Reciente</h3>
         </div>
       </div>
 
       <div className="p-6 flex-1 overflow-y-auto">
         <div className="relative">
-          <div className="absolute left-4 top-2 bottom-2 w-px bg-gray-100" />
+          <div className="absolute left-4 top-2 bottom-2 w-px bg-border" />
           <div className="flex flex-col gap-6">
             {actividades.map((a, i) => (
               <div key={i} className="flex gap-4 relative">
                 <div
                   className={cn(
-                    'size-8 rounded-full flex items-center justify-center shrink-0 z-10 border-2 border-white ring-1 ring-gray-100 shadow-sm',
+                    'size-8 rounded-full flex items-center justify-center shrink-0 z-10 border-2 border-card ring-1 ring-border shadow-sm',
                     a.iconBg,
                     a.iconColor,
                   )}
@@ -90,9 +90,9 @@ export function ActividadReciente() {
                   <a.icon className="h-4 w-4" />
                 </div>
                 <div className="flex flex-col pb-2">
-                  <p className="text-sm text-gray-900">{a.text}</p>
-                  {a.sub && <p className="text-[11px] text-gray-500 mt-1">{a.sub}</p>}
-                  <span className="text-[10px] text-gray-400 mt-1.5 font-bold uppercase tracking-wide">
+                  <p className="text-sm text-foreground">{a.text}</p>
+                  {a.sub && <p className="text-[11px] text-muted-foreground mt-1">{a.sub}</p>}
+                  <span className="text-[10px] text-muted-foreground/60 mt-1.5 font-bold uppercase tracking-wide">
                     {a.time}
                   </span>
                 </div>
@@ -102,8 +102,8 @@ export function ActividadReciente() {
         </div>
       </div>
 
-      <div className="p-4 border-t border-gray-100 bg-gray-50/50 text-center">
-        <button className="text-sm text-[#1e3a8a] font-bold hover:text-blue-900">
+      <div className="panel-footer">
+        <button className="link-brand">
           Ver todas las notificaciones
         </button>
       </div>

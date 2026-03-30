@@ -31,7 +31,14 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
         'Error',
     );
   }
-  return res.json();
+  if (res.status === 204) {
+    return undefined as T;
+  }
+  const text = await res.text();
+  if (text === '') {
+    return undefined as T;
+  }
+  return JSON.parse(text) as T;
 }
 
 export async function loginRequest(email: string, password: string): Promise<{ token: string }> {
@@ -128,6 +135,27 @@ export const api = {
     request<{ success: boolean; message?: string }>(`/api/invoices/${invoiceId}/whatsapp`, {
       method: 'POST',
     }),
+
+  getTiposCaso: () => request<TipoCasoResponse[]>('/api/tipos-caso'),
+
+  getTipoCaso: (id: string) => request<TipoCasoResponse>('/api/tipos-caso/' + encodeURIComponent(id)),
+
+  postTipoCaso: (body: { nombre: string; descripcion: string }) =>
+    request<TipoCasoResponse>('/api/tipos-caso', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+
+  putTipoCaso: (id: string, body: { nombre: string; descripcion: string }) =>
+    request<TipoCasoResponse>('/api/tipos-caso/' + encodeURIComponent(id), {
+      method: 'PUT',
+      body: JSON.stringify(body),
+    }),
+
+  deleteTipoCaso: (id: string) =>
+    request<void>('/api/tipos-caso/' + encodeURIComponent(id), {
+      method: 'DELETE',
+    }),
 };
 
 export interface InvoiceResponse {
@@ -157,6 +185,12 @@ export interface QuickInvoiceResponse {
   importe?: number;
   pdfUrl?: string;
   error?: string;
+}
+
+export interface TipoCasoResponse {
+  id: string;
+  nombre: string;
+  descripcion: string;
 }
 
 export interface ExpedienteResponse {

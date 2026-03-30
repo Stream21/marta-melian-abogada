@@ -32,6 +32,7 @@ const navItems = [
 ];
 
 const configSubItems = [
+  { label: 'Tipos de Caso', href: '/config/tipos-caso' },
   { label: 'Categorías', href: '/expedientes' },
   { label: 'Recursos', href: '/expedientes' },
   { label: 'Servicios', href: '/expedientes' },
@@ -46,6 +47,12 @@ interface ContentProps {
   onToggle?: () => void;
 }
 
+const navLinkClass =
+  'flex items-center gap-3 rounded-lg px-3 py-2.5 text-primary-foreground/70 hover:text-primary-foreground hover:bg-primary-foreground/5 transition-colors [&.active]:bg-primary-foreground/10 [&.active]:text-primary-foreground';
+
+const iconBtnClass =
+  'rounded-lg p-2 text-primary-foreground/40 hover:text-primary-foreground hover:bg-primary-foreground/5 transition-colors';
+
 function SidebarContent({ collapsed, configOpen, setConfigOpen, onLogout, onToggle }: ContentProps) {
   return (
     <div className="flex h-full flex-col">
@@ -57,7 +64,7 @@ function SidebarContent({ collapsed, configOpen, setConfigOpen, onLogout, onTogg
         />
       </div>
 
-      <div className="mx-4 h-px bg-blue-800/50 mb-4" />
+      <div className="mx-4 h-px bg-primary-foreground/10 mb-4" />
 
       <nav className="flex-1 overflow-y-auto overflow-x-hidden px-3 space-y-0.5 scrollbar-none"
         style={{ scrollbarWidth: 'none' }}
@@ -66,11 +73,7 @@ function SidebarContent({ collapsed, configOpen, setConfigOpen, onLogout, onTogg
           <Link
             key={item.label}
             to={item.href}
-            className={cn(
-              'flex items-center gap-3 rounded-lg px-3 py-2.5 text-blue-100 hover:text-white hover:bg-white/5 transition-colors',
-              '[&.active]:bg-white/10 [&.active]:text-white',
-              collapsed && 'justify-center px-2',
-            )}
+            className={cn(navLinkClass, collapsed && 'justify-center px-2')}
             title={collapsed ? item.label : undefined}
           >
             <item.icon className="h-[22px] w-[22px] shrink-0" />
@@ -82,7 +85,7 @@ function SidebarContent({ collapsed, configOpen, setConfigOpen, onLogout, onTogg
           <button
             onClick={() => !collapsed && setConfigOpen(!configOpen)}
             className={cn(
-              'flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-blue-100 hover:text-white hover:bg-white/5 transition-colors',
+              'flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-primary-foreground/70 hover:text-primary-foreground hover:bg-primary-foreground/5 transition-colors',
               collapsed && 'justify-center px-2',
             )}
             title={collapsed ? 'Configuración' : undefined}
@@ -99,17 +102,17 @@ function SidebarContent({ collapsed, configOpen, setConfigOpen, onLogout, onTogg
           </button>
 
           {!collapsed && configOpen && (
-            <div className="ml-6 mt-1 pl-3 border-l border-white/10 space-y-0.5">
-              <p className="px-3 pt-2 pb-1 text-[10px] font-bold text-blue-300/60 uppercase tracking-widest">
+            <div className="ml-6 mt-1 pl-3 border-l border-primary-foreground/10 space-y-0.5">
+              <p className="px-3 pt-2 pb-1 text-[10px] font-bold text-primary-foreground/40 uppercase tracking-widest">
                 Expediente
               </p>
               {configSubItems.map((sub) => (
                 <Link
                   key={sub.label}
                   to={sub.href}
-                  className="flex items-center gap-3 rounded-lg px-3 py-1.5 text-blue-200 hover:text-white hover:bg-white/5 transition-colors"
+                  className="flex items-center gap-3 rounded-lg px-3 py-1.5 text-primary-foreground/60 hover:text-primary-foreground hover:bg-primary-foreground/5 transition-colors"
                 >
-                  <span className="h-1.5 w-1.5 rounded-full bg-blue-400 shrink-0" />
+                  <span className="h-1.5 w-1.5 rounded-full bg-primary-foreground/50 shrink-0" />
                   <span className="text-sm font-normal">{sub.label}</span>
                 </Link>
               ))}
@@ -118,23 +121,15 @@ function SidebarContent({ collapsed, configOpen, setConfigOpen, onLogout, onTogg
         </div>
       </nav>
 
-      <div className="border-t border-blue-800/50 bg-blue-900/20 px-3 py-3 shrink-0">
+      <div className="border-t border-primary-foreground/10 bg-black/10 px-3 py-3 shrink-0">
         {collapsed ? (
           <div className="flex flex-col items-center gap-1">
             {onToggle && (
-              <button
-                onClick={onToggle}
-                aria-label="Expandir sidebar"
-                className="rounded-lg p-2 text-white/40 hover:text-white hover:bg-white/5 transition-colors"
-              >
+              <button onClick={onToggle} aria-label="Expandir sidebar" className={iconBtnClass}>
                 <PanelLeftOpen className="h-5 w-5" />
               </button>
             )}
-            <button
-              onClick={onLogout}
-              title="Cerrar Sesión"
-              className="rounded-lg p-2 text-white/40 hover:text-white hover:bg-white/5 transition-colors"
-            >
+            <button onClick={onLogout} title="Cerrar Sesión" className={iconBtnClass}>
               <LogOut className="h-5 w-5" />
             </button>
           </div>
@@ -142,17 +137,13 @@ function SidebarContent({ collapsed, configOpen, setConfigOpen, onLogout, onTogg
           <div className="flex items-center justify-between">
             <button
               onClick={onLogout}
-              className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-blue-100 hover:text-white hover:bg-white/5 transition-colors"
+              className={navLinkClass}
             >
               <LogOut className="h-[18px] w-[18px] shrink-0" />
               <span className="text-sm font-medium">Cerrar Sesión</span>
             </button>
             {onToggle && (
-              <button
-                onClick={onToggle}
-                aria-label="Colapsar sidebar"
-                className="rounded-lg p-2 text-white/30 hover:text-white/80 hover:bg-white/5 transition-colors"
-              >
+              <button onClick={onToggle} aria-label="Colapsar sidebar" className={iconBtnClass}>
                 <PanelLeftClose className="h-4 w-4" />
               </button>
             )}
@@ -183,27 +174,25 @@ export function Sidebar({ collapsed, mobileOpen, onToggle, onMobileClose }: Side
 
   return (
     <>
-      {/* Desktop sidebar */}
       <aside
         className={cn(
-          'hidden lg:flex flex-col h-screen bg-[#1e3a8a] text-white flex-shrink-0 shadow-xl relative transition-all duration-300 ease-in-out z-10',
+          'hidden lg:flex flex-col h-screen bg-primary text-primary-foreground flex-shrink-0 shadow-xl relative transition-all duration-300 ease-in-out z-10',
           collapsed ? 'w-16' : 'w-72',
         )}
       >
         <SidebarContent {...contentProps} />
       </aside>
 
-      {/* Mobile sidebar */}
       <aside
         className={cn(
-          'fixed inset-y-0 left-0 z-30 flex flex-col w-72 bg-[#1e3a8a] text-white shadow-2xl lg:hidden transition-transform duration-300 ease-in-out',
+          'fixed inset-y-0 left-0 z-30 flex flex-col w-72 bg-primary text-primary-foreground shadow-2xl lg:hidden transition-transform duration-300 ease-in-out',
           mobileOpen ? 'translate-x-0' : '-translate-x-full',
         )}
       >
         <button
           onClick={onMobileClose}
           aria-label="Cerrar menú"
-          className="absolute right-4 top-4 text-blue-200 hover:text-white transition-colors z-10 p-1"
+          className="absolute right-4 top-4 text-primary-foreground/60 hover:text-primary-foreground transition-colors z-10 p-1"
         >
           <X className="h-5 w-5" />
         </button>

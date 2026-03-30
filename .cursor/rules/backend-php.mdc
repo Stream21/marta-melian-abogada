@@ -1,0 +1,16 @@
+---
+description: PHP and Symfony conventions for backend code
+globs: src/**/*.php
+alwaysApply: false
+---
+
+# Backend — Symfony & PHP
+
+- **PHP 8.2+**: `declare(strict_types=1);` obligatorio, propiedades `readonly`, Atributos.
+- **Doctrine**: Mapeo por atributos en Infrastructure. Sin lógica de persistencia en entidades de dominio.
+- **Validación**: Componente de validación de Symfony en DTOs de entrada.
+- **Seguridad**: Permisos mediante Voters (`Infrastructure\Symfony\Voter`).
+- **Repositorios**: Interfaz en `Domain\Repository\*RepositoryInterface`; implementación en `Infrastructure\Persistence\Doctrine\Repository`.
+- **PSR-12**: Seguir estándares de formato.
+- **SOLID/DRY**: Aplicar siempre.
+- **Tests**: Unitarios para Domain/Application, integración para Infrastructure.

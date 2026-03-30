@@ -16,7 +16,11 @@ import { Route as AppDashboardRouteImport } from './routes/_app/dashboard'
 import { Route as AppClientesRouteImport } from './routes/_app/clientes'
 import { Route as AppAgendaRouteImport } from './routes/_app/agenda'
 import { Route as AppExpedientesIndexRouteImport } from './routes/_app/expedientes/index'
+import { Route as AppConfigIndexRouteImport } from './routes/_app/config/index'
 import { Route as AppExpedientesExpedienteIdRouteImport } from './routes/_app/expedientes/$expedienteId'
+import { Route as AppConfigTiposCasoIndexRouteImport } from './routes/_app/config/tipos-caso/index'
+import { Route as AppConfigTiposCasoNuevoRouteImport } from './routes/_app/config/tipos-caso/nuevo'
+import { Route as AppConfigTiposCasoTipoCasoIdRouteImport } from './routes/_app/config/tipos-caso/$tipoCasoId'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -52,10 +56,31 @@ const AppExpedientesIndexRoute = AppExpedientesIndexRouteImport.update({
   path: '/expedientes/',
   getParentRoute: () => AppRoute,
 } as any)
+const AppConfigIndexRoute = AppConfigIndexRouteImport.update({
+  id: '/config/',
+  path: '/config/',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppExpedientesExpedienteIdRoute =
   AppExpedientesExpedienteIdRouteImport.update({
     id: '/expedientes/$expedienteId',
     path: '/expedientes/$expedienteId',
+    getParentRoute: () => AppRoute,
+  } as any)
+const AppConfigTiposCasoIndexRoute = AppConfigTiposCasoIndexRouteImport.update({
+  id: '/config/tipos-caso/',
+  path: '/config/tipos-caso/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppConfigTiposCasoNuevoRoute = AppConfigTiposCasoNuevoRouteImport.update({
+  id: '/config/tipos-caso/nuevo',
+  path: '/config/tipos-caso/nuevo',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppConfigTiposCasoTipoCasoIdRoute =
+  AppConfigTiposCasoTipoCasoIdRouteImport.update({
+    id: '/config/tipos-caso/$tipoCasoId',
+    path: '/config/tipos-caso/$tipoCasoId',
     getParentRoute: () => AppRoute,
   } as any)
 
@@ -66,7 +91,11 @@ export interface FileRoutesByFullPath {
   '/clientes': typeof AppClientesRoute
   '/dashboard': typeof AppDashboardRoute
   '/expedientes/$expedienteId': typeof AppExpedientesExpedienteIdRoute
+  '/config/': typeof AppConfigIndexRoute
   '/expedientes/': typeof AppExpedientesIndexRoute
+  '/config/tipos-caso/$tipoCasoId': typeof AppConfigTiposCasoTipoCasoIdRoute
+  '/config/tipos-caso/nuevo': typeof AppConfigTiposCasoNuevoRoute
+  '/config/tipos-caso/': typeof AppConfigTiposCasoIndexRoute
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
@@ -75,7 +104,11 @@ export interface FileRoutesByTo {
   '/dashboard': typeof AppDashboardRoute
   '/': typeof AppIndexRoute
   '/expedientes/$expedienteId': typeof AppExpedientesExpedienteIdRoute
+  '/config': typeof AppConfigIndexRoute
   '/expedientes': typeof AppExpedientesIndexRoute
+  '/config/tipos-caso/$tipoCasoId': typeof AppConfigTiposCasoTipoCasoIdRoute
+  '/config/tipos-caso/nuevo': typeof AppConfigTiposCasoNuevoRoute
+  '/config/tipos-caso': typeof AppConfigTiposCasoIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -86,7 +119,11 @@ export interface FileRoutesById {
   '/_app/dashboard': typeof AppDashboardRoute
   '/_app/': typeof AppIndexRoute
   '/_app/expedientes/$expedienteId': typeof AppExpedientesExpedienteIdRoute
+  '/_app/config/': typeof AppConfigIndexRoute
   '/_app/expedientes/': typeof AppExpedientesIndexRoute
+  '/_app/config/tipos-caso/$tipoCasoId': typeof AppConfigTiposCasoTipoCasoIdRoute
+  '/_app/config/tipos-caso/nuevo': typeof AppConfigTiposCasoNuevoRoute
+  '/_app/config/tipos-caso/': typeof AppConfigTiposCasoIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -97,7 +134,11 @@ export interface FileRouteTypes {
     | '/clientes'
     | '/dashboard'
     | '/expedientes/$expedienteId'
+    | '/config/'
     | '/expedientes/'
+    | '/config/tipos-caso/$tipoCasoId'
+    | '/config/tipos-caso/nuevo'
+    | '/config/tipos-caso/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/login'
@@ -106,7 +147,11 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/'
     | '/expedientes/$expedienteId'
+    | '/config'
     | '/expedientes'
+    | '/config/tipos-caso/$tipoCasoId'
+    | '/config/tipos-caso/nuevo'
+    | '/config/tipos-caso'
   id:
     | '__root__'
     | '/_app'
@@ -116,7 +161,11 @@ export interface FileRouteTypes {
     | '/_app/dashboard'
     | '/_app/'
     | '/_app/expedientes/$expedienteId'
+    | '/_app/config/'
     | '/_app/expedientes/'
+    | '/_app/config/tipos-caso/$tipoCasoId'
+    | '/_app/config/tipos-caso/nuevo'
+    | '/_app/config/tipos-caso/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -175,11 +224,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppExpedientesIndexRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/config/': {
+      id: '/_app/config/'
+      path: '/config'
+      fullPath: '/config/'
+      preLoaderRoute: typeof AppConfigIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/expedientes/$expedienteId': {
       id: '/_app/expedientes/$expedienteId'
       path: '/expedientes/$expedienteId'
       fullPath: '/expedientes/$expedienteId'
       preLoaderRoute: typeof AppExpedientesExpedienteIdRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/config/tipos-caso/': {
+      id: '/_app/config/tipos-caso/'
+      path: '/config/tipos-caso'
+      fullPath: '/config/tipos-caso/'
+      preLoaderRoute: typeof AppConfigTiposCasoIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/config/tipos-caso/nuevo': {
+      id: '/_app/config/tipos-caso/nuevo'
+      path: '/config/tipos-caso/nuevo'
+      fullPath: '/config/tipos-caso/nuevo'
+      preLoaderRoute: typeof AppConfigTiposCasoNuevoRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/config/tipos-caso/$tipoCasoId': {
+      id: '/_app/config/tipos-caso/$tipoCasoId'
+      path: '/config/tipos-caso/$tipoCasoId'
+      fullPath: '/config/tipos-caso/$tipoCasoId'
+      preLoaderRoute: typeof AppConfigTiposCasoTipoCasoIdRouteImport
       parentRoute: typeof AppRoute
     }
   }
@@ -191,7 +268,11 @@ interface AppRouteChildren {
   AppDashboardRoute: typeof AppDashboardRoute
   AppIndexRoute: typeof AppIndexRoute
   AppExpedientesExpedienteIdRoute: typeof AppExpedientesExpedienteIdRoute
+  AppConfigIndexRoute: typeof AppConfigIndexRoute
   AppExpedientesIndexRoute: typeof AppExpedientesIndexRoute
+  AppConfigTiposCasoTipoCasoIdRoute: typeof AppConfigTiposCasoTipoCasoIdRoute
+  AppConfigTiposCasoNuevoRoute: typeof AppConfigTiposCasoNuevoRoute
+  AppConfigTiposCasoIndexRoute: typeof AppConfigTiposCasoIndexRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
@@ -200,7 +281,11 @@ const AppRouteChildren: AppRouteChildren = {
   AppDashboardRoute: AppDashboardRoute,
   AppIndexRoute: AppIndexRoute,
   AppExpedientesExpedienteIdRoute: AppExpedientesExpedienteIdRoute,
+  AppConfigIndexRoute: AppConfigIndexRoute,
   AppExpedientesIndexRoute: AppExpedientesIndexRoute,
+  AppConfigTiposCasoTipoCasoIdRoute: AppConfigTiposCasoTipoCasoIdRoute,
+  AppConfigTiposCasoNuevoRoute: AppConfigTiposCasoNuevoRoute,
+  AppConfigTiposCasoIndexRoute: AppConfigTiposCasoIndexRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)

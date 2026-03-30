@@ -18,12 +18,12 @@ const cards: StatCard[] = [
     badge: '+5%',
     badgeColor: 'text-emerald-600 bg-emerald-50 border-emerald-100',
     icon: Folders,
-    iconColor: 'text-[#1e3a8a]',
+    iconColor: 'text-primary',
     subtext: '70% de capacidad operativa',
     extra: (
       <div className="mt-2">
-        <div className="w-full bg-gray-100 rounded-full h-1.5">
-          <div className="bg-[#1e3a8a] h-1.5 rounded-full" style={{ width: '70%' }} />
+        <div className="w-full bg-muted rounded-full h-1.5">
+          <div className="bg-primary h-1.5 rounded-full" style={{ width: '70%' }} />
         </div>
       </div>
     ),
@@ -34,11 +34,11 @@ const cards: StatCard[] = [
     badge: 'Urgente',
     badgeColor: 'text-red-600 bg-red-50 border-red-100',
     icon: ReceiptText,
-    iconColor: 'text-red-500',
+    iconColor: 'text-destructive',
     subtext: '',
     extra: (
       <p className="text-[11px] text-red-600 font-bold flex items-center gap-1.5 mt-2">
-        <span className="h-1.5 w-1.5 rounded-full bg-red-500 inline-block" />
+        <span className="h-1.5 w-1.5 rounded-full bg-destructive inline-block" />
         2 vencen en menos de 24h
       </p>
     ),
@@ -66,17 +66,17 @@ export function StatsCards() {
       {cards.map((card) => (
         <div
           key={card.label}
-          className="bg-white rounded-xl border border-gray-100 p-6 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between h-36 relative overflow-hidden group"
+          className="panel p-6 hover:shadow-md transition-shadow flex flex-col justify-between h-36 relative group"
         >
           <div className="absolute -right-4 -top-4 p-4 opacity-5 group-hover:opacity-10 transition-opacity rotate-12">
             <card.icon className={`h-24 w-24 ${card.iconColor}`} />
           </div>
           <div className="relative z-10">
-            <p className="text-gray-500 text-[11px] font-bold mb-2 uppercase tracking-widest">
+            <p className="section-label mb-2">
               {card.label}
             </p>
             <div className="flex items-end gap-3">
-              <h3 className="text-gray-900 text-4xl font-bold tracking-tight">{card.value}</h3>
+              <h3 className="text-foreground text-4xl font-bold tracking-tight">{card.value}</h3>
               <span
                 className={`mb-1.5 text-[11px] font-bold px-2 py-0.5 rounded flex items-center gap-1 border ${card.badgeColor}`}
               >
@@ -87,7 +87,7 @@ export function StatsCards() {
           </div>
           <div className="relative z-10 mt-auto">
             {card.extra ?? (
-              <p className="text-[11px] text-gray-500 mt-2 font-medium">{card.subtext}</p>
+              <p className="text-[11px] text-muted-foreground mt-2 font-medium">{card.subtext}</p>
             )}
           </div>
         </div>

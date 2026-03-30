@@ -1,0 +1,13 @@
+---
+description: Docker and WSL environment commands and conventions
+alwaysApply: true
+---
+
+# Docker & WSL
+
+- El proyecto corre sobre Docker en WSL Ubuntu.
+- Usar siempre `docker-compose` (con guión), NO `docker compose`. El entorno no tiene el plugin moderno.
+- **Comandos PHP**: `docker-compose exec php php bin/console ...` y `docker-compose exec php composer ...`
+- **Levantar**: `docker-compose up -d`
+- **Logs**: `docker-compose logs -f <servicio>`
+- **Paths**: Dentro del contenedor las rutas son `/app/...`, distintas del host.

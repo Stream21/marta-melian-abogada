@@ -35,15 +35,15 @@ export function ModoHolded({ expedienteId, invoices }: ModoHoldedProps) {
   return (
     <div className="space-y-4">
       <div>
-        <h3 className="text-base font-semibold text-slate-800">Modo 1 — Cobro Manual (Holded)</h3>
-        <p className="mt-0.5 text-sm text-slate-500">
+        <h3 className="text-base font-semibold text-foreground">Modo 1 — Cobro Manual (Holded)</h3>
+        <p className="mt-0.5 text-sm text-muted-foreground">
           Genera facturas directamente en Holded y lleva el seguimiento aquí.
         </p>
       </div>
 
       <form onSubmit={handleSubmit} className="flex flex-wrap items-end gap-3">
         <div className="flex-1 min-w-48">
-          <Label htmlFor="concepto" className="mb-1.5 block text-xs font-medium text-slate-600">
+          <Label htmlFor="concepto" className="mb-1.5 block text-xs font-medium text-muted-foreground">
             Concepto de Factura
           </Label>
           <Input
@@ -54,7 +54,7 @@ export function ModoHolded({ expedienteId, invoices }: ModoHoldedProps) {
           />
         </div>
         <div className="w-36">
-          <Label htmlFor="cantidad" className="mb-1.5 block text-xs font-medium text-slate-600">
+          <Label htmlFor="cantidad" className="mb-1.5 block text-xs font-medium text-muted-foreground">
             Cantidad (€)
           </Label>
           <Input
@@ -78,7 +78,7 @@ export function ModoHolded({ expedienteId, invoices }: ModoHoldedProps) {
       </form>
 
       {mutation.isError && (
-        <p className="text-sm text-red-500">Error al generar la factura. Inténtalo de nuevo.</p>
+        <p className="text-sm text-destructive">Error al generar la factura. Inténtalo de nuevo.</p>
       )}
 
       <InvoiceTable invoices={invoices} expedienteId={expedienteId} />

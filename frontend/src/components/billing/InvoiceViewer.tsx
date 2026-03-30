@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { CheckCircle, ExternalLink, MessageSquare, Loader2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { api, type QuickInvoiceResponse } from '../../api/client';
 
 interface InvoiceViewerProps {
@@ -39,23 +40,23 @@ export function InvoiceViewer({ invoice }: InvoiceViewerProps) {
   };
 
   return (
-    <div className="rounded-xl border border-green-200 bg-green-50 p-6 shadow-sm">
+    <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-6 shadow-sm">
       <div className="mb-4 flex items-center gap-2">
-        <CheckCircle className="h-5 w-5 text-green-600" />
-        <h3 className="font-semibold text-green-800">Factura Generada</h3>
+        <CheckCircle className="h-5 w-5 text-emerald-600" />
+        <h3 className="font-semibold text-emerald-800">Factura Generada</h3>
       </div>
 
       <dl className="mb-5 space-y-2 text-sm">
         {invoice.numero && (
           <div className="flex justify-between">
-            <dt className="text-slate-500">Número</dt>
-            <dd className="font-mono font-medium text-slate-800">{invoice.numero}</dd>
+            <dt className="text-muted-foreground">Número</dt>
+            <dd className="font-mono font-medium text-foreground">{invoice.numero}</dd>
           </div>
         )}
         {invoice.importe !== undefined && (
           <div className="flex justify-between">
-            <dt className="text-slate-500">Importe</dt>
-            <dd className="font-medium text-slate-800">
+            <dt className="text-muted-foreground">Importe</dt>
+            <dd className="font-medium text-foreground">
               {Number(invoice.importe).toLocaleString('es-ES', {
                 style: 'currency',
                 currency: 'EUR',
@@ -65,43 +66,40 @@ export function InvoiceViewer({ invoice }: InvoiceViewerProps) {
         )}
         {invoice.holdedId && (
           <div className="flex justify-between">
-            <dt className="text-slate-500">ID Holded</dt>
-            <dd className="font-mono text-xs text-slate-500">{invoice.holdedId}</dd>
+            <dt className="text-muted-foreground">ID Holded</dt>
+            <dd className="font-mono text-xs text-muted-foreground">{invoice.holdedId}</dd>
           </div>
         )}
       </dl>
 
       <div className="flex flex-col gap-2">
         {pdfUrl && (
-          <a
-            href={pdfUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
-          >
-            <ExternalLink className="h-4 w-4" />
-            Ver Factura PDF
-          </a>
+          <Button variant="outline" className="w-full" asChild>
+            <a href={pdfUrl} target="_blank" rel="noopener noreferrer">
+              <ExternalLink className="mr-2 h-4 w-4" />
+              Ver Factura PDF
+            </a>
+          </Button>
         )}
 
         {invoice.invoiceId && (
-          <button
+          <Button
             onClick={handleWhatsapp}
             disabled={sending}
-            className="flex items-center justify-center gap-2 rounded-lg bg-green-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-green-700 disabled:opacity-60"
+            className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
           >
             {sending ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (
-              <MessageSquare className="h-4 w-4" />
+              <MessageSquare className="mr-2 h-4 w-4" />
             )}
             {sending ? 'Enviando…' : 'Simular Envío WhatsApp'}
-          </button>
+          </Button>
         )}
       </div>
 
       {whatsappLog && (
-        <div className="mt-4 rounded-lg border border-green-300 bg-white px-4 py-3 font-mono text-xs text-green-700">
+        <div className="mt-4 rounded-lg border border-emerald-300 bg-white px-4 py-3 font-mono text-xs text-emerald-700">
           {whatsappLog}
         </div>
       )}

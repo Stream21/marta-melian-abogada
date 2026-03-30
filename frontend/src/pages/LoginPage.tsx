@@ -2,6 +2,8 @@ import { useRouter } from '@tanstack/react-router';
 import { useState } from 'react';
 import { loginRequest } from '@/api/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { Button } from '@/components/ui/button';
+import { Loader2 } from 'lucide-react';
 
 export function LoginPage() {
   const { login } = useAuth();
@@ -29,46 +31,40 @@ export function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f0f4f8] font-sans flex items-center justify-center p-4">
-      <section className="w-full max-w-sm lg:max-w-4xl overflow-hidden rounded-2xl shadow-xl border border-gray-200/60 flex flex-col lg:flex-row">
+    <div className="min-h-screen bg-muted font-sans flex items-center justify-center p-4">
+      <section className="w-full max-w-sm lg:max-w-4xl overflow-hidden rounded-2xl shadow-xl border flex flex-col lg:flex-row">
 
-        {/* Logo panel */}
-        <div className="bg-gradient-to-b from-[#1e3a8a] to-[#162d6e] flex flex-col items-center justify-center py-10 px-8 lg:w-2/5 lg:py-0 lg:px-12 lg:min-h-[520px]">
+        <div className="bg-primary flex flex-col items-center justify-center py-10 px-8 lg:w-2/5 lg:py-0 lg:px-12 lg:min-h-[520px]">
           <img
             src="/logo.png"
             alt="Bufete Melián"
             className="h-28 w-auto object-contain lg:h-44"
           />
           <div className="mt-6 text-center">
-            <div className="h-px w-8 bg-white/20 mx-auto mb-4" />
-            <p className="text-blue-200/60 text-[10px] lg:text-[11px] tracking-[0.25em] uppercase font-medium">
+            <div className="h-px w-8 bg-primary-foreground/20 mx-auto mb-4" />
+            <p className="text-primary-foreground/50 text-[10px] lg:text-[11px] tracking-[0.25em] uppercase font-medium">
               Servicios Jurídicos Profesionales
             </p>
           </div>
         </div>
 
-        {/* Form panel */}
-        <div className="bg-white px-8 py-10 lg:w-3/5 lg:px-14 lg:py-0 lg:min-h-[520px] flex flex-col justify-center">
-
-          {/* Header */}
+        <div className="bg-card px-8 py-10 lg:w-3/5 lg:px-14 lg:py-0 lg:min-h-[520px] flex flex-col justify-center">
           <div className="mb-8">
-            <h1 className="text-xl lg:text-2xl font-semibold text-gray-800 mb-1.5">Iniciar Sesión</h1>
-            <p className="text-gray-400 text-sm">Accede al portal de gestión privada.</p>
+            <h1 className="page-title mb-1.5">Iniciar Sesión</h1>
+            <p className="text-muted-foreground text-sm">Accede al portal de gestión privada.</p>
           </div>
 
-          {/* Error message */}
           {error && (
             <div className="mb-6 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
               {error}
             </div>
           )}
 
-          {/* Form */}
           <form className="space-y-6" onSubmit={handleSubmit}>
             <div className="space-y-2">
               <label
                 htmlFor="email"
-                className="block text-xs font-medium text-gray-700 uppercase tracking-wider"
+                className="section-label block"
               >
                 Correo Electrónico
               </label>
@@ -80,19 +76,17 @@ export function LoginPage() {
                 placeholder="ejemplo@abogado.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-[#1e3a8a] focus:border-[#1e3a8a] transition-colors text-sm placeholder-gray-300 bg-gray-50/30"
+                className="input-field px-4 py-3"
               />
             </div>
 
             <div className="space-y-2">
-              <div className="flex justify-between items-center">
-                <label
-                  htmlFor="password"
-                  className="block text-xs font-medium text-gray-700 uppercase tracking-wider"
-                >
-                  Contraseña
-                </label>
-              </div>
+              <label
+                htmlFor="password"
+                className="section-label block"
+              >
+                Contraseña
+              </label>
               <input
                 id="password"
                 name="password"
@@ -101,41 +95,31 @@ export function LoginPage() {
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-[#1e3a8a] focus:border-[#1e3a8a] transition-colors text-sm placeholder-gray-300 bg-gray-50/30"
+                className="input-field px-4 py-3"
               />
             </div>
 
             <div className="pt-4">
-              <button
+              <Button
                 type="submit"
                 disabled={isLoading}
-                className="w-full bg-[#1e3a8a] text-white py-3.5 px-6 text-xs font-semibold tracking-widest uppercase hover:bg-opacity-90 transition-all duration-300 rounded-md shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
+                className="w-full py-3.5 px-6 text-xs font-semibold tracking-widest uppercase"
+                size="lg"
               >
                 {isLoading ? (
                   <span className="flex items-center justify-center gap-2">
-                    <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
-                      <circle
-                        className="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                      />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-                    </svg>
+                    <Loader2 className="h-4 w-4 animate-spin" />
                     Accediendo…
                   </span>
                 ) : (
                   'Acceder'
                 )}
-              </button>
+              </Button>
             </div>
           </form>
 
-          {/* Security badge */}
           <div className="flex flex-col items-center justify-center space-y-4 mt-12">
-            <div className="flex items-center space-x-2 text-gray-400">
+            <div className="flex items-center space-x-2 text-muted-foreground">
               <svg
                 className="h-4 w-4"
                 fill="none"

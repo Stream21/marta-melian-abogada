@@ -9,7 +9,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { cn } from '@/lib/utils';
 import { Download, ExternalLink } from 'lucide-react';
 
 const fmt = (n: string) =>
@@ -25,11 +24,11 @@ const holdedStatusLabel: Record<InvoiceResponse['estadoHolded'], string> = {
 
 const holdedStatusVariant: Record<
   InvoiceResponse['estadoHolded'],
-  'default' | 'secondary' | 'destructive' | 'outline'
+  'default' | 'secondary' | 'destructive' | 'outline' | 'success' | 'warning'
 > = {
   draft: 'secondary',
-  outstanding: 'outline',
-  paid: 'default',
+  outstanding: 'warning',
+  paid: 'success',
   overdue: 'destructive',
   void: 'secondary',
 };
@@ -42,48 +41,38 @@ interface InvoiceTableProps {
 export function InvoiceTable({ invoices, expedienteId }: InvoiceTableProps) {
   if (invoices.length === 0) {
     return (
-      <div className="flex items-center justify-center rounded-lg border border-dashed border-slate-200 py-10 text-sm text-slate-400">
+      <div className="flex items-center justify-center rounded-lg border border-dashed py-10 text-sm text-muted-foreground">
         No hay facturas generadas aún.
       </div>
     );
   }
 
   return (
-    <div className="overflow-hidden rounded-lg border border-slate-200">
+    <div className="panel">
       <Table>
         <TableHeader>
-          <TableRow className="bg-slate-50">
-            <TableHead className="text-xs font-semibold text-slate-500">Nº Factura</TableHead>
-            <TableHead className="text-xs font-semibold text-slate-500">Modalidad</TableHead>
-            <TableHead className="text-xs font-semibold text-slate-500">Fecha</TableHead>
-            <TableHead className="text-right text-xs font-semibold text-slate-500">
-              Importe
-            </TableHead>
-            <TableHead className="text-xs font-semibold text-slate-500">Estado Holded</TableHead>
-            <TableHead className="text-xs font-semibold text-slate-500">Acciones</TableHead>
+          <TableRow className="bg-muted/50">
+            <TableHead className="section-label">Nº Factura</TableHead>
+            <TableHead className="section-label">Modalidad</TableHead>
+            <TableHead className="section-label">Fecha</TableHead>
+            <TableHead className="text-right section-label">Importe</TableHead>
+            <TableHead className="section-label">Estado Holded</TableHead>
+            <TableHead className="section-label">Acciones</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {invoices.map((inv) => (
             <TableRow key={inv.id} className="text-sm">
-              <TableCell className="font-mono text-slate-700">{inv.numero}</TableCell>
-              <TableCell className="text-slate-600">{inv.modalidad}</TableCell>
-              <TableCell className="text-slate-500">
+              <TableCell className="font-mono text-foreground">{inv.numero}</TableCell>
+              <TableCell className="text-muted-foreground">{inv.modalidad}</TableCell>
+              <TableCell className="text-muted-foreground">
                 {new Date(inv.fecha).toLocaleDateString('es-ES')}
               </TableCell>
-              <TableCell className="text-right font-medium text-slate-700">
+              <TableCell className="text-right font-medium text-foreground">
                 {fmt(inv.importe)}
               </TableCell>
               <TableCell>
-                <Badge
-                  variant={holdedStatusVariant[inv.estadoHolded]}
-                  className={cn(
-                    inv.estadoHolded === 'paid' &&
-                      'bg-emerald-100 text-emerald-700 hover:bg-emerald-100',
-                    inv.estadoHolded === 'outstanding' && 'border-amber-300 text-amber-700',
-                    inv.estadoHolded === 'overdue' && 'bg-red-100 text-red-700 hover:bg-red-100',
-                  )}
-                >
+                <Badge variant={holdedStatusVariant[inv.estadoHolded]}>
                   {holdedStatusLabel[inv.estadoHolded]}
                 </Badge>
               </TableCell>
@@ -92,7 +81,7 @@ export function InvoiceTable({ invoices, expedienteId }: InvoiceTableProps) {
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-7 w-7 text-slate-400 hover:text-slate-700"
+                    className="h-7 w-7 text-muted-foreground hover:text-foreground"
                     asChild
                   >
                     <a
@@ -108,7 +97,7 @@ export function InvoiceTable({ invoices, expedienteId }: InvoiceTableProps) {
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-7 w-7 text-slate-400 hover:text-slate-700"
+                      className="h-7 w-7 text-muted-foreground hover:text-foreground"
                       asChild
                     >
                       <a

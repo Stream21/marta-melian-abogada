@@ -19,17 +19,17 @@ export function ExpedienteDetailPage({ expedienteId }: ExpedienteDetailPageProps
   return (
     <div className="p-6">
       <div className="mb-6">
-        <p className="text-xs font-medium uppercase tracking-wider text-slate-400">
+        <p className="section-label">
           Expedientes / {expediente?.numero ?? '…'}
         </p>
-        <h1 className="mt-1 text-2xl font-semibold text-slate-800">
+        <h1 className="mt-1 page-title">
           {expediente?.titulo ?? 'Cargando…'}
         </h1>
-        {expediente && <p className="mt-0.5 text-sm text-slate-500">{expediente.clientName}</p>}
+        {expediente && <p className="page-subtitle">{expediente.clientName}</p>}
       </div>
 
       <Tabs defaultValue="facturacion" className="w-full">
-        <TabsList className="mb-6 h-10 rounded-lg bg-slate-100 p-1">
+        <TabsList className="mb-6 h-10 rounded-lg bg-muted p-1">
           <TabsTrigger value="gestion">Gestión de Fases</TabsTrigger>
           <TabsTrigger value="chat">Chat Interno</TabsTrigger>
           <TabsTrigger value="documentacion">Documentación</TabsTrigger>
@@ -55,7 +55,7 @@ export function ExpedienteDetailPage({ expedienteId }: ExpedienteDetailPageProps
 
 function StubTab({ label }: { label: string }) {
   return (
-    <div className="flex items-center justify-center py-16 text-slate-400">
+    <div className="flex items-center justify-center py-16 text-muted-foreground">
       <p className="text-sm">{label} — próximamente</p>
     </div>
   );

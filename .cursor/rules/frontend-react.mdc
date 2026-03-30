@@ -1,0 +1,24 @@
+---
+description: React, TypeScript and TanStack Router conventions for frontend code
+globs: frontend/**/*.{ts,tsx}
+alwaysApply: false
+---
+
+# Frontend — React & TypeScript
+
+## Code Style
+- TypeScript estricto. Prohibido `any`. Punto y coma (`semi: true`). Comillas simples. Prettier en `frontend/.prettierrc`.
+- Componentes funcionales con Arrow Functions. Lógica en Custom Hooks.
+- TanStack Query para servidor, Zustand o Context para estado local.
+
+## Estructura de carpetas (TanStack Router)
+- `src/routes/` — stubs finos: solo `createFileRoute` + import. Sin JSX. Máximo ~10 líneas.
+- `src/pages/` — componente de página con lógica. Máximo ~150 líneas.
+- `src/components/<dominio>/` — componentes por dominio (`expedientes/`, `billing/`, `config/`).
+- `src/components/ui/` — primitivos shadcn/ui. No modificar directamente (extender variantes sí).
+- `src/components/layout/` — Sidebar, Topbar.
+- `src/contexts/`, `src/hooks/`, `src/api/` — Contexts, Custom Hooks, cliente API tipado.
+
+## TanStack Router
+- Prefijo `_` en fichero/carpeta = layout route (no añade segmento a URL).
+- `to` y `redirect` usan la **URL real**: ✅ `/expedientes` — ❌ `/_app/expedientes/`

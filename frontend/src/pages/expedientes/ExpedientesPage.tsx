@@ -13,55 +13,55 @@ export function ExpedientesPage() {
   return (
     <div className="p-6">
       <div className="mb-6">
-        <h1 className="text-2xl font-semibold text-slate-800">Expedientes</h1>
-        <p className="mt-1 text-sm text-slate-500">Listado de expedientes activos</p>
+        <h1 className="page-title">Expedientes</h1>
+        <p className="page-subtitle">Listado de expedientes activos</p>
       </div>
 
       {isLoading && (
-        <div className="flex items-center justify-center py-12 text-slate-400">
+        <div className="flex items-center justify-center py-12 text-muted-foreground">
           Cargando expedientes...
         </div>
       )}
 
       {!isLoading && (!expedientes || expedientes.length === 0) && (
-        <div className="flex flex-col items-center justify-center py-16 text-slate-400">
+        <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
           <FolderOpen className="mb-3 h-10 w-10" />
           <p className="text-sm">No hay expedientes</p>
         </div>
       )}
 
       {expedientes && expedientes.length > 0 && (
-        <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
+        <div className="panel">
           <table className="w-full text-sm">
-            <thead className="border-b border-slate-100 bg-slate-50">
+            <thead className="border-b bg-muted/50">
               <tr>
-                <th className="px-4 py-3 text-left font-medium text-slate-500">Nº</th>
-                <th className="px-4 py-3 text-left font-medium text-slate-500">Título</th>
-                <th className="px-4 py-3 text-left font-medium text-slate-500">Cliente</th>
-                <th className="px-4 py-3 text-left font-medium text-slate-500">Estado</th>
-                <th className="px-4 py-3 text-left font-medium text-slate-500">Fecha</th>
+                <th className="px-4 py-3 text-left section-label">Nº</th>
+                <th className="px-4 py-3 text-left section-label">Título</th>
+                <th className="px-4 py-3 text-left section-label">Cliente</th>
+                <th className="px-4 py-3 text-left section-label">Estado</th>
+                <th className="px-4 py-3 text-left section-label">Fecha</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-border">
               {expedientes.map((exp) => (
-                <tr key={exp.id} className="hover:bg-slate-50">
-                  <td className="px-4 py-3 font-mono text-slate-600">{exp.numero}</td>
+                <tr key={exp.id} className="hover:bg-primary/5 transition-colors">
+                  <td className="px-4 py-3 font-mono text-muted-foreground">{exp.numero}</td>
                   <td className="px-4 py-3">
                     <Link
                       to="/expedientes/$expedienteId"
                       params={{ expedienteId: exp.id }}
-                      className="font-medium text-blue-600 hover:underline"
+                      className="font-medium text-primary hover:underline"
                     >
                       {exp.titulo}
                     </Link>
                   </td>
-                  <td className="px-4 py-3 text-slate-600">{exp.clientName}</td>
+                  <td className="px-4 py-3 text-muted-foreground">{exp.clientName}</td>
                   <td className="px-4 py-3">
                     <Badge variant={exp.estado === 'activo' ? 'default' : 'secondary'}>
                       {exp.estado}
                     </Badge>
                   </td>
-                  <td className="px-4 py-3 text-slate-500">
+                  <td className="px-4 py-3 text-muted-foreground">
                     {new Date(exp.fechaApertura).toLocaleDateString('es-ES')}
                   </td>
                 </tr>
