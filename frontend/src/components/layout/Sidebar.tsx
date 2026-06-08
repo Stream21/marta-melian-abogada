@@ -32,11 +32,8 @@ const navItems = [
 ];
 
 const configSubItems = [
-  { label: 'Tipos de Caso', href: '/config/tipos-caso' },
-  { label: 'Categorías', href: '/expedientes' },
-  { label: 'Recursos', href: '/expedientes' },
-  { label: 'Servicios', href: '/expedientes' },
-  { label: 'Usuarios y Roles', href: '/expedientes' },
+  { label: 'Servicios', href: '/config/servicios' },
+  { label: 'Trámites', href: '/config/tramites' },
 ];
 
 interface ContentProps {
@@ -103,9 +100,6 @@ function SidebarContent({ collapsed, configOpen, setConfigOpen, onLogout, onTogg
 
           {!collapsed && configOpen && (
             <div className="ml-6 mt-1 pl-3 border-l border-primary-foreground/10 space-y-0.5">
-              <p className="px-3 pt-2 pb-1 text-[10px] font-bold text-primary-foreground/40 uppercase tracking-widest">
-                Expediente
-              </p>
               {configSubItems.map((sub) => (
                 <Link
                   key={sub.label}

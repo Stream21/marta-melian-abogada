@@ -136,25 +136,72 @@ export const api = {
       method: 'POST',
     }),
 
-  getTiposCaso: () => request<TipoCasoResponse[]>('/api/tipos-caso'),
+  getServicios: (params?: { incluirInactivos?: boolean }) => {
+    const qs = params?.incluirInactivos ? '?incluir_inactivos=1' : '';
+    return request<ServicioResponse[]>('/api/servicios' + qs);
+  },
 
-  getTipoCaso: (id: string) => request<TipoCasoResponse>('/api/tipos-caso/' + encodeURIComponent(id)),
+  getServicio: (id: string) => request<ServicioResponse>('/api/servicios/' + encodeURIComponent(id)),
 
-  postTipoCaso: (body: { nombre: string; descripcion: string }) =>
-    request<TipoCasoResponse>('/api/tipos-caso', {
+  postServicio: (body: { nombre: string; tipo: string }) =>
+    request<ServicioResponse>('/api/servicios', {
       method: 'POST',
       body: JSON.stringify(body),
     }),
 
-  putTipoCaso: (id: string, body: { nombre: string; descripcion: string }) =>
-    request<TipoCasoResponse>('/api/tipos-caso/' + encodeURIComponent(id), {
+  putServicio: (id: string, body: { nombre: string; tipo: string }) =>
+    request<ServicioResponse>('/api/servicios/' + encodeURIComponent(id), {
       method: 'PUT',
       body: JSON.stringify(body),
     }),
 
-  deleteTipoCaso: (id: string) =>
-    request<void>('/api/tipos-caso/' + encodeURIComponent(id), {
-      method: 'DELETE',
+  patchServicioEstado: (id: string, activo: boolean) =>
+    request<ServicioResponse>('/api/servicios/' + encodeURIComponent(id) + '/estado', {
+      method: 'PATCH',
+      body: JSON.stringify({ activo }),
+    }),
+
+  getTramites: (params?: { incluirInactivos?: boolean; servicioId?: string }) => {
+    const search = new URLSearchParams();
+    if (params?.incluirInactivos) search.set('incluir_inactivos', '1');
+    if (params?.servicioId) search.set('servicio_id', params.servicioId);
+    const qs = search.toString();
+    return request<TramiteResponse[]>('/api/tramites' + (qs ? '?' + qs : ''));
+  },
+
+  getTramite: (id: string) => request<TramiteResponse>('/api/tramites/' + encodeURIComponent(id)),
+
+  postTramite: (body: {
+    servicioId: string;
+    nombre: string;
+    honorarios: number;
+    plataforma: string;
+    requiereProcurador: boolean;
+  }) =>
+    request<TramiteResponse>('/api/tramites', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+
+  putTramite: (
+    id: string,
+    body: {
+      servicioId: string;
+      nombre: string;
+      honorarios: number;
+      plataforma: string;
+      requiereProcurador: boolean;
+    },
+  ) =>
+    request<TramiteResponse>('/api/tramites/' + encodeURIComponent(id), {
+      method: 'PUT',
+      body: JSON.stringify(body),
+    }),
+
+  patchTramiteEstado: (id: string, activo: boolean) =>
+    request<TramiteResponse>('/api/tramites/' + encodeURIComponent(id) + '/estado', {
+      method: 'PATCH',
+      body: JSON.stringify({ activo }),
     }),
 };
 
@@ -187,10 +234,24 @@ export interface QuickInvoiceResponse {
   error?: string;
 }
 
-export interface TipoCasoResponse {
+export interface ServicioResponse {
   id: string;
   nombre: string;
-  descripcion: string;
+  tipo: string;
+  tipoLabel: string;
+  activo: boolean;
+}
+
+export interface TramiteResponse {
+  id: string;
+  servicioId: string;
+  servicioNombre: string | null;
+  nombre: string;
+  honorarios: number;
+  plataforma: string;
+  plataformaLabel: string;
+  requiereProcurador: boolean;
+  activo: boolean;
 }
 
 export interface ExpedienteResponse {

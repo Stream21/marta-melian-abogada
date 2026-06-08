@@ -1,0 +1,64 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Application\UseCase;
+
+use App\Application\DTO\CrearTramiteInput;
+use App\Domain\Entity\PlataformaTramitacion;
+use App\Domain\Entity\Tramite;
+use App\Domain\Repository\ServicioRepositoryInterface;
+use App\Domain\Repository\TramiteRepositoryInterface;
+use App\Domain\ValueObject\ServicioId;
+use App\Domain\ValueObject\TramiteId;
+
+final class CrearTramiteUseCase
+{
+    public function __construct(
+        private TramiteRepositoryInterface $tramiteRepository,
+        private ServicioRepositoryInterface $servicioRepository,
+    ) {
+    }
+
+    public function __invoke(CrearTramiteInput $input): Tramite
+    {
+        $nombre = trim($input->nombre);
+        if ('' === $nombre) {
+            throw new \InvalidArgumentException('El nombre es obligatorio.');
+        }
+
+        $servicioId = new ServicioId($input->servicioId);
+        $servicio = $this->servicioRepository->findById($servicioId);
+        if (null === $servicio) {
+            throw new \InvalidArgumentException('Servicio no encontrado.');
+        }
+        if (!$servicio->activo()) {
+            throw new \InvalidArgumentException('No se puede asignar un trámite a un servicio inactivo.');
+        }
+
+        if ($input->honorarios <= 0) {
+            throw new \InvalidArgumentException('Los honorarios deben ser mayores que cero.');
+        }
+
+        $normalized = mb_strtolower($nombre);
+        if (null !== $this->tramiteRepository->findByNombreNormalized($servicioId, $normalized)) {
+            throw new \InvalidArgumentException('Ya existe un trámite con el mismo nombre en este servicio.');
+        }
+
+        $plataforma = PlataformaTramitacion::fromString($input->plataforma);
+
+        $tramite = new Tramite(
+            TramiteId::generate(),
+            $servicioId,
+            $nombre,
+            $input->honorarios,
+            $plataforma,
+            $input->requiereProcurador,
+            true,
+            $servicio->nombre(),
+        );
+        $this->tramiteRepository->save($tramite);
+
+        return $this->tramiteRepository->findById($tramite->id()) ?? $tramite;
+    }
+}
