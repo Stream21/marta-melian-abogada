@@ -12,12 +12,15 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
+import { Route as AccesoTokenRouteImport } from './routes/acceso/$token'
 import { Route as AppDashboardRouteImport } from './routes/_app/dashboard'
 import { Route as AppClientesRouteImport } from './routes/_app/clientes'
 import { Route as AppAgendaRouteImport } from './routes/_app/agenda'
 import { Route as AppExpedientesIndexRouteImport } from './routes/_app/expedientes/index'
 import { Route as AppConfigIndexRouteImport } from './routes/_app/config/index'
+import { Route as AppExpedientesNuevoRouteImport } from './routes/_app/expedientes/nuevo'
 import { Route as AppExpedientesExpedienteIdRouteImport } from './routes/_app/expedientes/$expedienteId'
+import { Route as AppConfigDespachoRouteImport } from './routes/_app/config/despacho'
 import { Route as AppConfigTramitesIndexRouteImport } from './routes/_app/config/tramites/index'
 import { Route as AppConfigServiciosIndexRouteImport } from './routes/_app/config/servicios/index'
 import { Route as AppConfigTramitesNuevoRouteImport } from './routes/_app/config/tramites/nuevo'
@@ -25,7 +28,9 @@ import { Route as AppConfigTramitesTramiteIdRouteImport } from './routes/_app/co
 import { Route as AppConfigServiciosNuevoRouteImport } from './routes/_app/config/servicios/nuevo'
 import { Route as AppConfigServiciosServicioIdRouteImport } from './routes/_app/config/servicios/$servicioId'
 import { Route as AppConfigTramitesTramiteIdIndexRouteImport } from './routes/_app/config/tramites/$tramiteId.index'
+import { Route as AppConfigTramitesTramiteIdHojaEncargoRouteImport } from './routes/_app/config/tramites/$tramiteId.hoja-encargo'
 import { Route as AppConfigTramitesTramiteIdFasesRouteImport } from './routes/_app/config/tramites/$tramiteId.fases'
+import { Route as AppConfigTramitesTramiteIdConfiguracionRouteImport } from './routes/_app/config/tramites/$tramiteId.configuracion'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -40,6 +45,11 @@ const AppIndexRoute = AppIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AppRoute,
+} as any)
+const AccesoTokenRoute = AccesoTokenRouteImport.update({
+  id: '/acceso/$token',
+  path: '/acceso/$token',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const AppDashboardRoute = AppDashboardRouteImport.update({
   id: '/dashboard',
@@ -66,12 +76,22 @@ const AppConfigIndexRoute = AppConfigIndexRouteImport.update({
   path: '/config/',
   getParentRoute: () => AppRoute,
 } as any)
+const AppExpedientesNuevoRoute = AppExpedientesNuevoRouteImport.update({
+  id: '/expedientes/nuevo',
+  path: '/expedientes/nuevo',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppExpedientesExpedienteIdRoute =
   AppExpedientesExpedienteIdRouteImport.update({
     id: '/expedientes/$expedienteId',
     path: '/expedientes/$expedienteId',
     getParentRoute: () => AppRoute,
   } as any)
+const AppConfigDespachoRoute = AppConfigDespachoRouteImport.update({
+  id: '/config/despacho',
+  path: '/config/despacho',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppConfigTramitesIndexRoute = AppConfigTramitesIndexRouteImport.update({
   id: '/config/tramites/',
   path: '/config/tramites/',
@@ -110,10 +130,22 @@ const AppConfigTramitesTramiteIdIndexRoute =
     path: '/',
     getParentRoute: () => AppConfigTramitesTramiteIdRoute,
   } as any)
+const AppConfigTramitesTramiteIdHojaEncargoRoute =
+  AppConfigTramitesTramiteIdHojaEncargoRouteImport.update({
+    id: '/hoja-encargo',
+    path: '/hoja-encargo',
+    getParentRoute: () => AppConfigTramitesTramiteIdRoute,
+  } as any)
 const AppConfigTramitesTramiteIdFasesRoute =
   AppConfigTramitesTramiteIdFasesRouteImport.update({
     id: '/fases',
     path: '/fases',
+    getParentRoute: () => AppConfigTramitesTramiteIdRoute,
+  } as any)
+const AppConfigTramitesTramiteIdConfiguracionRoute =
+  AppConfigTramitesTramiteIdConfiguracionRouteImport.update({
+    id: '/configuracion',
+    path: '/configuracion',
     getParentRoute: () => AppConfigTramitesTramiteIdRoute,
   } as any)
 
@@ -123,7 +155,10 @@ export interface FileRoutesByFullPath {
   '/agenda': typeof AppAgendaRoute
   '/clientes': typeof AppClientesRoute
   '/dashboard': typeof AppDashboardRoute
+  '/acceso/$token': typeof AccesoTokenRoute
+  '/config/despacho': typeof AppConfigDespachoRoute
   '/expedientes/$expedienteId': typeof AppExpedientesExpedienteIdRoute
+  '/expedientes/nuevo': typeof AppExpedientesNuevoRoute
   '/config/': typeof AppConfigIndexRoute
   '/expedientes/': typeof AppExpedientesIndexRoute
   '/config/servicios/$servicioId': typeof AppConfigServiciosServicioIdRoute
@@ -132,7 +167,9 @@ export interface FileRoutesByFullPath {
   '/config/tramites/nuevo': typeof AppConfigTramitesNuevoRoute
   '/config/servicios/': typeof AppConfigServiciosIndexRoute
   '/config/tramites/': typeof AppConfigTramitesIndexRoute
+  '/config/tramites/$tramiteId/configuracion': typeof AppConfigTramitesTramiteIdConfiguracionRoute
   '/config/tramites/$tramiteId/fases': typeof AppConfigTramitesTramiteIdFasesRoute
+  '/config/tramites/$tramiteId/hoja-encargo': typeof AppConfigTramitesTramiteIdHojaEncargoRoute
   '/config/tramites/$tramiteId/': typeof AppConfigTramitesTramiteIdIndexRoute
 }
 export interface FileRoutesByTo {
@@ -140,8 +177,11 @@ export interface FileRoutesByTo {
   '/agenda': typeof AppAgendaRoute
   '/clientes': typeof AppClientesRoute
   '/dashboard': typeof AppDashboardRoute
+  '/acceso/$token': typeof AccesoTokenRoute
   '/': typeof AppIndexRoute
+  '/config/despacho': typeof AppConfigDespachoRoute
   '/expedientes/$expedienteId': typeof AppExpedientesExpedienteIdRoute
+  '/expedientes/nuevo': typeof AppExpedientesNuevoRoute
   '/config': typeof AppConfigIndexRoute
   '/expedientes': typeof AppExpedientesIndexRoute
   '/config/servicios/$servicioId': typeof AppConfigServiciosServicioIdRoute
@@ -149,7 +189,9 @@ export interface FileRoutesByTo {
   '/config/tramites/nuevo': typeof AppConfigTramitesNuevoRoute
   '/config/servicios': typeof AppConfigServiciosIndexRoute
   '/config/tramites': typeof AppConfigTramitesIndexRoute
+  '/config/tramites/$tramiteId/configuracion': typeof AppConfigTramitesTramiteIdConfiguracionRoute
   '/config/tramites/$tramiteId/fases': typeof AppConfigTramitesTramiteIdFasesRoute
+  '/config/tramites/$tramiteId/hoja-encargo': typeof AppConfigTramitesTramiteIdHojaEncargoRoute
   '/config/tramites/$tramiteId': typeof AppConfigTramitesTramiteIdIndexRoute
 }
 export interface FileRoutesById {
@@ -159,8 +201,11 @@ export interface FileRoutesById {
   '/_app/agenda': typeof AppAgendaRoute
   '/_app/clientes': typeof AppClientesRoute
   '/_app/dashboard': typeof AppDashboardRoute
+  '/acceso/$token': typeof AccesoTokenRoute
   '/_app/': typeof AppIndexRoute
+  '/_app/config/despacho': typeof AppConfigDespachoRoute
   '/_app/expedientes/$expedienteId': typeof AppExpedientesExpedienteIdRoute
+  '/_app/expedientes/nuevo': typeof AppExpedientesNuevoRoute
   '/_app/config/': typeof AppConfigIndexRoute
   '/_app/expedientes/': typeof AppExpedientesIndexRoute
   '/_app/config/servicios/$servicioId': typeof AppConfigServiciosServicioIdRoute
@@ -169,7 +214,9 @@ export interface FileRoutesById {
   '/_app/config/tramites/nuevo': typeof AppConfigTramitesNuevoRoute
   '/_app/config/servicios/': typeof AppConfigServiciosIndexRoute
   '/_app/config/tramites/': typeof AppConfigTramitesIndexRoute
+  '/_app/config/tramites/$tramiteId/configuracion': typeof AppConfigTramitesTramiteIdConfiguracionRoute
   '/_app/config/tramites/$tramiteId/fases': typeof AppConfigTramitesTramiteIdFasesRoute
+  '/_app/config/tramites/$tramiteId/hoja-encargo': typeof AppConfigTramitesTramiteIdHojaEncargoRoute
   '/_app/config/tramites/$tramiteId/': typeof AppConfigTramitesTramiteIdIndexRoute
 }
 export interface FileRouteTypes {
@@ -180,7 +227,10 @@ export interface FileRouteTypes {
     | '/agenda'
     | '/clientes'
     | '/dashboard'
+    | '/acceso/$token'
+    | '/config/despacho'
     | '/expedientes/$expedienteId'
+    | '/expedientes/nuevo'
     | '/config/'
     | '/expedientes/'
     | '/config/servicios/$servicioId'
@@ -189,7 +239,9 @@ export interface FileRouteTypes {
     | '/config/tramites/nuevo'
     | '/config/servicios/'
     | '/config/tramites/'
+    | '/config/tramites/$tramiteId/configuracion'
     | '/config/tramites/$tramiteId/fases'
+    | '/config/tramites/$tramiteId/hoja-encargo'
     | '/config/tramites/$tramiteId/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -197,8 +249,11 @@ export interface FileRouteTypes {
     | '/agenda'
     | '/clientes'
     | '/dashboard'
+    | '/acceso/$token'
     | '/'
+    | '/config/despacho'
     | '/expedientes/$expedienteId'
+    | '/expedientes/nuevo'
     | '/config'
     | '/expedientes'
     | '/config/servicios/$servicioId'
@@ -206,7 +261,9 @@ export interface FileRouteTypes {
     | '/config/tramites/nuevo'
     | '/config/servicios'
     | '/config/tramites'
+    | '/config/tramites/$tramiteId/configuracion'
     | '/config/tramites/$tramiteId/fases'
+    | '/config/tramites/$tramiteId/hoja-encargo'
     | '/config/tramites/$tramiteId'
   id:
     | '__root__'
@@ -215,8 +272,11 @@ export interface FileRouteTypes {
     | '/_app/agenda'
     | '/_app/clientes'
     | '/_app/dashboard'
+    | '/acceso/$token'
     | '/_app/'
+    | '/_app/config/despacho'
     | '/_app/expedientes/$expedienteId'
+    | '/_app/expedientes/nuevo'
     | '/_app/config/'
     | '/_app/expedientes/'
     | '/_app/config/servicios/$servicioId'
@@ -225,13 +285,16 @@ export interface FileRouteTypes {
     | '/_app/config/tramites/nuevo'
     | '/_app/config/servicios/'
     | '/_app/config/tramites/'
+    | '/_app/config/tramites/$tramiteId/configuracion'
     | '/_app/config/tramites/$tramiteId/fases'
+    | '/_app/config/tramites/$tramiteId/hoja-encargo'
     | '/_app/config/tramites/$tramiteId/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   AppRoute: typeof AppRouteWithChildren
   LoginRoute: typeof LoginRoute
+  AccesoTokenRoute: typeof AccesoTokenRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -256,6 +319,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof AppIndexRouteImport
       parentRoute: typeof AppRoute
+    }
+    '/acceso/$token': {
+      id: '/acceso/$token'
+      path: '/acceso/$token'
+      fullPath: '/acceso/$token'
+      preLoaderRoute: typeof AccesoTokenRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_app/dashboard': {
       id: '/_app/dashboard'
@@ -292,11 +362,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppConfigIndexRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/expedientes/nuevo': {
+      id: '/_app/expedientes/nuevo'
+      path: '/expedientes/nuevo'
+      fullPath: '/expedientes/nuevo'
+      preLoaderRoute: typeof AppExpedientesNuevoRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/expedientes/$expedienteId': {
       id: '/_app/expedientes/$expedienteId'
       path: '/expedientes/$expedienteId'
       fullPath: '/expedientes/$expedienteId'
       preLoaderRoute: typeof AppExpedientesExpedienteIdRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/config/despacho': {
+      id: '/_app/config/despacho'
+      path: '/config/despacho'
+      fullPath: '/config/despacho'
+      preLoaderRoute: typeof AppConfigDespachoRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/config/tramites/': {
@@ -348,6 +432,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppConfigTramitesTramiteIdIndexRouteImport
       parentRoute: typeof AppConfigTramitesTramiteIdRoute
     }
+    '/_app/config/tramites/$tramiteId/hoja-encargo': {
+      id: '/_app/config/tramites/$tramiteId/hoja-encargo'
+      path: '/hoja-encargo'
+      fullPath: '/config/tramites/$tramiteId/hoja-encargo'
+      preLoaderRoute: typeof AppConfigTramitesTramiteIdHojaEncargoRouteImport
+      parentRoute: typeof AppConfigTramitesTramiteIdRoute
+    }
     '/_app/config/tramites/$tramiteId/fases': {
       id: '/_app/config/tramites/$tramiteId/fases'
       path: '/fases'
@@ -355,17 +446,30 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppConfigTramitesTramiteIdFasesRouteImport
       parentRoute: typeof AppConfigTramitesTramiteIdRoute
     }
+    '/_app/config/tramites/$tramiteId/configuracion': {
+      id: '/_app/config/tramites/$tramiteId/configuracion'
+      path: '/configuracion'
+      fullPath: '/config/tramites/$tramiteId/configuracion'
+      preLoaderRoute: typeof AppConfigTramitesTramiteIdConfiguracionRouteImport
+      parentRoute: typeof AppConfigTramitesTramiteIdRoute
+    }
   }
 }
 
 interface AppConfigTramitesTramiteIdRouteChildren {
+  AppConfigTramitesTramiteIdConfiguracionRoute: typeof AppConfigTramitesTramiteIdConfiguracionRoute
   AppConfigTramitesTramiteIdFasesRoute: typeof AppConfigTramitesTramiteIdFasesRoute
+  AppConfigTramitesTramiteIdHojaEncargoRoute: typeof AppConfigTramitesTramiteIdHojaEncargoRoute
   AppConfigTramitesTramiteIdIndexRoute: typeof AppConfigTramitesTramiteIdIndexRoute
 }
 
 const AppConfigTramitesTramiteIdRouteChildren: AppConfigTramitesTramiteIdRouteChildren =
   {
+    AppConfigTramitesTramiteIdConfiguracionRoute:
+      AppConfigTramitesTramiteIdConfiguracionRoute,
     AppConfigTramitesTramiteIdFasesRoute: AppConfigTramitesTramiteIdFasesRoute,
+    AppConfigTramitesTramiteIdHojaEncargoRoute:
+      AppConfigTramitesTramiteIdHojaEncargoRoute,
     AppConfigTramitesTramiteIdIndexRoute: AppConfigTramitesTramiteIdIndexRoute,
   }
 
@@ -379,7 +483,9 @@ interface AppRouteChildren {
   AppClientesRoute: typeof AppClientesRoute
   AppDashboardRoute: typeof AppDashboardRoute
   AppIndexRoute: typeof AppIndexRoute
+  AppConfigDespachoRoute: typeof AppConfigDespachoRoute
   AppExpedientesExpedienteIdRoute: typeof AppExpedientesExpedienteIdRoute
+  AppExpedientesNuevoRoute: typeof AppExpedientesNuevoRoute
   AppConfigIndexRoute: typeof AppConfigIndexRoute
   AppExpedientesIndexRoute: typeof AppExpedientesIndexRoute
   AppConfigServiciosServicioIdRoute: typeof AppConfigServiciosServicioIdRoute
@@ -395,7 +501,9 @@ const AppRouteChildren: AppRouteChildren = {
   AppClientesRoute: AppClientesRoute,
   AppDashboardRoute: AppDashboardRoute,
   AppIndexRoute: AppIndexRoute,
+  AppConfigDespachoRoute: AppConfigDespachoRoute,
   AppExpedientesExpedienteIdRoute: AppExpedientesExpedienteIdRoute,
+  AppExpedientesNuevoRoute: AppExpedientesNuevoRoute,
   AppConfigIndexRoute: AppConfigIndexRoute,
   AppExpedientesIndexRoute: AppExpedientesIndexRoute,
   AppConfigServiciosServicioIdRoute: AppConfigServiciosServicioIdRoute,
@@ -411,6 +519,7 @@ const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
   LoginRoute: LoginRoute,
+  AccesoTokenRoute: AccesoTokenRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

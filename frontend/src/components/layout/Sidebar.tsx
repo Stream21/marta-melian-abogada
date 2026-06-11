@@ -34,6 +34,7 @@ const navItems = [
 const configSubItems = [
   { label: 'Servicios', href: '/config/servicios' },
   { label: 'Trámites', href: '/config/tramites' },
+  { label: 'Datos del despacho', href: '/config/despacho' },
 ];
 
 interface ContentProps {

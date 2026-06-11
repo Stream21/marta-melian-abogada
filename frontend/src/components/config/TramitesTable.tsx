@@ -34,9 +34,9 @@ import {
 
   ChevronsUpDown,
 
-  Layers,
-
   Pencil,
+
+  Settings2,
 
   Power,
 
@@ -113,7 +113,7 @@ export interface TramitesTableProps {
 
   onEdit: (id: string) => void;
 
-  onConfigureFases: (id: string) => void;
+  onConfigure: (id: string) => void;
 
   onToggleEstado: (id: string, activo: boolean) => void;
 
@@ -141,7 +141,7 @@ export function TramitesTable({
 
   onEdit,
 
-  onConfigureFases,
+  onConfigure,
 
   onToggleEstado,
 
@@ -313,17 +313,17 @@ export function TramitesTable({
 
                 className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-primary disabled:opacity-40"
 
-                aria-label="Configurar fases"
+                aria-label="Configurar trámite"
 
-                title="Configurar fases"
+                title="Configurar trámite"
 
-                onClick={() => onConfigureFases(row.original.id)}
+                onClick={() => onConfigure(row.original.id)}
 
                 disabled={busy}
 
               >
 
-                <Layers className="h-4 w-4" />
+                <Settings2 className="h-4 w-4" />
 
               </button>
 
@@ -381,7 +381,7 @@ export function TramitesTable({
 
     ],
 
-    [onConfigureFases, onEdit, togglingId],
+    [onConfigure, onEdit, togglingId],
 
   );
 

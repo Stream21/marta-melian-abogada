@@ -1,11 +1,16 @@
-import { createFileRoute } from '@tanstack/react-router';
-import { TramitesFasesPage } from '@/pages/config/TramitesFasesPage';
+import { createFileRoute, Navigate } from '@tanstack/react-router';
 
 export const Route = createFileRoute('/_app/config/tramites/$tramiteId/fases')({
-  component: TramitesFasesRoute,
+  component: RedirectFasesToConfiguracion,
 });
 
-function TramitesFasesRoute() {
+function RedirectFasesToConfiguracion() {
   const { tramiteId } = Route.useParams();
-  return <TramitesFasesPage tramiteId={tramiteId} />;
+  return (
+    <Navigate
+      to="/config/tramites/$tramiteId/configuracion"
+      params={{ tramiteId }}
+      search={{ tab: 'hoja-encargo' }}
+    />
+  );
 }

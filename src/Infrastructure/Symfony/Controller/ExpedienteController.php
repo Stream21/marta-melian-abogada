@@ -4,16 +4,20 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Symfony\Controller;
 
+use App\Application\DTO\AltaExpedienteInput;
 use App\Application\DTO\CrearExpedienteInput;
-use App\Application\DTO\ExpedienteResponse;
+use App\Application\DTO\ExpedienteResponseMapper;
+use App\Application\UseCase\AltaExpedienteUseCase;
 use App\Application\UseCase\CrearExpedienteUseCase;
 use App\Application\UseCase\ListarExpedientesUseCase;
-use App\Domain\Entity\Expediente;
+use App\Application\UseCase\VincularExpedienteClienteUseCase;
+use App\Domain\Exception\TelefonoClienteDuplicadoException;
 use App\Domain\Repository\PaymentRepositoryInterface;
 use App\Domain\ValueObject\ExpedienteId;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 
 #[Route(path: '/api/expedientes', name: 'api_expedientes_')]
@@ -22,7 +26,10 @@ final class ExpedienteController extends AbstractController
     public function __construct(
         private ListarExpedientesUseCase $listarExpedientes,
         private CrearExpedienteUseCase $crearExpediente,
+        private AltaExpedienteUseCase $altaExpediente,
         private PaymentRepositoryInterface $paymentRepository,
+        private VincularExpedienteClienteUseCase $vincularExpediente,
+        private string $frontendBaseUrl = 'http://localhost:5173',
     ) {
     }
 
@@ -32,7 +39,7 @@ final class ExpedienteController extends AbstractController
         $expedientes = ($this->listarExpedientes)();
 
         return new JsonResponse(array_map(
-            $this->expedienteToResponse(...),
+            fn ($e) => ExpedienteResponseMapper::fromDomain($e, $this->frontendBaseUrl),
             $expedientes,
         ));
     }
@@ -53,9 +60,47 @@ final class ExpedienteController extends AbstractController
         $expediente = ($this->crearExpediente)($input);
 
         return new JsonResponse(
-            $this->expedienteToResponse($expediente),
+            ExpedienteResponseMapper::fromDomain($expediente, $this->frontendBaseUrl),
             JsonResponse::HTTP_CREATED,
         );
+    }
+
+    #[Route(path: '/alta', name: 'alta', methods: ['POST'])]
+    public function alta(Request $request): JsonResponse
+    {
+        $data = json_decode($request->getContent(), true) ?? [];
+
+        try {
+            $result = ($this->altaExpediente)(new AltaExpedienteInput(
+                clienteId: isset($data['clienteId']) ? (string) $data['clienteId'] : null,
+                telefono: isset($data['telefono']) ? (string) $data['telefono'] : null,
+                email: isset($data['email']) ? (string) $data['email'] : null,
+                tramiteId: (string) ($data['tramiteId'] ?? ''),
+                honorariosAcordados: (float) ($data['honorariosAcordados'] ?? 0),
+                metodoPago: (string) ($data['metodoPago'] ?? 'manual'),
+                planPago: (string) ($data['planPago'] ?? 'unico'),
+                numCuotas: (int) ($data['numCuotas'] ?? 1),
+                notificar: (bool) ($data['notificar'] ?? true),
+                canalesNotificacion: array_values(array_filter(
+                    (array) ($data['canalesNotificacion'] ?? []),
+                    fn ($c) => is_string($c) && in_array($c, ['whatsapp', 'email'], true),
+                )),
+            ));
+        } catch (TelefonoClienteDuplicadoException $e) {
+            return new JsonResponse([
+                'message' => $e->getMessage(),
+                'clienteExistenteId' => $e->clienteExistenteId,
+                'clienteExistenteNombre' => $e->clienteExistenteNombre,
+            ], Response::HTTP_CONFLICT);
+        } catch (\InvalidArgumentException $e) {
+            return new JsonResponse(['message' => $e->getMessage()], Response::HTTP_BAD_REQUEST);
+        }
+
+        return new JsonResponse([
+            'expediente' => $result->expediente,
+            'accessUrl' => $result->accessUrl,
+            'canalesNotificados' => $result->canalesNotificados,
+        ], JsonResponse::HTTP_CREATED);
     }
 
     #[Route(path: '/{id}/payments', name: 'payments', methods: ['GET'])]
@@ -79,18 +124,21 @@ final class ExpedienteController extends AbstractController
         return new JsonResponse($list);
     }
 
-    private function expedienteToResponse(Expediente $expediente): ExpedienteResponse
+    #[Route(path: '/{id}/vincular', name: 'vincular', methods: ['PUT'])]
+    public function vincular(string $id, Request $request): JsonResponse
     {
-        return new ExpedienteResponse(
-            id: $expediente->id()->value(),
-            numero: $expediente->numero(),
-            titulo: $expediente->titulo(),
-            estado: $expediente->estado()->value,
-            fechaApertura: $expediente->fechaApertura()->format(\DateTimeInterface::ATOM),
-            clientName: $expediente->clientName(),
-            caseReference: $expediente->caseReference(),
-            folderPath: $expediente->folderPath(),
-            paymentStatus: $expediente->paymentStatus(),
-        );
+        $data = json_decode($request->getContent(), true) ?? [];
+
+        try {
+            ($this->vincularExpediente)(
+                $id,
+                isset($data['clienteId']) ? (string) $data['clienteId'] : null,
+                isset($data['tramiteId']) ? (string) $data['tramiteId'] : null,
+            );
+        } catch (\InvalidArgumentException $e) {
+            return new JsonResponse(['message' => $e->getMessage()], Response::HTTP_BAD_REQUEST);
+        }
+
+        return new JsonResponse(['success' => true]);
     }
 }

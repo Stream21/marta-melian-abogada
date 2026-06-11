@@ -94,8 +94,9 @@ export function TramiteForm({
       void queryClient.invalidateQueries({ queryKey: ['tramites'] });
       if (navigateTo === 'fases') {
         navigate({
-          to: '/config/tramites/$tramiteId/fases',
+          to: '/config/tramites/$tramiteId/configuracion',
           params: { tramiteId: tramite.id },
+          search: { tab: 'hoja-encargo' },
         } as never);
         return;
       }

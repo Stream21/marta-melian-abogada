@@ -14,8 +14,8 @@ const linkClass =
 const activeClass =
   'text-[12px] font-medium rounded-md bg-primary/10 px-2 py-0.5 text-primary';
 
-export type ConfigSection = 'servicios' | 'tramites';
-export type ConfigBreadcrumbVariant = 'list' | 'nuevo' | 'edit' | 'fases';
+export type ConfigSection = 'servicios' | 'tramites' | 'despacho';
+export type ConfigBreadcrumbVariant = 'list' | 'nuevo' | 'edit' | 'fases' | 'hoja-encargo' | 'configuracion';
 
 interface ConfigBreadcrumbProps {
   section: ConfigSection;
@@ -25,16 +25,19 @@ interface ConfigBreadcrumbProps {
 const sectionLabels: Record<ConfigSection, string> = {
   servicios: 'Servicios',
   tramites: 'Trámites',
+  despacho: 'Datos del despacho',
 };
 
 const sectionPaths: Record<ConfigSection, string> = {
   servicios: '/config/servicios',
   tramites: '/config/tramites',
+  despacho: '/config/despacho',
 };
 
 export function ConfigBreadcrumb({ section, variant }: ConfigBreadcrumbProps) {
   const label = sectionLabels[section];
   const path = sectionPaths[section];
+  const isListVariant = variant === 'list';
 
   return (
     <div className="shrink-0 border-b bg-card px-6 py-2 md:px-8">
@@ -46,7 +49,7 @@ export function ConfigBreadcrumb({ section, variant }: ConfigBreadcrumbProps) {
           <BreadcrumbSeparator className="[&>svg]:text-border" />
 
           <BreadcrumbItem>
-            {variant === 'list' ? (
+            {isListVariant ? (
               <span className={cn(activeClass)} aria-current="page">
                 {label}
               </span>
@@ -87,6 +90,28 @@ export function ConfigBreadcrumb({ section, variant }: ConfigBreadcrumbProps) {
               <BreadcrumbItem>
                 <span className={activeClass} aria-current="page">
                   Configurar fases
+                </span>
+              </BreadcrumbItem>
+            </>
+          )}
+
+          {variant === 'hoja-encargo' && (
+            <>
+              <BreadcrumbSeparator className="[&>svg]:text-border" />
+              <BreadcrumbItem>
+                <span className={activeClass} aria-current="page">
+                  Hoja de encargo
+                </span>
+              </BreadcrumbItem>
+            </>
+          )}
+
+          {variant === 'configuracion' && (
+            <>
+              <BreadcrumbSeparator className="[&>svg]:text-border" />
+              <BreadcrumbItem>
+                <span className={activeClass} aria-current="page">
+                  Configuración del trámite
                 </span>
               </BreadcrumbItem>
             </>

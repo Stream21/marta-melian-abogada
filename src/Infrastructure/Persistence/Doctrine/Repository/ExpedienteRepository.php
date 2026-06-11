@@ -4,8 +4,12 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Persistence\Doctrine\Repository;
 
-use App\Domain\Entity\Expediente;
+use App\Domain\Entity\EstadoFaseExpediente;
 use App\Domain\Entity\EstadoExpediente;
+use App\Domain\Entity\Expediente;
+use App\Domain\Entity\FaseNegocioExpediente;
+use App\Domain\Entity\MetodoPagoExpediente;
+use App\Domain\Entity\PlanPagoExpediente;
 use App\Domain\Repository\ExpedienteRepositoryInterface;
 use App\Domain\ValueObject\ExpedienteId;
 use App\Infrastructure\Persistence\Doctrine\Entity\ExpedienteOrm;
@@ -23,14 +27,7 @@ final class ExpedienteRepository implements ExpedienteRepositoryInterface
         $existing = $this->entityManager->getRepository(ExpedienteOrm::class)->find($expediente->id()->value());
 
         if ($existing instanceof ExpedienteOrm) {
-            $existing->setNumero($expediente->numero());
-            $existing->setTitulo($expediente->titulo());
-            $existing->setEstado($expediente->estado()->value);
-            $existing->setFechaApertura($expediente->fechaApertura());
-            $existing->setClientName($expediente->clientName());
-            $existing->setCaseReference($expediente->caseReference());
-            $existing->setFolderPath($expediente->folderPath());
-            $existing->setPaymentStatus($expediente->paymentStatus());
+            $this->applyDomainToOrm($existing, $expediente);
         } else {
             $this->entityManager->persist($this->domainToOrm($expediente));
         }
@@ -43,6 +40,30 @@ final class ExpedienteRepository implements ExpedienteRepositoryInterface
         $orm = $this->entityManager->getRepository(ExpedienteOrm::class)->find($id->value());
 
         return $orm instanceof ExpedienteOrm ? $this->ormToDomain($orm) : null;
+    }
+
+    public function findByAccessToken(string $token): ?Expediente
+    {
+        $orm = $this->entityManager->getRepository(ExpedienteOrm::class)->findOneBy(['accessToken' => $token]);
+
+        return $orm instanceof ExpedienteOrm ? $this->ormToDomain($orm) : null;
+    }
+
+    public function nextNumeroForYear(int $year): string
+    {
+        $prefix = 'EXP-' . $year . '/';
+        $conn = $this->entityManager->getConnection();
+        $result = $conn->fetchOne(
+            'SELECT numero FROM expediente WHERE numero LIKE :prefix ORDER BY numero DESC LIMIT 1',
+            ['prefix' => $prefix . '%'],
+        );
+
+        $secuencia = 1;
+        if (is_string($result) && preg_match('/EXP-\d{4}\/(\d+)$/', $result, $matches)) {
+            $secuencia = (int) $matches[1] + 1;
+        }
+
+        return $prefix . str_pad((string) $secuencia, 4, '0', STR_PAD_LEFT);
     }
 
     /**
@@ -76,6 +97,16 @@ final class ExpedienteRepository implements ExpedienteRepositoryInterface
             $orm->getCaseReference(),
             $orm->getFolderPath(),
             $orm->getPaymentStatus(),
+            $orm->getClienteId(),
+            $orm->getTramiteId(),
+            $orm->getServicioId(),
+            FaseNegocioExpediente::from($orm->getFaseNegocio()),
+            EstadoFaseExpediente::from($orm->getEstadoFase()),
+            (float) $orm->getHonorariosAcordados(),
+            MetodoPagoExpediente::from($orm->getMetodoPago()),
+            PlanPagoExpediente::from($orm->getPlanPago()),
+            $orm->getNumCuotas(),
+            $orm->getAccessToken(),
         );
     }
 
@@ -83,6 +114,13 @@ final class ExpedienteRepository implements ExpedienteRepositoryInterface
     {
         $orm = new ExpedienteOrm();
         $orm->setId($expediente->id()->value());
+        $this->applyDomainToOrm($orm, $expediente);
+
+        return $orm;
+    }
+
+    private function applyDomainToOrm(ExpedienteOrm $orm, Expediente $expediente): void
+    {
         $orm->setNumero($expediente->numero());
         $orm->setTitulo($expediente->titulo());
         $orm->setEstado($expediente->estado()->value);
@@ -91,7 +129,15 @@ final class ExpedienteRepository implements ExpedienteRepositoryInterface
         $orm->setCaseReference($expediente->caseReference());
         $orm->setFolderPath($expediente->folderPath());
         $orm->setPaymentStatus($expediente->paymentStatus());
-
-        return $orm;
+        $orm->setClienteId($expediente->clienteId());
+        $orm->setTramiteId($expediente->tramiteId());
+        $orm->setServicioId($expediente->servicioId());
+        $orm->setFaseNegocio($expediente->faseNegocio()->value);
+        $orm->setEstadoFase($expediente->estadoFase()->value);
+        $orm->setHonorariosAcordados(number_format($expediente->honorariosAcordados(), 2, '.', ''));
+        $orm->setMetodoPago($expediente->metodoPago()->value);
+        $orm->setPlanPago($expediente->planPago()->value);
+        $orm->setNumCuotas($expediente->numCuotas());
+        $orm->setAccessToken($expediente->accessToken());
     }
 }

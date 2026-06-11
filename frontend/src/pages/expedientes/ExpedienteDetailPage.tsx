@@ -1,7 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/api/client';
+import { ContratacionGestionPanel } from '@/components/expedientes/contratacion/ContratacionGestionPanel';
+import { EscritoGeneradorPanel } from '@/components/expedientes/EscritoGeneradorPanel';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
+import { Badge } from '@/components/ui/badge';
 import { MetricCards } from '@/components/expedientes/MetricCards';
 import { ModoHolded } from '@/components/expedientes/ModoHolded';
 import { ModoStripe } from '@/components/expedientes/ModoStripe';
@@ -10,37 +13,63 @@ interface ExpedienteDetailPageProps {
   expedienteId: string;
 }
 
+const FASE_LABELS: Record<string, string> = {
+  contratacion: 'Contratación',
+  requerimientos: 'Requerimientos',
+  tramitacion: 'Tramitación',
+  resolucion: 'Resolución',
+};
+
 export function ExpedienteDetailPage({ expedienteId }: ExpedienteDetailPageProps) {
   const { data: expediente } = useQuery({
-    queryKey: ['expediente', expedienteId],
+    queryKey: ['expedientes'],
     queryFn: () => api.getExpedientes().then((list) => list.find((e) => e.id === expedienteId)),
   });
+
+  const defaultTab = expediente?.faseNegocio === 'contratacion' ? 'gestion' : 'escritos';
 
   return (
     <div className="p-6">
       <div className="mb-6">
-        <p className="section-label">
-          Expedientes / {expediente?.numero ?? '…'}
-        </p>
-        <h1 className="mt-1 page-title">
-          {expediente?.titulo ?? 'Cargando…'}
-        </h1>
-        {expediente && <p className="page-subtitle">{expediente.clientName}</p>}
+        <p className="section-label">Expedientes / {expediente?.numero ?? '…'}</p>
+        <h1 className="mt-1 page-title">{expediente?.titulo ?? 'Cargando…'}</h1>
+        {expediente && (
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <p className="page-subtitle">{expediente.clientName}</p>
+            {expediente.faseNegocio && (
+              <Badge variant="info">
+                {FASE_LABELS[expediente.faseNegocio] ?? expediente.faseNegocio}
+              </Badge>
+            )}
+            {expediente.estadoFase && (
+              <Badge variant="secondary">{expediente.estadoFase.replace(/_/g, ' ')}</Badge>
+            )}
+            {expediente.honorariosAcordados != null && expediente.honorariosAcordados > 0 && (
+              <span className="text-sm text-muted-foreground">
+                {expediente.honorariosAcordados.toLocaleString('es-ES', { minimumFractionDigits: 2 })} €
+              </span>
+            )}
+          </div>
+        )}
       </div>
 
-      <Tabs defaultValue="facturacion" className="w-full">
+      <Tabs defaultValue={defaultTab} className="w-full">
         <TabsList className="mb-6 h-10 rounded-lg bg-muted p-1">
           <TabsTrigger value="gestion">Gestión de Fases</TabsTrigger>
-          <TabsTrigger value="chat">Chat Interno</TabsTrigger>
+          <TabsTrigger value="escritos">Escritos</TabsTrigger>
           <TabsTrigger value="documentacion">Documentación</TabsTrigger>
           <TabsTrigger value="facturacion">Facturación</TabsTrigger>
         </TabsList>
 
         <TabsContent value="gestion">
-          <StubTab label="Gestión de Fases" />
+          {expediente?.faseNegocio === 'contratacion' ? (
+            <ContratacionGestionPanel expedienteId={expedienteId} />
+          ) : (
+            <StubTab label="Gestión de Fases" />
+          )}
         </TabsContent>
-        <TabsContent value="chat">
-          <StubTab label="Chat Interno" />
+        <TabsContent value="escritos">
+          {expediente ? <EscritoGeneradorPanel expediente={expediente} /> : <StubTab label="Escritos" />}
         </TabsContent>
         <TabsContent value="documentacion">
           <StubTab label="Documentación" />
@@ -80,19 +109,18 @@ function FacturacionTab({ expedienteId }: { expedienteId: string }) {
     ? invoices.reduce((sum, inv) => sum + parseFloat(inv.importe || '0'), 0)
     : 0;
 
-  const pendiente = Math.max(0, totalExpediente - totalCobrado);
-
   return (
     <div className="space-y-6">
       <MetricCards
         totalExpediente={totalExpediente}
         totalCobrado={totalCobrado}
-        pendiente={pendiente}
+        pendiente={Math.max(0, totalExpediente - totalCobrado)}
       />
       <Separator />
-      <ModoHolded expedienteId={expedienteId} invoices={invoices ?? []} />
-      <Separator />
-      <ModoStripe expedienteId={expedienteId} />
+      <div className="grid gap-6 lg:grid-cols-2">
+        <ModoHolded expedienteId={expedienteId} />
+        <ModoStripe expedienteId={expedienteId} />
+      </div>
     </div>
   );
 }

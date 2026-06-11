@@ -18,10 +18,40 @@ services:
     App\Domain\Repository\InvoiceRepositoryInterface: '@App\Infrastructure\Persistence\Doctrine\Repository\InvoiceRepository'
     App\Domain\Repository\ServicioRepositoryInterface: '@App\Infrastructure\Persistence\Doctrine\Repository\ServicioRepository'
     App\Domain\Repository\TramiteRepositoryInterface: '@App\Infrastructure\Persistence\Doctrine\Repository\TramiteRepository'
+    App\Domain\Repository\DespachoConfigRepositoryInterface: '@App\Infrastructure\Persistence\Doctrine\Repository\DespachoConfigRepository'
+    App\Domain\Repository\EscritoPlantillaRepositoryInterface: '@App\Infrastructure\Persistence\Doctrine\Repository\EscritoPlantillaRepository'
+    App\Domain\Repository\ClienteRepositoryInterface: '@App\Infrastructure\Persistence\Doctrine\Repository\ClienteRepository'
+    App\Domain\Repository\TramiteDocumentoRequeridoRepositoryInterface: '@App\Infrastructure\Persistence\Doctrine\Repository\TramiteDocumentoRequeridoRepository'
+    App\Domain\Repository\ContratacionRepositoryInterface: '@App\Infrastructure\Persistence\Doctrine\Repository\ContratacionRepository'
+    App\Application\Port\DespachoFileStoragePort: '@App\Infrastructure\Storage\DespachoFileStorage'
     App\Application\Port\HoldedPort: '@App\Infrastructure\ApiClient\HoldedService'
     App\Application\Port\StripePort: '@App\Infrastructure\ApiClient\StripeService'
     App\Application\Port\TwilioPort: '@App\Infrastructure\ApiClient\TwilioService'
+    App\Application\Port\EmailPort: '@App\Infrastructure\Notification\LogEmailService'
     App\Application\Port\ExpedienteFileStoragePort: '@App\Infrastructure\Storage\ExpedienteFileStorage'
+    App\Application\Port\DocumentToPdfConverterPort: '@App\Infrastructure\Document\ImagickDocumentToPdfConverter'
+    App\Application\Port\EscritoPdfGeneratorPort: '@App\Infrastructure\Document\DompdfEscritoPdfGenerator'
+    App\Application\Port\ContratacionRealtimePort: '@App\Infrastructure\Realtime\MercureContratacionPublisher'
+
+    App\Infrastructure\Realtime\MercureJwtFactory:
+        arguments:
+            $mercureJwtSecret: '%env(MERCURE_JWT_SECRET)%'
+
+    App\Infrastructure\Realtime\MercureContratacionPublisher:
+        arguments:
+            $mercureHubUrl: '%env(MERCURE_URL)%'
+
+    App\Infrastructure\Symfony\Controller\RealtimeController:
+        arguments:
+            $mercurePublicUrl: '%env(MERCURE_PUBLIC_URL)%'
+
+    App\Infrastructure\Document\ImagickDocumentToPdfConverter:
+        arguments:
+            $projectDir: '%kernel.project_dir%'
+
+    App\Application\Service\EscritoHtmlRenderer:
+        arguments:
+            $projectDir: '%kernel.project_dir%'
 
     App\Infrastructure\ApiClient\HoldedService:
         arguments:
@@ -42,6 +72,10 @@ services:
         arguments:
             $projectDir: '%kernel.project_dir%'
 
+    App\Infrastructure\Storage\DespachoFileStorage:
+        arguments:
+            $projectDir: '%kernel.project_dir%'
+
     App\Application\UseCase\GeneratePaymentLinkUseCase:
         arguments:
             $frontendSuccessUrl: '%env(FRONTEND_SUCCESS_URL)%'
@@ -51,6 +85,22 @@ services:
         arguments:
             $frontendSuccessUrl: '%env(FRONTEND_SUCCESS_URL)%'
             $frontendCancelUrl: '%env(FRONTEND_CANCEL_URL)%'
+
+    App\Application\Service\NotificarAltaExpedienteService:
+        arguments:
+            $frontendBaseUrl: '%env(FRONTEND_BASE_URL)%'
+
+    App\Application\UseCase\AltaExpedienteUseCase:
+        arguments:
+            $frontendBaseUrl: '%env(FRONTEND_BASE_URL)%'
+
+    App\Application\UseCase\ObtenerContratacionExpedienteUseCase:
+        arguments:
+            $frontendBaseUrl: '%env(FRONTEND_BASE_URL)%'
+
+    App\Infrastructure\Symfony\Controller\ExpedienteController:
+        arguments:
+            $frontendBaseUrl: '%env(FRONTEND_BASE_URL)%'
 
     App\Application\UseCase\HandleStripeWebhookUseCase:
         arguments:

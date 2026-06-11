@@ -100,7 +100,7 @@ export function TramitesPage() {
 
               <p className="mt-1 text-sm text-muted-foreground">
 
-                Defina los trámites asociados a cada servicio jurídico.
+                Defina los trámites asociados a cada servicio jurídico. Use el icono de configuración para definir la hoja de encargo y la documentación requerida.
 
               </p>
 
@@ -176,13 +176,15 @@ export function TramitesPage() {
 
               }
 
-              onConfigureFases={(id) =>
+              onConfigure={(id) =>
 
                 navigate({
 
-                  to: '/config/tramites/$tramiteId/fases',
+                  to: '/config/tramites/$tramiteId/configuracion',
 
                   params: { tramiteId: id },
+
+                  search: { tab: 'hoja-encargo' },
 
                 } as never)
 

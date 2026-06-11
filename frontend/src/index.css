@@ -66,6 +66,12 @@ body {
 }
 
 @layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
   * {
     @apply border-border;
   }
@@ -103,11 +109,94 @@ body {
   .section-label {
     @apply text-[11px] font-bold uppercase tracking-widest text-muted-foreground;
   }
+  .escrito-document {
+    @apply font-sans text-[10.5pt] leading-[1.65] text-foreground;
+  }
+  .escrito-document-title {
+    @apply text-center text-[16pt] font-bold uppercase tracking-wide text-[#2c3e6b];
+  }
+  .escrito-section-heading {
+    @apply mt-3 text-center text-[12pt] font-bold uppercase tracking-wide text-[#2c3e6b];
+  }
+  .escrito-clause-subtitle {
+    @apply mt-2 text-left text-[10.5pt] font-bold text-foreground;
+  }
+  .escrito-legal-table {
+    @apply border-collapse text-[9.5pt];
+  }
+  .escrito-legal-table td {
+    @apply border border-[#c5d0de] px-2 py-1.5 align-top;
+  }
+  .escrito-legal-table-label {
+    @apply w-[26%] bg-[#f0f4f8] font-bold text-[#2c3e6b];
+  }
+  .escrito-legal-table-value {
+    @apply bg-white;
+  }
+  .escrito-signature-caption {
+    @apply text-center text-[8.5pt] font-bold uppercase tracking-wider text-[#2c3e6b];
+  }
+  .escrito-pdf-preview-desk {
+    background:
+      radial-gradient(circle at 50% 0%, hsl(var(--muted) / 0.55), transparent 58%),
+      hsl(var(--muted) / 0.35);
+  }
+  .escrito-pdf-preview-paper {
+    min-height: 70vh;
+  }
+  .signature-box-surface {
+    background-color: hsl(var(--muted) / 0.25);
+  }
+  .signature-transparency-grid {
+    background-color: hsl(var(--card));
+    background-image:
+      linear-gradient(45deg, hsl(var(--muted) / 0.75) 25%, transparent 25%),
+      linear-gradient(-45deg, hsl(var(--muted) / 0.75) 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, hsl(var(--muted) / 0.75) 75%),
+      linear-gradient(-45deg, transparent 75%, hsl(var(--muted) / 0.75) 75%);
+    background-size: 16px 16px;
+    background-position:
+      0 0,
+      0 8px,
+      8px -8px,
+      -8px 0;
+  }
+  .membrete-html-preview .membrete-nombre {
+    @apply text-[11pt] font-bold text-[#2c3e6b];
+  }
+  .membrete-html-preview .membrete-subtitulo {
+    @apply text-[9pt] italic text-[#5c6b82];
+  }
+  .membrete-html-preview .membrete-rule {
+    @apply mt-1 border-b-[1.5px] border-[#2c3e6b];
+  }
   .input-field {
     @apply w-full rounded-lg border bg-muted/50 px-3 py-2 text-sm placeholder:text-muted-foreground
       focus:outline-none focus:ring-1 focus:ring-ring focus:border-primary transition-all;
   }
   .table-toolbar {
     @apply flex flex-wrap items-center gap-3 p-5 border-b;
+  }
+  .membrete-html-preview {
+    @apply w-full text-left;
+  }
+  .membrete-html-preview .doc-pie {
+    height: 112px;
+    position: relative;
+  }
+  .membrete-html-preview .pie-contact {
+    position: absolute;
+    right: 18px;
+    bottom: 14px;
+    z-index: 2;
+    text-align: right;
+    max-width: 65%;
+  }
+  .membrete-html-preview [style*='color:#ffffff'],
+  .membrete-html-preview [style*='color: #ffffff'] {
+    color: #ffffff !important;
+  }
+  .membrete-html-preview img[alt=''] {
+    max-width: none;
   }
 }

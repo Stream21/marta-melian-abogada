@@ -2,7 +2,8 @@ import { Link } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/api/client';
 import { Badge } from '@/components/ui/badge';
-import { FolderOpen } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { FolderOpen, Plus } from 'lucide-react';
 
 export function ExpedientesPage() {
   const { data: expedientes, isLoading } = useQuery({
@@ -12,9 +13,17 @@ export function ExpedientesPage() {
 
   return (
     <div className="p-6">
-      <div className="mb-6">
-        <h1 className="page-title">Expedientes</h1>
-        <p className="page-subtitle">Listado de expedientes activos</p>
+      <div className="mb-6 flex items-start justify-between gap-4">
+        <div>
+          <h1 className="page-title">Expedientes</h1>
+          <p className="page-subtitle">Listado de expedientes activos</p>
+        </div>
+        <Button asChild>
+          <Link to="/expedientes/nuevo">
+            <Plus className="mr-2 h-4 w-4" />
+            Nuevo expediente
+          </Link>
+        </Button>
       </div>
 
       {isLoading && (
@@ -38,6 +47,7 @@ export function ExpedientesPage() {
                 <th className="px-4 py-3 text-left section-label">Nº</th>
                 <th className="px-4 py-3 text-left section-label">Título</th>
                 <th className="px-4 py-3 text-left section-label">Cliente</th>
+                <th className="px-4 py-3 text-left section-label">Fase</th>
                 <th className="px-4 py-3 text-left section-label">Estado</th>
                 <th className="px-4 py-3 text-left section-label">Fecha</th>
               </tr>
@@ -57,7 +67,14 @@ export function ExpedientesPage() {
                   </td>
                   <td className="px-4 py-3 text-muted-foreground">{exp.clientName}</td>
                   <td className="px-4 py-3">
-                    <Badge variant={exp.estado === 'activo' ? 'default' : 'secondary'}>
+                    {exp.faseNegocio ? (
+                      <Badge variant="info">{exp.faseNegocio}</Badge>
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
+                    <Badge variant={exp.estado === 'abierto' ? 'default' : 'secondary'}>
                       {exp.estado}
                     </Badge>
                   </td>

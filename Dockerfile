@@ -5,16 +5,21 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libicu-dev \
     libzip-dev \
     libonig-dev \
+    libpng-dev \
+    libjpeg62-turbo-dev \
+    libwebp-dev \
+    libfreetype6-dev \
     zip \
     unzip \
     git \
+    && docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp \
     && docker-php-ext-install -j$(nproc) \
+    gd \
     intl \
     opcache \
     pdo \
     pdo_pgsql \
     zip \
-    && docker-php-ext-enable opcache pdo_pgsql pdo \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
@@ -24,6 +29,10 @@ WORKDIR /app
 
 ENV COMPOSER_ALLOW_SUPERUSER=1
 
+COPY docker/php/docker-entrypoint.sh /usr/local/bin/bufete-entrypoint.sh
+RUN sed -i 's/\r$//' /usr/local/bin/bufete-entrypoint.sh \
+    && chmod +x /usr/local/bin/bufete-entrypoint.sh
+
 EXPOSE 9000
 
-CMD ["php-fpm"]
+ENTRYPOINT ["/usr/local/bin/bufete-entrypoint.sh"]

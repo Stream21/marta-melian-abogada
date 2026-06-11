@@ -13,6 +13,10 @@ interface ExpedienteRepositoryInterface
 
     public function findById(ExpedienteId $id): ?Expediente;
 
+    public function findByAccessToken(string $token): ?Expediente;
+
+    public function nextNumeroForYear(int $year): string;
+
     /**
      * @return Expediente[]
      */

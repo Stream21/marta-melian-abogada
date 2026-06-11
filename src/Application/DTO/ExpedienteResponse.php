@@ -16,6 +16,16 @@ final readonly class ExpedienteResponse
         public string $caseReference = '',
         public string $folderPath = '',
         public string $paymentStatus = 'pending',
+        public ?string $clienteId = null,
+        public ?string $tramiteId = null,
+        public ?string $servicioId = null,
+        public string $faseNegocio = 'contratacion',
+        public string $estadoFase = 'pendiente_cliente',
+        public float $honorariosAcordados = 0.0,
+        public string $metodoPago = 'manual',
+        public string $planPago = 'unico',
+        public int $numCuotas = 1,
+        public ?string $accessUrl = null,
     ) {
     }
 }
