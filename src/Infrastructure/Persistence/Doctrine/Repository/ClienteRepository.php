@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Infrastructure\Persistence\Doctrine\Repository;
 
 use App\Domain\Entity\Cliente;
+use App\Domain\Entity\ClienteHoldedEstado;
+use App\Domain\Entity\TipoEscaneoDocumentoIdentidad;
 use App\Domain\Repository\ClienteRepositoryInterface;
 use App\Domain\ValueObject\ClienteId;
 use App\Infrastructure\Persistence\Doctrine\Entity\ClienteOrm;
@@ -115,12 +117,24 @@ final class ClienteRepository implements ClienteRepositoryInterface
         $orm->setNumDocumento($cliente->numDocumento());
         $orm->setFechaNacimiento($cliente->fechaNacimiento());
         $orm->setLugarNacimiento($cliente->lugarNacimiento());
+        $orm->setEstadoCivil($cliente->estadoCivil());
         $orm->setDomicilio($cliente->domicilio());
         $orm->setCodigoPostal($cliente->codigoPostal());
         $orm->setCiudad($cliente->ciudad());
+        $orm->setProvincia($cliente->provincia());
+        $orm->setNombrePadre($cliente->nombrePadre());
+        $orm->setNombreMadre($cliente->nombreMadre());
         $telefono = $cliente->telefono();
         $orm->setTelefono('' === $telefono ? null : $telefono);
         $orm->setEmail($cliente->email());
+        $orm->setHoldedContactId($cliente->holdedContactId());
+        $orm->setHoldedEstado($cliente->holdedEstado()->value);
+        $orm->setHoldedSyncedAt($cliente->holdedSyncedAt());
+        $orm->setHoldedSyncError($cliente->holdedSyncError());
+        $orm->setDocumentoIdentidadTipo($cliente->documentoIdentidadTipo()?->value);
+        $orm->setDocumentoIdentidadAnversoPath($cliente->documentoIdentidadAnversoPath());
+        $orm->setDocumentoIdentidadReversoPath($cliente->documentoIdentidadReversoPath());
+        $orm->setDocumentoIdentidadEscaneadoAt($cliente->documentoIdentidadEscaneadoAt());
         $orm->setUpdatedAt($now);
     }
 
@@ -134,13 +148,27 @@ final class ClienteRepository implements ClienteRepositoryInterface
             $orm->getNumDocumento(),
             $orm->getFechaNacimiento(),
             $orm->getLugarNacimiento(),
+            $orm->getEstadoCivil(),
             $orm->getDomicilio(),
             $orm->getCodigoPostal(),
             $orm->getCiudad(),
+            $orm->getProvincia(),
+            $orm->getNombrePadre(),
+            $orm->getNombreMadre(),
             $orm->getTelefono() ?? '',
             $orm->getEmail(),
             $orm->getCreatedAt(),
             $orm->getUpdatedAt(),
+            $orm->getHoldedContactId(),
+            ClienteHoldedEstado::from($orm->getHoldedEstado()),
+            $orm->getHoldedSyncedAt(),
+            $orm->getHoldedSyncError(),
+            null !== $orm->getDocumentoIdentidadTipo()
+                ? TipoEscaneoDocumentoIdentidad::from($orm->getDocumentoIdentidadTipo())
+                : null,
+            $orm->getDocumentoIdentidadAnversoPath(),
+            $orm->getDocumentoIdentidadReversoPath(),
+            $orm->getDocumentoIdentidadEscaneadoAt(),
         );
     }
 }

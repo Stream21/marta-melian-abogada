@@ -1,68 +1,53 @@
-import { useState } from 'react';
-import { Users } from 'lucide-react';
-import { ClientList } from '@/components/billing/ClientList';
-import { InvoiceGenerator } from '@/components/billing/InvoiceGenerator';
-import { InvoiceViewer } from '@/components/billing/InvoiceViewer';
-import { ClienteDatosPanel } from '@/components/clientes/ClienteDatosPanel';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import type { MockContact, QuickInvoiceResponse } from '@/api/client';
+import { Link } from '@tanstack/react-router';
+import { useQuery } from '@tanstack/react-query';
+import { Plus, Users } from 'lucide-react';
+import { api } from '@/api/client';
+import { ClientesTable } from '@/components/clientes/ClientesTable';
+import { Button } from '@/components/ui/button';
 
 export function ClientesPage() {
-  const [selectedContact, setSelectedContact] = useState<MockContact | null>(null);
-  const [lastInvoice, setLastInvoice] = useState<QuickInvoiceResponse | null>(null);
-
-  const handleSelectContact = (contact: MockContact) => {
-    setSelectedContact(contact);
-    setLastInvoice(null);
-  };
+  const { data = [], isLoading, isError, error, refetch, isFetching } = useQuery({
+    queryKey: ['clientes'],
+    queryFn: () => api.getClientes(),
+  });
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-      <div className="mb-8 flex items-center gap-3">
-        <Users className="h-7 w-7 text-indigo-600" />
-        <div>
-          <h1 className="page-title">Clientes</h1>
-          <p className="page-subtitle">Gestión de clientes del bufete y facturación Holded.</p>
-        </div>
-      </div>
-
-      <Tabs defaultValue="datos" className="w-full">
-        <TabsList className="mb-6">
-          <TabsTrigger value="datos">Datos de clientes</TabsTrigger>
-          <TabsTrigger value="facturacion">Facturación Holded</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="datos">
-          <ClienteDatosPanel />
-        </TabsContent>
-
-        <TabsContent value="facturacion">
-          <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
-            <div className="lg:col-span-2">
-              <ClientList
-                selectedContactId={selectedContact?.id ?? null}
-                onSelectContact={handleSelectContact}
-              />
+    <div className="flex min-h-full flex-col bg-muted/30">
+      <main className="flex-1 p-6 md:p-8">
+        <div className="mx-auto flex max-w-[1400px] flex-col gap-6">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div className="flex items-start gap-3">
+              <Users className="mt-1 h-7 w-7 text-primary" />
+              <div>
+                <h1 className="text-2xl font-bold text-primary">Clientes</h1>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Oportunidades y clientes del bufete. La sincronización con Holded se activa al
+                  cerrar la contratación con pago.
+                </p>
+              </div>
             </div>
-            <div className="space-y-6">
-              {selectedContact ? (
-                <>
-                  <InvoiceGenerator
-                    contact={selectedContact}
-                    onInvoiceCreated={(invoice) => setLastInvoice(invoice)}
-                  />
-                  {lastInvoice && <InvoiceViewer invoice={lastInvoice} />}
-                </>
-              ) : (
-                <div className="flex flex-col items-center justify-center rounded-xl border border-dashed py-16 text-center text-muted-foreground">
-                  <Users className="mb-3 h-8 w-8" />
-                  <p className="text-sm">Selecciona un cliente de Holded para generar una factura.</p>
-                </div>
-              )}
-            </div>
+            <Button asChild className="shrink-0">
+              <Link to="/clientes/nuevo">
+                <Plus className="mr-2 h-4 w-4" />
+                Nuevo cliente
+              </Link>
+            </Button>
           </div>
-        </TabsContent>
-      </Tabs>
+
+          {isError && (
+            <p className="text-sm text-destructive">
+              {(error as Error).message}
+            </p>
+          )}
+
+          <ClientesTable
+            data={data}
+            isLoading={isLoading}
+            isFetching={isFetching}
+            onRefresh={() => void refetch()}
+          />
+        </div>
+      </main>
     </div>
   );
 }

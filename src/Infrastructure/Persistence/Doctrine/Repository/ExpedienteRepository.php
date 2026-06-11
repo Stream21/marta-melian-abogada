@@ -11,6 +11,7 @@ use App\Domain\Entity\FaseNegocioExpediente;
 use App\Domain\Entity\MetodoPagoExpediente;
 use App\Domain\Entity\PlanPagoExpediente;
 use App\Domain\Repository\ExpedienteRepositoryInterface;
+use App\Domain\ValueObject\ClienteId;
 use App\Domain\ValueObject\ExpedienteId;
 use App\Infrastructure\Persistence\Doctrine\Entity\ExpedienteOrm;
 use Doctrine\ORM\EntityManagerInterface;
@@ -72,6 +73,16 @@ final class ExpedienteRepository implements ExpedienteRepositoryInterface
     public function findAll(): array
     {
         $orms = $this->entityManager->getRepository(ExpedienteOrm::class)->findBy([], ['fechaApertura' => 'DESC']);
+
+        return array_map($this->ormToDomain(...), $orms);
+    }
+
+    public function findByClienteId(ClienteId $clienteId): array
+    {
+        $orms = $this->entityManager->getRepository(ExpedienteOrm::class)->findBy(
+            ['clienteId' => $clienteId->value()],
+            ['fechaApertura' => 'DESC'],
+        );
 
         return array_map($this->ormToDomain(...), $orms);
     }

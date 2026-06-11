@@ -5,6 +5,7 @@ import { api, type ClienteResponse } from '@/api/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { ESTADOS_CIVILES } from '@/lib/cliente-datos';
 
 export function ClienteDatosPanel() {
   const queryClient = useQueryClient();
@@ -15,9 +16,13 @@ export function ClienteDatosPanel() {
   const [numDocumento, setNumDocumento] = useState('');
   const [fechaNacimiento, setFechaNacimiento] = useState('');
   const [lugarNacimiento, setLugarNacimiento] = useState('');
+  const [estadoCivil, setEstadoCivil] = useState('');
   const [domicilio, setDomicilio] = useState('');
   const [codigoPostal, setCodigoPostal] = useState('');
   const [ciudad, setCiudad] = useState('');
+  const [provincia, setProvincia] = useState('');
+  const [nombrePadre, setNombrePadre] = useState('');
+  const [nombreMadre, setNombreMadre] = useState('');
   const [telefono, setTelefono] = useState('');
   const [email, setEmail] = useState('');
 
@@ -34,9 +39,13 @@ export function ClienteDatosPanel() {
     setNumDocumento('');
     setFechaNacimiento('');
     setLugarNacimiento('');
+    setEstadoCivil('');
     setDomicilio('');
     setCodigoPostal('');
     setCiudad('');
+    setProvincia('');
+    setNombrePadre('');
+    setNombreMadre('');
     setTelefono('');
     setEmail('');
   };
@@ -49,9 +58,13 @@ export function ClienteDatosPanel() {
     setNumDocumento(cliente.numDocumento);
     setFechaNacimiento(cliente.fechaNacimiento ?? '');
     setLugarNacimiento(cliente.lugarNacimiento);
+    setEstadoCivil(cliente.estadoCivil ?? '');
     setDomicilio(cliente.domicilio);
     setCodigoPostal(cliente.codigoPostal);
     setCiudad(cliente.ciudad);
+    setProvincia(cliente.provincia ?? '');
+    setNombrePadre(cliente.nombrePadre ?? '');
+    setNombreMadre(cliente.nombreMadre ?? '');
     setTelefono(cliente.telefono);
     setEmail(cliente.email);
   };
@@ -65,9 +78,13 @@ export function ClienteDatosPanel() {
         numDocumento,
         fechaNacimiento: fechaNacimiento || null,
         lugarNacimiento,
+        estadoCivil,
         domicilio,
         codigoPostal,
         ciudad,
+        provincia,
+        nombrePadre,
+        nombreMadre,
         telefono,
         email,
       };
@@ -156,6 +173,28 @@ export function ClienteDatosPanel() {
             <Input id="cli-lugar-nac" value={lugarNacimiento} onChange={(e) => setLugarNacimiento(e.target.value)} />
           </div>
           <div className="space-y-1 md:col-span-2">
+            <Label htmlFor="cli-estado-civil">Estado civil</Label>
+            <select
+              id="cli-estado-civil"
+              className="input-field h-9 w-full"
+              value={estadoCivil}
+              onChange={(e) => setEstadoCivil(e.target.value)}
+            >
+              <option value="">Seleccionar…</option>
+              {ESTADOS_CIVILES.map((e) => (
+                <option key={e.value} value={e.value}>{e.label}</option>
+              ))}
+            </select>
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="cli-padre">Padre</Label>
+            <Input id="cli-padre" value={nombrePadre} onChange={(e) => setNombrePadre(e.target.value)} />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="cli-madre">Madre</Label>
+            <Input id="cli-madre" value={nombreMadre} onChange={(e) => setNombreMadre(e.target.value)} />
+          </div>
+          <div className="space-y-1 md:col-span-2">
             <Label htmlFor="cli-domicilio">Domicilio</Label>
             <Input id="cli-domicilio" value={domicilio} onChange={(e) => setDomicilio(e.target.value)} />
           </div>
@@ -164,8 +203,12 @@ export function ClienteDatosPanel() {
             <Input id="cli-cp" value={codigoPostal} onChange={(e) => setCodigoPostal(e.target.value)} />
           </div>
           <div className="space-y-1">
-            <Label htmlFor="cli-ciudad">Ciudad</Label>
+            <Label htmlFor="cli-ciudad">Ciudad / municipio</Label>
             <Input id="cli-ciudad" value={ciudad} onChange={(e) => setCiudad(e.target.value)} />
+          </div>
+          <div className="space-y-1 md:col-span-2">
+            <Label htmlFor="cli-provincia">Provincia</Label>
+            <Input id="cli-provincia" value={provincia} onChange={(e) => setProvincia(e.target.value)} />
           </div>
           <div className="space-y-1">
             <Label htmlFor="cli-telefono">Teléfono</Label>

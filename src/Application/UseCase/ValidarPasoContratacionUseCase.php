@@ -21,6 +21,7 @@ final class ValidarPasoContratacionUseCase
         private ExpedienteRepositoryInterface $expedienteRepository,
         private ContratacionRepositoryInterface $contratacionRepository,
         private ContratacionRealtimePort $realtime,
+        private SincronizarClienteHoldedUseCase $sincronizarClienteHolded,
     ) {
     }
 
@@ -105,6 +106,8 @@ final class ValidarPasoContratacionUseCase
                 new \DateTimeImmutable('now'),
             ));
 
+            $this->sincronizarClienteHoldedTrasContratacion($expediente->clienteId());
+
             return;
         }
 
@@ -115,5 +118,14 @@ final class ValidarPasoContratacionUseCase
         if ($expediente->estadoFase() !== $nuevoEstado) {
             $this->expedienteRepository->save($expediente->withEstadoFase($nuevoEstado));
         }
+    }
+
+    private function sincronizarClienteHoldedTrasContratacion(?string $clienteId): void
+    {
+        if (null === $clienteId || '' === $clienteId) {
+            return;
+        }
+
+        ($this->sincronizarClienteHolded)($clienteId, false);
     }
 }

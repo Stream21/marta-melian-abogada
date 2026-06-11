@@ -33,6 +33,9 @@ class ClienteOrm
     #[ORM\Column(type: Types::STRING, length: 255, options: ['default' => ''])]
     private string $lugarNacimiento = '';
 
+    #[ORM\Column(type: Types::STRING, length: 50, options: ['default' => ''])]
+    private string $estadoCivil = '';
+
     #[ORM\Column(type: Types::STRING, length: 500, options: ['default' => ''])]
     private string $domicilio = '';
 
@@ -41,6 +44,15 @@ class ClienteOrm
 
     #[ORM\Column(type: Types::STRING, length: 100, options: ['default' => ''])]
     private string $ciudad = '';
+
+    #[ORM\Column(type: Types::STRING, length: 100, options: ['default' => ''])]
+    private string $provincia = '';
+
+    #[ORM\Column(type: Types::STRING, length: 255, options: ['default' => ''])]
+    private string $nombrePadre = '';
+
+    #[ORM\Column(type: Types::STRING, length: 255, options: ['default' => ''])]
+    private string $nombreMadre = '';
 
     #[ORM\Column(type: Types::STRING, length: 50, nullable: true)]
     private ?string $telefono = null;
@@ -53,6 +65,30 @@ class ClienteOrm
 
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private \DateTimeImmutable $updatedAt;
+
+    #[ORM\Column(type: Types::STRING, length: 64, nullable: true)]
+    private ?string $holdedContactId = null;
+
+    #[ORM\Column(type: Types::STRING, length: 20, options: ['default' => 'oportunidad'])]
+    private string $holdedEstado = 'oportunidad';
+
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?\DateTimeImmutable $holdedSyncedAt = null;
+
+    #[ORM\Column(type: Types::STRING, length: 500, nullable: true)]
+    private ?string $holdedSyncError = null;
+
+    #[ORM\Column(type: Types::STRING, length: 20, nullable: true)]
+    private ?string $documentoIdentidadTipo = null;
+
+    #[ORM\Column(type: Types::STRING, length: 500, nullable: true)]
+    private ?string $documentoIdentidadAnversoPath = null;
+
+    #[ORM\Column(type: Types::STRING, length: 500, nullable: true)]
+    private ?string $documentoIdentidadReversoPath = null;
+
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?\DateTimeImmutable $documentoIdentidadEscaneadoAt = null;
 
     public function getId(): string
     {
@@ -124,6 +160,16 @@ class ClienteOrm
         $this->lugarNacimiento = $lugarNacimiento;
     }
 
+    public function getEstadoCivil(): string
+    {
+        return $this->estadoCivil;
+    }
+
+    public function setEstadoCivil(string $estadoCivil): void
+    {
+        $this->estadoCivil = $estadoCivil;
+    }
+
     public function getDomicilio(): string
     {
         return $this->domicilio;
@@ -152,6 +198,36 @@ class ClienteOrm
     public function setCiudad(string $ciudad): void
     {
         $this->ciudad = $ciudad;
+    }
+
+    public function getProvincia(): string
+    {
+        return $this->provincia;
+    }
+
+    public function setProvincia(string $provincia): void
+    {
+        $this->provincia = $provincia;
+    }
+
+    public function getNombrePadre(): string
+    {
+        return $this->nombrePadre;
+    }
+
+    public function setNombrePadre(string $nombrePadre): void
+    {
+        $this->nombrePadre = $nombrePadre;
+    }
+
+    public function getNombreMadre(): string
+    {
+        return $this->nombreMadre;
+    }
+
+    public function setNombreMadre(string $nombreMadre): void
+    {
+        $this->nombreMadre = $nombreMadre;
     }
 
     public function getTelefono(): ?string
@@ -192,5 +268,85 @@ class ClienteOrm
     public function setUpdatedAt(\DateTimeImmutable $updatedAt): void
     {
         $this->updatedAt = $updatedAt;
+    }
+
+    public function getHoldedContactId(): ?string
+    {
+        return $this->holdedContactId;
+    }
+
+    public function setHoldedContactId(?string $holdedContactId): void
+    {
+        $this->holdedContactId = $holdedContactId;
+    }
+
+    public function getHoldedEstado(): string
+    {
+        return $this->holdedEstado;
+    }
+
+    public function setHoldedEstado(string $holdedEstado): void
+    {
+        $this->holdedEstado = $holdedEstado;
+    }
+
+    public function getHoldedSyncedAt(): ?\DateTimeImmutable
+    {
+        return $this->holdedSyncedAt;
+    }
+
+    public function setHoldedSyncedAt(?\DateTimeImmutable $holdedSyncedAt): void
+    {
+        $this->holdedSyncedAt = $holdedSyncedAt;
+    }
+
+    public function getHoldedSyncError(): ?string
+    {
+        return $this->holdedSyncError;
+    }
+
+    public function setHoldedSyncError(?string $holdedSyncError): void
+    {
+        $this->holdedSyncError = $holdedSyncError;
+    }
+
+    public function getDocumentoIdentidadTipo(): ?string
+    {
+        return $this->documentoIdentidadTipo;
+    }
+
+    public function setDocumentoIdentidadTipo(?string $documentoIdentidadTipo): void
+    {
+        $this->documentoIdentidadTipo = $documentoIdentidadTipo;
+    }
+
+    public function getDocumentoIdentidadAnversoPath(): ?string
+    {
+        return $this->documentoIdentidadAnversoPath;
+    }
+
+    public function setDocumentoIdentidadAnversoPath(?string $documentoIdentidadAnversoPath): void
+    {
+        $this->documentoIdentidadAnversoPath = $documentoIdentidadAnversoPath;
+    }
+
+    public function getDocumentoIdentidadReversoPath(): ?string
+    {
+        return $this->documentoIdentidadReversoPath;
+    }
+
+    public function setDocumentoIdentidadReversoPath(?string $documentoIdentidadReversoPath): void
+    {
+        $this->documentoIdentidadReversoPath = $documentoIdentidadReversoPath;
+    }
+
+    public function getDocumentoIdentidadEscaneadoAt(): ?\DateTimeImmutable
+    {
+        return $this->documentoIdentidadEscaneadoAt;
+    }
+
+    public function setDocumentoIdentidadEscaneadoAt(?\DateTimeImmutable $documentoIdentidadEscaneadoAt): void
+    {
+        $this->documentoIdentidadEscaneadoAt = $documentoIdentidadEscaneadoAt;
     }
 }

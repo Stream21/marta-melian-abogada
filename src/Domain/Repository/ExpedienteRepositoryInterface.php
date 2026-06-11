@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Repository;
 
 use App\Domain\Entity\Expediente;
+use App\Domain\ValueObject\ClienteId;
 use App\Domain\ValueObject\ExpedienteId;
 
 interface ExpedienteRepositoryInterface
@@ -21,6 +22,11 @@ interface ExpedienteRepositoryInterface
      * @return Expediente[]
      */
     public function findAll(): array;
+
+    /**
+     * @return Expediente[]
+     */
+    public function findByClienteId(ClienteId $clienteId): array;
 
     public function remove(Expediente $expediente): void;
 }

@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace App\Application\UseCase;
 
+use App\Application\DTO\ClienteResponseMapper;
 use App\Domain\Repository\ClienteRepositoryInterface;
-
+use App\Domain\Repository\ExpedienteRepositoryInterface;
 final class ListarClientesUseCase
 {
     public function __construct(
         private ClienteRepositoryInterface $repository,
+        private ExpedienteRepositoryInterface $expedienteRepository,
     ) {
     }
 
@@ -18,22 +20,12 @@ final class ListarClientesUseCase
      */
     public function __invoke(): array
     {
-        return array_map(
-            static fn ($cliente) => [
-                'id' => $cliente->id()->value(),
-                'nombre' => $cliente->nombre(),
-                'nacionalidad' => $cliente->nacionalidad(),
-                'tipoDocumento' => $cliente->tipoDocumento(),
-                'numDocumento' => $cliente->numDocumento(),
-                'fechaNacimiento' => $cliente->fechaNacimiento()?->format('Y-m-d'),
-                'lugarNacimiento' => $cliente->lugarNacimiento(),
-                'domicilio' => $cliente->domicilio(),
-                'codigoPostal' => $cliente->codigoPostal(),
-                'ciudad' => $cliente->ciudad(),
-                'telefono' => $cliente->telefono(),
-                'email' => $cliente->email(),
-            ],
-            $this->repository->findAll(),
-        );
+        $clientes = $this->repository->findAll();
+
+        return array_map(function ($cliente) {
+            $numExpedientes = count($this->expedienteRepository->findByClienteId($cliente->id()));
+
+            return ClienteResponseMapper::fromDomain($cliente, $numExpedientes);
+        }, $clientes);
     }
 }

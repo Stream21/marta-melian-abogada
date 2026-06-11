@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Application\UseCase;
 
 use App\Application\DTO\ClienteInput;
+use App\Application\Service\ClienteEdicionPolicy;
 use App\Application\Service\EmailValidator;
 use App\Application\Service\TelefonoNormalizer;
 use App\Domain\Entity\Cliente;
@@ -18,6 +19,7 @@ final class GuardarClienteUseCase
         private ClienteRepositoryInterface $repository,
         private TelefonoNormalizer $telefonoNormalizer,
         private EmailValidator $emailValidator,
+        private ClienteEdicionPolicy $edicionPolicy,
     ) {
     }
 
@@ -47,9 +49,17 @@ final class GuardarClienteUseCase
         }
 
         if (null !== $id && '' !== $id) {
-            $existing = $this->repository->findById(new ClienteId($id));
+            $clienteId = new ClienteId($id);
+            $existing = $this->repository->findById($clienteId);
             if (null === $existing) {
                 throw new \InvalidArgumentException('Cliente no encontrado.');
+            }
+
+            if (!$this->edicionPolicy->puedeEditar($clienteId)) {
+                throw new \InvalidArgumentException(
+                    $this->edicionPolicy->motivoBloqueo($clienteId)
+                    ?? 'No se pueden modificar los datos de este cliente en este momento.',
+                );
             }
             $cliente = $existing->withDatos(
                 $nombre,
@@ -58,9 +68,13 @@ final class GuardarClienteUseCase
                 trim($input->numDocumento),
                 $fechaNacimiento,
                 trim($input->lugarNacimiento),
+                trim($input->estadoCivil),
                 trim($input->domicilio),
                 trim($input->codigoPostal),
                 trim($input->ciudad),
+                trim($input->provincia),
+                trim($input->nombrePadre),
+                trim($input->nombreMadre),
                 $telefono ?? '',
                 trim($input->email),
             );
@@ -73,9 +87,13 @@ final class GuardarClienteUseCase
                 trim($input->numDocumento),
                 $fechaNacimiento,
                 trim($input->lugarNacimiento),
+                trim($input->estadoCivil),
                 trim($input->domicilio),
                 trim($input->codigoPostal),
                 trim($input->ciudad),
+                trim($input->provincia),
+                trim($input->nombrePadre),
+                trim($input->nombreMadre),
                 $telefono ?? '',
                 trim($input->email),
             );

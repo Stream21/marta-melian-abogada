@@ -9,6 +9,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libjpeg62-turbo-dev \
     libwebp-dev \
     libfreetype6-dev \
+    tesseract-ocr \
+    tesseract-ocr-spa \
+    tesseract-ocr-eng \
     zip \
     unzip \
     git \

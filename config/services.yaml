@@ -32,6 +32,17 @@ services:
     App\Application\Port\DocumentToPdfConverterPort: '@App\Infrastructure\Document\ImagickDocumentToPdfConverter'
     App\Application\Port\EscritoPdfGeneratorPort: '@App\Infrastructure\Document\DompdfEscritoPdfGenerator'
     App\Application\Port\ContratacionRealtimePort: '@App\Infrastructure\Realtime\MercureContratacionPublisher'
+    App\Application\Port\HoldedContactPort: '@App\Infrastructure\ApiClient\HoldedContactAdapter'
+    App\Application\Port\ClienteFileStoragePort: '@App\Infrastructure\Storage\ClienteFileStorage'
+    App\Application\Port\DocumentoIdentidadExtractorPort: '@App\Infrastructure\Document\TesseractDocumentoIdentidadExtractor'
+
+    App\Infrastructure\Storage\ClienteFileStorage:
+        arguments:
+            $projectDir: '%kernel.project_dir%'
+
+    App\Application\UseCase\ObtenerClienteDetalleUseCase:
+        arguments:
+            $frontendBaseUrl: '%env(FRONTEND_BASE_URL)%'
 
     App\Infrastructure\Realtime\MercureJwtFactory:
         arguments:

@@ -93,6 +93,51 @@ async function publicRequest<T>(path: string, options: RequestInit = {}): Promis
   return res.json() as Promise<T>;
 }
 
+async function publicMultipartRequest<T>(path: string, formData: FormData, method = 'POST'): Promise<T> {
+  const res = await fetch(API_BASE + path, {
+    method,
+    body: formData,
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: res.statusText }));
+    throw new Error(
+      (err as { error?: string; message?: string }).message ||
+        (err as { error?: string }).error ||
+        'Error',
+    );
+  }
+
+  return res.json() as Promise<T>;
+}
+
+async function multipartRequest<T>(path: string, formData: FormData, method = 'POST'): Promise<T> {
+  const res = await fetch(API_BASE + path, {
+    method,
+    headers: {
+      ...getAuthHeaders(),
+    },
+    body: formData,
+  });
+
+  if (res.status === 401) {
+    localStorage.removeItem(TOKEN_KEY);
+    window.location.href = '/login';
+    throw new Error('Sesión expirada. Por favor, inicie sesión de nuevo.');
+  }
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: res.statusText }));
+    throw new Error(
+      (err as { error?: string; message?: string }).message ||
+        (err as { error?: string }).error ||
+        'Error',
+    );
+  }
+
+  return res.json() as Promise<T>;
+}
+
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const res = await fetch(API_BASE + path, {
     ...options,
@@ -386,6 +431,14 @@ export const api = {
 
   getClientes: () => request<ClienteResponse[]>('/api/clientes'),
 
+  getCliente: (id: string) => request<ClienteDetalleResponse>('/api/clientes/' + encodeURIComponent(id)),
+
+  sincronizarClienteHolded: (id: string, forzar = true) =>
+    request<SincronizarHoldedResponse>('/api/clientes/' + encodeURIComponent(id) + '/sincronizar-holded', {
+      method: 'POST',
+      body: JSON.stringify({ forzar }),
+    }),
+
   buscarClientes: (query: string) =>
     request<BuscarClientesResponse>(
       '/api/clientes/buscar?q=' + encodeURIComponent(query),
@@ -405,6 +458,52 @@ export const api = {
       body: JSON.stringify({ paso }),
     }),
 
+  extraerDocumentoIdentidadAcceso: (
+    token: string,
+    input: {
+      tipoEscaneo: TipoEscaneoDocumentoIdentidad;
+      anverso: File;
+      reverso: File | null;
+    },
+  ) => {
+    const formData = new FormData();
+    formData.append('tipoEscaneo', input.tipoEscaneo);
+    formData.append('anverso', input.anverso);
+    if (input.reverso) {
+      formData.append('reverso', input.reverso);
+    }
+    return publicMultipartRequest<ExtraerDocumentoIdentidadResponse>(
+      '/api/acceso/' + encodeURIComponent(token) + '/extraer-documento',
+      formData,
+    );
+  },
+
+  guardarDatosIdentidadAcceso: (
+    token: string,
+    input: {
+      tipoEscaneo: TipoEscaneoDocumentoIdentidad;
+      anverso: File;
+      reverso: File | null;
+      datos: ClienteInput;
+    },
+  ) => {
+    const formData = new FormData();
+    formData.append('tipoEscaneo', input.tipoEscaneo);
+    formData.append('anverso', input.anverso);
+    if (input.reverso) {
+      formData.append('reverso', input.reverso);
+    }
+    Object.entries(input.datos).forEach(([key, value]) => {
+      if (value != null && value !== '') {
+        formData.append(`datos[${key}]`, String(value));
+      }
+    });
+    return publicMultipartRequest<AccesoExpedienteResponse>(
+      '/api/acceso/' + encodeURIComponent(token) + '/datos-identidad',
+      formData,
+    );
+  },
+
   getMercureToken: (expedienteId: string) =>
     request<MercureTokenResponse>('/api/realtime/mercure-token/' + encodeURIComponent(expedienteId)),
 
@@ -416,6 +515,43 @@ export const api = {
       '/api/expedientes/' + encodeURIComponent(expedienteId) + '/contratacion/validar/' + encodeURIComponent(paso),
       { method: 'POST' },
     ),
+
+  extraerDocumentoIdentidad: (input: {
+    tipoEscaneo: TipoEscaneoDocumentoIdentidad;
+    anverso: File;
+    reverso: File | null;
+  }) => {
+    const formData = new FormData();
+    formData.append('tipoEscaneo', input.tipoEscaneo);
+    formData.append('anverso', input.anverso);
+    if (input.reverso) {
+      formData.append('reverso', input.reverso);
+    }
+    return multipartRequest<ExtraerDocumentoIdentidadResponse>(
+      '/api/clientes/extraer-documento',
+      formData,
+    );
+  },
+
+  postClienteConDocumento: (input: {
+    tipoEscaneo: TipoEscaneoDocumentoIdentidad;
+    anverso: File;
+    reverso: File | null;
+    datos: ClienteInput;
+  }) => {
+    const formData = new FormData();
+    formData.append('tipoEscaneo', input.tipoEscaneo);
+    formData.append('anverso', input.anverso);
+    if (input.reverso) {
+      formData.append('reverso', input.reverso);
+    }
+    Object.entries(input.datos).forEach(([key, value]) => {
+      if (value != null && value !== '') {
+        formData.append(`datos[${key}]`, String(value));
+      }
+    });
+    return multipartRequest<ClienteResponse>('/api/clientes', formData);
+  },
 
   postCliente: (body: ClienteInput) =>
     request<ClienteResponse>('/api/clientes', {
@@ -735,6 +871,42 @@ export interface EscritoPlantillaResponse {
 /** @deprecated Use EscritoPlantillaResponse */
 export type HojaEncargoPlantillaResponse = EscritoPlantillaResponse;
 
+export type ClienteHoldedEstado = 'oportunidad' | 'sincronizado' | 'error';
+
+export type TipoEscaneoDocumentoIdentidad = 'dni_nie' | 'pasaporte';
+
+export interface DocumentoIdentidadInfo {
+  tipoEscaneo?: TipoEscaneoDocumentoIdentidad | null;
+  tipoEscaneoLabel?: string | null;
+  tieneAnverso?: boolean;
+  tieneReverso?: boolean;
+  escaneadoAt?: string | null;
+  anversoUrl?: string;
+  reversoUrl?: string;
+}
+
+export interface DocumentoIdentidadExtraido {
+  nombre: string;
+  nacionalidad: string;
+  tipoDocumento: string;
+  numDocumento: string;
+  fechaNacimiento: string | null;
+  lugarNacimiento: string;
+  domicilio?: string;
+  codigoPostal?: string;
+  ciudad?: string;
+  provincia?: string;
+  nombrePadre?: string;
+  nombreMadre?: string;
+  extraccionAutomatica?: boolean;
+}
+
+export interface ExtraerDocumentoIdentidadResponse {
+  tipoEscaneo: TipoEscaneoDocumentoIdentidad;
+  tipoEscaneoLabel: string;
+  datosExtraidos: DocumentoIdentidadExtraido;
+}
+
 export interface ClienteResponse {
   id: string;
   nombre: string;
@@ -743,11 +915,39 @@ export interface ClienteResponse {
   numDocumento: string;
   fechaNacimiento: string | null;
   lugarNacimiento: string;
+  estadoCivil: string;
   domicilio: string;
   codigoPostal: string;
   ciudad: string;
+  provincia: string;
+  nombrePadre: string;
+  nombreMadre: string;
   telefono: string;
   email: string;
+  holdedContactId?: string | null;
+  holdedEstado?: ClienteHoldedEstado;
+  holdedEstadoLabel?: string;
+  holdedSyncedAt?: string | null;
+  holdedSyncError?: string | null;
+  numExpedientes?: number;
+  documentoIdentidad?: DocumentoIdentidadInfo;
+}
+
+export interface ClienteDetalleResponse {
+  cliente: ClienteResponse;
+  edicionBloqueada?: boolean;
+  motivoEdicionBloqueada?: string | null;
+  expedientesAbiertos?: Array<{ numero: string; titulo: string }>;
+  expedientes: Array<
+    ExpedienteResponse & { faseNegocioLabel: string; estadoFaseLabel: string }
+  >;
+  tramitesDerivadosPendientes: unknown[];
+}
+
+export interface SincronizarHoldedResponse {
+  success: boolean;
+  holdedContactId?: string;
+  error?: string;
 }
 
 export interface ClienteInput {
@@ -757,9 +957,13 @@ export interface ClienteInput {
   numDocumento?: string;
   fechaNacimiento?: string | null;
   lugarNacimiento?: string;
+  estadoCivil?: string;
   domicilio?: string;
   codigoPostal?: string;
   ciudad?: string;
+  provincia?: string;
+  nombrePadre?: string;
+  nombreMadre?: string;
   telefono?: string;
   email?: string;
 }

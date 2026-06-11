@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { CheckCircle2, Clock, CreditCard, FileText, PenLine, Scale, Upload, User } from 'lucide-react';
 import { api, type AccesoExpedienteResponse, type AccesoPasoResponse } from '@/api/client';
 import { DocumentoPdfPreview } from '@/components/cliente-portal/DocumentoPdfPreview';
+import { ClienteIdentidadOnboarding } from '@/components/documento-identidad/ClienteIdentidadOnboarding';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -91,9 +92,13 @@ export function ClienteContratacionPortalPage({ token }: ClienteContratacionPort
                 {(data.pasos ?? []).map((paso) => (
                   <PasoClienteCard
                     key={paso.paso}
+                    token={token}
                     paso={paso}
                     data={data}
                     onCompletar={(p) => completarMutation.mutate(p)}
+                    onIdentidadCompletada={() =>
+                      void queryClient.invalidateQueries({ queryKey: ['acceso', token] })
+                    }
                     completando={completarMutation.isPending}
                   />
                 ))}
@@ -107,14 +112,18 @@ export function ClienteContratacionPortalPage({ token }: ClienteContratacionPort
 }
 
 function PasoClienteCard({
+  token,
   paso,
   data,
   onCompletar,
+  onIdentidadCompletada,
   completando,
 }: {
+  token: string;
   paso: AccesoPasoResponse;
   data: AccesoExpedienteResponse;
   onCompletar: (paso: string) => void;
+  onIdentidadCompletada: () => void;
   completando: boolean;
 }) {
   const [confirmado, setConfirmado] = useState(false);
@@ -130,6 +139,7 @@ function PasoClienteCard({
     (data.documentosFirma ?? []).every((d) => docsVistos.has(d.tipo));
 
   const puedeConfirmar = esActivo && confirmado && (paso.paso !== 'firmas' || todosDocsVistos);
+  const usaOnboardingIdentidad = paso.paso === 'datos_cliente' && esActivo && !completado;
 
   return (
     <div
@@ -176,36 +186,45 @@ function PasoClienteCard({
 
           {esActivo && !completado && (
             <div className="mt-4 space-y-4">
-              <PasoContenido
-                paso={paso.paso}
-                data={data}
-                docsVistos={docsVistos}
-                onDocVisto={(tipo) => setDocsVistos((prev) => new Set(prev).add(tipo))}
-              />
-
-              <label className="flex items-start gap-2 text-sm cursor-pointer">
-                <input
-                  type="checkbox"
-                  className="mt-1"
-                  checked={confirmado}
-                  onChange={(e) => setConfirmado(e.target.checked)}
+              {usaOnboardingIdentidad ? (
+                <ClienteIdentidadOnboarding
+                  token={token}
+                  onCompletado={onIdentidadCompletada}
                 />
-                <span>He revisado la información y confirmo que todo es correcto.</span>
-              </label>
+              ) : (
+                <>
+                  <PasoContenido
+                    paso={paso.paso}
+                    data={data}
+                    docsVistos={docsVistos}
+                    onDocVisto={(tipo) => setDocsVistos((prev) => new Set(prev).add(tipo))}
+                  />
 
-              {paso.paso === 'firmas' && !todosDocsVistos && (
-                <p className="text-xs text-muted-foreground">
-                  Debe abrir y revisar todos los documentos antes de confirmar.
-                </p>
+                  <label className="flex items-start gap-2 text-sm cursor-pointer">
+                    <input
+                      type="checkbox"
+                      className="mt-1"
+                      checked={confirmado}
+                      onChange={(e) => setConfirmado(e.target.checked)}
+                    />
+                    <span>He revisado la información y confirmo que todo es correcto.</span>
+                  </label>
+
+                  {paso.paso === 'firmas' && !todosDocsVistos && (
+                    <p className="text-xs text-muted-foreground">
+                      Debe abrir y revisar todos los documentos antes de confirmar.
+                    </p>
+                  )}
+
+                  <Button
+                    className="w-full"
+                    onClick={() => onCompletar(paso.paso)}
+                    disabled={!puedeConfirmar || completando}
+                  >
+                    Confirmar y continuar
+                  </Button>
+                </>
               )}
-
-              <Button
-                className="w-full"
-                onClick={() => onCompletar(paso.paso)}
-                disabled={!puedeConfirmar || completando}
-              >
-                Confirmar y continuar
-              </Button>
             </div>
           )}
         </div>
@@ -247,25 +266,6 @@ function PasoContenido({
               </li>
             ))}
           </ul>
-        )}
-      </div>
-    );
-  }
-
-  if (paso === 'datos_cliente' && data.clienteDatos) {
-    const c = data.clienteDatos;
-    return (
-      <div className="rounded-lg border bg-card p-4 text-sm space-y-2">
-        <p className="text-muted-foreground mb-3">
-          Verifique que sus datos son correctos. Si detecta algún error, contacte con su abogado antes de
-          confirmar.
-        </p>
-        <DatoFila label="Nombre" value={c.nombre} />
-        <DatoFila label="Documento" value={`${c.tipoDocumento} ${c.numDocumento}`} />
-        <DatoFila label="Teléfono" value={c.telefono} />
-        <DatoFila label="Email" value={c.email} />
-        {(c.domicilio || c.ciudad) && (
-          <DatoFila label="Domicilio" value={[c.domicilio, c.ciudad].filter(Boolean).join(', ')} />
         )}
       </div>
     );

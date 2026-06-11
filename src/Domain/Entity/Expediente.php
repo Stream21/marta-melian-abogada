@@ -151,6 +151,11 @@ final readonly class Expediente
         return $this->rebuild(paymentStatus: $paymentStatus);
     }
 
+    public function withClientName(string $clientName): self
+    {
+        return $this->rebuild(clientName: $clientName);
+    }
+
     private function rebuild(
         ?string $clienteId = null,
         ?string $tramiteId = null,
