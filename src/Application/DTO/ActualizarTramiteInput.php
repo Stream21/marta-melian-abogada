@@ -13,6 +13,7 @@ final readonly class ActualizarTramiteInput
         public float $honorarios,
         public string $plataforma,
         public bool $requiereProcurador,
+        public bool $requiereOtpFirma = true,
     ) {
     }
 }

@@ -118,7 +118,38 @@ final class ExpedienteRepository implements ExpedienteRepositoryInterface
             PlanPagoExpediente::from($orm->getPlanPago()),
             $orm->getNumCuotas(),
             $orm->getAccessToken(),
+            $orm->getFechaVencimientoFase(),
+            $orm->getFechaUltimoCambioEstado(),
+            $orm->getFechaFirmaContrato(),
+            $this->normalizarCalendarioPagos($orm->getCalendarioPagos()),
         );
+    }
+
+    /**
+     * @param array<int, array<string, mixed>>|null $raw
+     *
+     * @return list<array{numero: int, importe: float, fechaVencimiento: string, estado: string}>|null
+     */
+    private function normalizarCalendarioPagos(?array $raw): ?array
+    {
+        if (null === $raw || [] === $raw) {
+            return null;
+        }
+
+        $resultado = [];
+        foreach ($raw as $item) {
+            if (!is_array($item)) {
+                continue;
+            }
+            $resultado[] = [
+                'numero' => (int) ($item['numero'] ?? 0),
+                'importe' => (float) ($item['importe'] ?? 0),
+                'fechaVencimiento' => (string) ($item['fechaVencimiento'] ?? ''),
+                'estado' => (string) ($item['estado'] ?? 'pendiente'),
+            ];
+        }
+
+        return [] === $resultado ? null : $resultado;
     }
 
     private function domainToOrm(Expediente $expediente): ExpedienteOrm
@@ -150,5 +181,9 @@ final class ExpedienteRepository implements ExpedienteRepositoryInterface
         $orm->setPlanPago($expediente->planPago()->value);
         $orm->setNumCuotas($expediente->numCuotas());
         $orm->setAccessToken($expediente->accessToken());
+        $orm->setFechaVencimientoFase($expediente->fechaVencimientoFase());
+        $orm->setFechaUltimoCambioEstado($expediente->fechaUltimoCambioEstado());
+        $orm->setFechaFirmaContrato($expediente->fechaFirmaContrato());
+        $orm->setCalendarioPagos($expediente->calendarioPagos());
     }
 }

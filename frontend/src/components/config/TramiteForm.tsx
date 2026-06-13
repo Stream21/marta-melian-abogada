@@ -20,6 +20,7 @@ export interface TramiteFormProps {
   initialHonorarios?: number;
   initialPlataforma?: PlataformaTramitacionValue;
   initialRequiereProcurador?: boolean;
+  initialRequiereOtpFirma?: boolean;
 }
 
 export function TramiteForm({
@@ -30,6 +31,7 @@ export function TramiteForm({
   initialHonorarios,
   initialPlataforma = 'mercurio',
   initialRequiereProcurador = false,
+  initialRequiereOtpFirma = true,
 }: TramiteFormProps) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -43,6 +45,7 @@ export function TramiteForm({
   const [honorariosError, setHonorariosError] = useState(false);
   const [plataforma, setPlataforma] = useState<PlataformaTramitacionValue>(initialPlataforma);
   const [requiereProcurador, setRequiereProcurador] = useState(initialRequiereProcurador);
+  const [requiereOtpFirma, setRequiereOtpFirma] = useState(initialRequiereOtpFirma);
 
   const { data: serviciosActivos = [], isLoading: loadingServicios } = useQuery({
     queryKey: ['servicios', { incluirInactivos: false }],
@@ -87,6 +90,7 @@ export function TramiteForm({
         honorarios: parsed,
         plataforma,
         requiereProcurador,
+        requiereOtpFirma,
       });
       return { tramite, navigateTo };
     },
@@ -115,6 +119,7 @@ export function TramiteForm({
         honorarios: parsed,
         plataforma,
         requiereProcurador,
+        requiereOtpFirma,
       });
     },
     onSuccess: () => {
@@ -300,6 +305,25 @@ export function TramiteForm({
             </Label>
             <p className="text-xs text-muted-foreground">
               Marque si el trámite exige intervención de procurador (habitual en vía LexNET).
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-start gap-3 rounded-lg border border-border bg-muted/30 px-4 py-3">
+          <input
+            id="tramite-otp-firma"
+            type="checkbox"
+            checked={requiereOtpFirma}
+            onChange={(e) => setRequiereOtpFirma(e.target.checked)}
+            disabled={isPending}
+            className="mt-0.5 h-4 w-4 rounded border-input text-primary focus-visible:ring-1 focus-visible:ring-ring"
+          />
+          <div className="space-y-0.5">
+            <Label htmlFor="tramite-otp-firma" className="cursor-pointer text-foreground">
+              Requerir OTP SMS al firmar (fase contratación)
+            </Label>
+            <p className="text-xs text-muted-foreground">
+              El cliente recibirá un código en su móvil antes de firmar. Desactive solo en casos acordados con la abogada.
             </p>
           </div>
         </div>

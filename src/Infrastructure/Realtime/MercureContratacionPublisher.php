@@ -37,6 +37,17 @@ final class MercureContratacionPublisher implements ContratacionRealtimePort
                     'data' => json_encode($payload, \JSON_THROW_ON_ERROR),
                 ],
             ]);
+
+            $this->httpClient->request('POST', rtrim($this->mercureHubUrl, '/') . '/.well-known/mercure', [
+                'headers' => [
+                    'Authorization' => 'Bearer ' . $this->jwtFactory->create(['*']),
+                    'Content-Type' => 'application/x-www-form-urlencoded',
+                ],
+                'body' => [
+                    'topic' => '/abogado/notificaciones',
+                    'data' => json_encode(array_merge($payload, ['expedienteId' => $expedienteId]), \JSON_THROW_ON_ERROR),
+                ],
+            ]);
         } catch (\Throwable $e) {
             $this->logger->warning('No se pudo publicar evento Mercure: {message}', [
                 'message' => $e->getMessage(),

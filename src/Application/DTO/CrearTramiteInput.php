@@ -12,6 +12,7 @@ final readonly class CrearTramiteInput
         public float $honorarios,
         public string $plataforma,
         public bool $requiereProcurador,
+        public bool $requiereOtpFirma = true,
     ) {
     }
 }

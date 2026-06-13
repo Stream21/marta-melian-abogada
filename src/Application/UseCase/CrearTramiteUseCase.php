@@ -55,6 +55,7 @@ final class CrearTramiteUseCase
             $plataforma,
             $input->requiereProcurador,
             true,
+            $input->requiereOtpFirma,
             $servicio->nombre(),
         );
         $this->tramiteRepository->save($tramite);

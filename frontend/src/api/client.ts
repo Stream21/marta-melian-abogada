@@ -38,10 +38,21 @@ async function uploadRequest<T>(path: string, file: File): Promise<T> {
 }
 
 export async function fetchAuthenticatedAsset(path: string, cacheKey?: string): Promise<string | null> {
+  try {
+    const blob = await fetchAuthenticatedBlob(path, cacheKey);
+    return URL.createObjectURL(blob);
+  } catch {
+    return null;
+  }
+}
+
+export async function fetchAuthenticatedBlob(path: string, cacheKey?: string): Promise<Blob> {
+  const basePath =
+    path.startsWith('http') ? path : API_BASE + path;
   const url =
     cacheKey != null && cacheKey !== ''
-      ? `${API_BASE}${path}${path.includes('?') ? '&' : '?'}v=${encodeURIComponent(cacheKey)}`
-      : API_BASE + path;
+      ? `${basePath}${basePath.includes('?') ? '&' : '?'}v=${encodeURIComponent(cacheKey)}`
+      : basePath;
 
   const res = await fetch(url, {
     headers: {
@@ -50,12 +61,34 @@ export async function fetchAuthenticatedAsset(path: string, cacheKey?: string): 
     cache: 'no-store',
   });
 
-  if (!res.ok) {
-    return null;
+  if (res.status === 401) {
+    localStorage.removeItem(TOKEN_KEY);
+    window.location.href = '/login';
+    throw new Error('Sesión expirada. Por favor, inicie sesión de nuevo.');
   }
 
-  const blob = await res.blob();
-  return URL.createObjectURL(blob);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ message: res.statusText }));
+    throw new Error(
+      (err as { error?: string; message?: string }).message ||
+        (err as { error?: string }).error ||
+        'No se pudo cargar el documento.',
+    );
+  }
+
+  return res.blob();
+}
+
+/** Abre un PDF o imagen protegido por JWT en una pestaña nueva. */
+export async function openAuthenticatedDocument(path: string): Promise<void> {
+  const blob = await fetchAuthenticatedBlob(path);
+  const blobUrl = URL.createObjectURL(blob);
+  const opened = window.open(blobUrl, '_blank', 'noopener,noreferrer');
+  if (!opened) {
+    URL.revokeObjectURL(blobUrl);
+    throw new Error('Permita ventanas emergentes para ver el documento.');
+  }
+  window.setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
 }
 
 export function getDespachoAssetPath(tipo: 'logo' | 'sello'): string {
@@ -63,7 +96,8 @@ export function getDespachoAssetPath(tipo: 'logo' | 'sello'): string {
 }
 
 export async function fetchAccesoPdf(previewUrl: string): Promise<string> {
-  const res = await fetch((import.meta.env.VITE_API_BASE_URL || '') + previewUrl, { cache: 'no-store' });
+  const url = previewUrl.startsWith('http') ? previewUrl : `${API_BASE}${previewUrl}`;
+  const res = await fetch(url, { cache: 'no-store' });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ message: res.statusText }));
     throw new Error((err as { message?: string }).message ?? 'No se pudo cargar el documento');
@@ -199,6 +233,13 @@ export interface PaymentResponse {
 export const api = {
   getExpedientes: () => request<ExpedienteResponse[]>('/api/expedientes'),
 
+  getExpediente: (id: string) => request<ExpedienteResponse>('/api/expedientes/' + encodeURIComponent(id)),
+
+  getExpedienteAuditoria: (expedienteId: string) =>
+    request<ExpedienteAuditoriaResponse>(
+      '/api/expedientes/' + encodeURIComponent(expedienteId) + '/auditoria',
+    ),
+
   getExpedientePayments: (expedienteId: string) =>
     request<PaymentResponse[]>('/api/expedientes/' + expedienteId + '/payments'),
 
@@ -243,7 +284,7 @@ export const api = {
   getInvoices: (expedienteId: string) =>
     request<InvoiceResponse[]>('/api/expedientes/' + expedienteId + '/invoices'),
 
-  postInvoiceHolded: (body: { expedienteId: string; concepto: string; amount: string }) =>
+  postInvoiceHolded: (body: { expedienteId: string; concepto: string; importe: string }) =>
     request<{ success: boolean; invoiceId?: string; holdedId?: string; error?: string }>(
       '/api/invoices/holded',
       { method: 'POST', body: JSON.stringify(body) },
@@ -308,6 +349,7 @@ export const api = {
     honorarios: number;
     plataforma: string;
     requiereProcurador: boolean;
+    requiereOtpFirma?: boolean;
   }) =>
     request<TramiteResponse>('/api/tramites', {
       method: 'POST',
@@ -322,6 +364,7 @@ export const api = {
       honorarios: number;
       plataforma: string;
       requiereProcurador: boolean;
+      requiereOtpFirma?: boolean;
     },
   ) =>
     request<TramiteResponse>('/api/tramites/' + encodeURIComponent(id), {
@@ -507,13 +550,121 @@ export const api = {
   getMercureToken: (expedienteId: string) =>
     request<MercureTokenResponse>('/api/realtime/mercure-token/' + encodeURIComponent(expedienteId)),
 
+  getMercureTokenAcceso: (token: string) =>
+    publicRequest<MercureTokenResponse>('/api/acceso/' + encodeURIComponent(token) + '/mercure-token'),
+
+  getMercureTokenAbogado: () => request<MercureTokenResponse>('/api/realtime/mercure-token-abogado'),
+
+  getNotificacionesRecientes: () => request<NotificacionResponse[]>('/api/notificaciones/recientes'),
+
   getContratacion: (expedienteId: string) =>
     request<ContratacionResponse>('/api/expedientes/' + encodeURIComponent(expedienteId) + '/contratacion'),
+
+  getContratacionHitos: (expedienteId: string, offset = 0, limit = 20) =>
+    request<ContratacionHitosPageResponse>(
+      '/api/expedientes/' +
+        encodeURIComponent(expedienteId) +
+        '/contratacion/hitos?offset=' +
+        offset +
+        '&limit=' +
+        limit,
+    ),
+
+  getDocumentacionExpediente: (expedienteId: string) =>
+    request<DocumentacionExpedienteItemResponse[]>(
+      '/api/expedientes/' + encodeURIComponent(expedienteId) + '/documentacion',
+    ),
+
+  documentacionArchivoUrl: (expedienteId: string, docId: string) =>
+    `${API_BASE}/api/expedientes/${encodeURIComponent(expedienteId)}/documentacion/${encodeURIComponent(docId)}/archivo`,
+
+  documentacionIdentidadUrl: (expedienteId: string, lado: 'anverso' | 'reverso') =>
+    `${API_BASE}/api/expedientes/${encodeURIComponent(expedienteId)}/documentacion/identidad/${lado}`,
+
+  getTwilioEstado: () => request<TwilioEstadoResponse>('/api/integraciones/twilio/estado'),
+
+  probarTwilio: (body: { canal: 'sms' | 'whatsapp'; telefono: string; mensaje?: string }) =>
+    request<{ canal: string; enviado: boolean }>('/api/integraciones/twilio/probar', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+
+  enviarEnlaceExpediente: (expedienteId: string, canales: ('whatsapp' | 'email')[]) =>
+    request<{ canalesEnviados: string[] }>(
+      '/api/integraciones/twilio/expedientes/' + encodeURIComponent(expedienteId) + '/enviar-enlace',
+      { method: 'POST', body: JSON.stringify({ canales }) },
+    ),
+
+  getContratacionDocumentos: (expedienteId: string) =>
+    request<ContratacionDocumentoResponse[]>(
+      '/api/expedientes/' + encodeURIComponent(expedienteId) + '/contratacion/documentos',
+    ),
+
+  contratacionDocumentoArchivoUrl: (expedienteId: string, docId: string) =>
+    `${API_BASE}/api/expedientes/${encodeURIComponent(expedienteId)}/contratacion/documentos/${encodeURIComponent(docId)}/archivo`,
+
+  contratacionFirmaPdfUrl: (expedienteId: string, tipo: string) =>
+    `${API_BASE}/api/expedientes/${encodeURIComponent(expedienteId)}/contratacion/firmas/${encodeURIComponent(tipo)}/pdf`,
+
+  subirDocumentoContratacion: (token: string, docId: string, file: File) => {
+    const formData = new FormData();
+    formData.append('archivo', file);
+    return publicMultipartRequest<AccesoExpedienteResponse>(
+      '/api/acceso/' + encodeURIComponent(token) + '/documentos/' + encodeURIComponent(docId),
+      formData,
+    );
+  },
+
+  registrarFirmaDocumento: (token: string, tipo: string, file: File) => {
+    const formData = new FormData();
+    formData.append('firma', file);
+    return publicMultipartRequest<AccesoExpedienteResponse>(
+      '/api/acceso/' + encodeURIComponent(token) + '/firma/' + encodeURIComponent(tipo),
+      formData,
+    );
+  },
+
+  enviarOtpFirma: (token: string) =>
+    publicRequest<OtpFirmaEnviarResponse>(
+      '/api/acceso/' + encodeURIComponent(token) + '/firma/otp/enviar',
+      { method: 'POST' },
+    ),
+
+  verificarOtpFirma: (token: string, codigo: string) =>
+    publicRequest<AccesoExpedienteResponse>(
+      '/api/acceso/' + encodeURIComponent(token) + '/firma/otp/verificar',
+      { method: 'POST', body: JSON.stringify({ codigo }) },
+    ),
+
+  iniciarPagoAcceso: (token: string) =>
+    publicRequest<{ checkoutUrl: string }>('/api/acceso/' + encodeURIComponent(token) + '/iniciar-pago', {
+      method: 'POST',
+    }),
 
   validarPasoContratacion: (expedienteId: string, paso: string) =>
     request<ContratacionResponse>(
       '/api/expedientes/' + encodeURIComponent(expedienteId) + '/contratacion/validar/' + encodeURIComponent(paso),
       { method: 'POST' },
+    ),
+
+  devolverPasoContratacion: (expedienteId: string, paso: string, nota: string) =>
+    request<ContratacionResponse>(
+      '/api/expedientes/' + encodeURIComponent(expedienteId) + '/contratacion/devolver/' + encodeURIComponent(paso),
+      { method: 'POST', body: JSON.stringify({ nota }) },
+    ),
+
+  actualizarCondicionesPagoContratacion: (
+    expedienteId: string,
+    body: {
+      metodoPago: MetodoPago;
+      planPago: PlanPago;
+      numCuotas: number;
+      honorariosAcordados?: number;
+    },
+  ) =>
+    request<ActualizarCondicionesPagoResponse>(
+      '/api/expedientes/' + encodeURIComponent(expedienteId) + '/contratacion/condiciones-pago',
+      { method: 'PUT', body: JSON.stringify(body) },
     ),
 
   extraerDocumentoIdentidad: (input: {
@@ -667,6 +818,7 @@ export interface TramiteResponse {
   plataforma: string;
   plataformaLabel: string;
   requiereProcurador: boolean;
+  requiereOtpFirma: boolean;
   activo: boolean;
 }
 
@@ -707,6 +859,7 @@ export interface AltaExpedienteInput {
   numCuotas: number;
   notificar?: boolean;
   canalesNotificacion?: ('whatsapp' | 'email')[];
+  fechaVencimientoFase?: string | null;
 }
 
 export interface AltaExpedienteResponse {
@@ -734,12 +887,22 @@ export interface AccesoPasoResponse {
   estado: string;
   estadoLabel: string;
   esActivo?: boolean;
+  notaDevolucion?: string | null;
 }
 
 export interface AccesoDocumentoFirmaResponse {
   tipo: string;
   label: string;
   previewUrl: string;
+  firmado?: boolean;
+  firmadoPdfUrl?: string | null;
+}
+
+export interface CalendarioCuotaResponse {
+  numero: number;
+  importe: number;
+  fechaVencimiento: string;
+  estado: string;
 }
 
 export interface AccesoResumenPagoResponse {
@@ -747,11 +910,16 @@ export interface AccesoResumenPagoResponse {
   metodoPago: MetodoPago;
   metodoPagoLabel: string;
   planPago: PlanPago;
+  planPagoLabel?: string;
   numCuotas: number;
   importeCuota: number;
+  importePagoInicial?: number;
   iban: string;
   titularCuenta: string;
   entidadBancaria: string;
+  calendarioPago?: CalendarioCuotaResponse[] | null;
+  calendarioProyectado?: CalendarioCuotaResponse[] | null;
+  fechaFirmaContrato?: string | null;
 }
 
 export interface AccesoClienteDatosResponse {
@@ -781,6 +949,21 @@ export interface AccesoExpedienteResponse {
   documentosFirma?: AccesoDocumentoFirmaResponse[];
   resumenPago?: AccesoResumenPagoResponse;
   clienteDatos?: AccesoClienteDatosResponse | null;
+  clienteNombre?: string | null;
+  despachoLogoUrl?: string | null;
+  firmas?: AccesoFirmasConfigResponse;
+}
+
+export interface AccesoFirmasConfigResponse {
+  requiereOtp: boolean;
+  otpVerificado: boolean;
+  telefonoMascara: string | null;
+}
+
+export interface OtpFirmaEnviarResponse {
+  telefonoMascara: string;
+  expiraEnSegundos: number;
+  otpVerificado: boolean;
 }
 
 export interface MercureTokenResponse {
@@ -799,6 +982,7 @@ export interface ContratacionPasoResponse {
   realizadoAt: string | null;
   validadoAt: string | null;
   requiereValidacionAbogado: boolean;
+  notaDevolucion?: string | null;
 }
 
 export interface ContratacionHitoResponse {
@@ -810,9 +994,30 @@ export interface ContratacionHitoResponse {
   createdAt: string;
 }
 
+export interface ContratacionFirmaDocumentoResponse {
+  tipo: string;
+  label: string;
+  firmado: boolean;
+  firmadoAt: string | null;
+  pdfSha256: string | null;
+  integridadOk: boolean | null;
+}
+
+export interface ActualizarCondicionesPagoResponse {
+  metodoPago: MetodoPago;
+  metodoPagoLabel: string;
+  planPago: PlanPago;
+  planPagoLabel: string;
+  numCuotas: number;
+  honorariosAcordados: number;
+  calendarioProyectado: CalendarioCuotaResponse[];
+  condicionesPagoEditables: boolean;
+}
+
 export interface ContratacionResponse {
   expedienteId: string;
   numero: string;
+  clienteId?: string | null;
   faseNegocio: FaseNegocio;
   faseNegocioLabel: string;
   estadoFase: string;
@@ -821,12 +1026,51 @@ export interface ContratacionResponse {
   metodoPagoLabel: string;
   planPago: PlanPago;
   honorariosAcordados: number;
+  importePagoInicial?: number;
   numCuotas: number;
   accessUrl: string | null;
+  fechaVencimientoFase?: string | null;
   pasoActivo: string | null;
   contratacionCompletada: boolean;
   pasos: ContratacionPasoResponse[];
   hitos: ContratacionHitoResponse[];
+  hitosTotal?: number;
+  firmasDocumento?: ContratacionFirmaDocumentoResponse[];
+  fechaFirmaContrato?: string | null;
+  calendarioPago?: CalendarioCuotaResponse[] | null;
+  calendarioProyectado?: CalendarioCuotaResponse[] | null;
+  condicionesPagoEditables?: boolean;
+}
+
+export interface ContratacionHitosPageResponse {
+  items: ContratacionHitoResponse[];
+  total: number;
+  offset: number;
+  limit: number;
+  hasMore: boolean;
+}
+
+export interface DocumentacionExpedienteItemResponse {
+  id: string;
+  nombre: string;
+  descripcion: string;
+  tipo: 'documento' | 'escrito';
+  fase: number;
+  faseLabel: string;
+  faseNegocio: string;
+  faseNegocioLabel: string;
+  origen: 'requisito_tramite' | 'documento_firmado' | 'identidad_cliente' | 'escrito_firmado';
+  origenLabel: string;
+  obligatorio: boolean;
+  estado: string;
+  entregadoAt: string | null;
+  descargaUrl: string | null;
+  mediaTipo?: 'pdf' | 'imagen';
+}
+
+export interface TwilioEstadoResponse {
+  sms: boolean;
+  whatsapp: boolean;
 }
 
 export interface DespachoConfigResponse {
@@ -985,6 +1229,54 @@ export interface DocumentoRequerido {
   maxImagenes: number;
   orden: number;
   formatoEntrega?: 'pdf';
+  estado?: string;
+  entregadoAt?: string | null;
+}
+
+export interface ContratacionDocumentoResponse {
+  id: string;
+  nombre: string;
+  descripcion: string;
+  obligatorio: boolean;
+  tipo: string;
+  maxImagenes: number;
+  estado: string;
+  entregadoAt?: string | null;
+  archivoPath?: string | null;
+}
+
+export interface NotificacionResponse {
+  id: string;
+  tipo: string;
+  descripcion: string;
+  actor: string;
+  paso?: string | null;
+  expedienteId: string;
+  expedienteNumero: string;
+  clienteNombre: string;
+  createdAt: string;
+}
+
+export interface ExpedienteAuditoriaEntryResponse {
+  id: string;
+  source: 'hito' | 'pago' | 'expediente';
+  categoria: string;
+  categoriaLabel: string;
+  tipo: string;
+  tipoLabel: string;
+  actor: string;
+  actorLabel: string;
+  resumen: string;
+  detalle: string | null;
+  canal: string | null;
+  canalLabel: string | null;
+  paso: string | null;
+  createdAt: string;
+}
+
+export interface ExpedienteAuditoriaResponse {
+  items: ExpedienteAuditoriaEntryResponse[];
+  total: number;
 }
 
 export type DocumentoRequeridoInput = Pick<

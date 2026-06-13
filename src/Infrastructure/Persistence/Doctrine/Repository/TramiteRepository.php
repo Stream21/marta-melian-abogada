@@ -102,6 +102,7 @@ final class TramiteRepository implements TramiteRepositoryInterface
             $existing->setPlataforma($tramite->plataforma()->value);
             $existing->setRequiereProcurador($tramite->requiereProcurador());
             $existing->setActivo($tramite->activo());
+            $existing->setRequiereOtpFirma($tramite->requiereOtpFirma());
             $existing->setUpdatedAt($now);
         } else {
             $orm = $this->domainToOrm($tramite, $servicioOrm);
@@ -123,6 +124,7 @@ final class TramiteRepository implements TramiteRepositoryInterface
             PlataformaTramitacion::fromString($orm->getPlataforma()),
             $orm->isRequiereProcurador(),
             $orm->isActivo(),
+            $orm->isRequiereOtpFirma(),
             $orm->getServicio()->getNombre(),
             $orm->getCreatedAt(),
             $orm->getUpdatedAt(),
@@ -139,6 +141,7 @@ final class TramiteRepository implements TramiteRepositoryInterface
         $orm->setPlataforma($tramite->plataforma()->value);
         $orm->setRequiereProcurador($tramite->requiereProcurador());
         $orm->setActivo($tramite->activo());
+        $orm->setRequiereOtpFirma($tramite->requiereOtpFirma());
 
         return $orm;
     }

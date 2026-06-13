@@ -121,7 +121,10 @@ final class ActualizarClienteIdentidadAccesoUseCase
             $fechaNacimiento = \DateTimeImmutable::createFromFormat('Y-m-d', (string) $extraidos['fechaNacimiento']) ?: null;
         }
 
-        $telefono = $this->telefonoNormalizer->normalize($input->telefono) ?? trim($input->telefono);
+        $telefono = $this->telefonoNormalizer->normalize($input->telefono);
+        if (null === $telefono || !$this->telefonoNormalizer->isValid($telefono)) {
+            throw new \InvalidArgumentException('El teléfono móvil es obligatorio y debe ser válido.');
+        }
 
         $clienteActualizado = $cliente->withDatos(
             $nombre,

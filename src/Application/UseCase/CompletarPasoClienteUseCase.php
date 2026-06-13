@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace App\Application\UseCase;
 
 use App\Application\Port\ContratacionRealtimePort;
+use App\Application\Service\ContratacionCompletitudValidator;
 use App\Domain\Entity\ActorHitoExpediente;
 use App\Domain\Entity\EstadoFaseExpediente;
 use App\Domain\Entity\EstadoPasoContratacion;
 use App\Domain\Entity\ExpedienteHito;
 use App\Domain\Entity\FaseNegocioExpediente;
+use App\Domain\Entity\MetodoPagoExpediente;
 use App\Domain\Entity\PasoContratacionCliente;
 use App\Domain\Repository\ContratacionRepositoryInterface;
 use App\Domain\Repository\ExpedienteRepositoryInterface;
@@ -20,6 +22,7 @@ final class CompletarPasoClienteUseCase
     public function __construct(
         private ExpedienteRepositoryInterface $expedienteRepository,
         private ContratacionRepositoryInterface $contratacionRepository,
+        private ContratacionCompletitudValidator $completitudValidator,
         private ContratacionRealtimePort $realtime,
     ) {
     }
@@ -48,9 +51,19 @@ final class CompletarPasoClienteUseCase
             throw new \InvalidArgumentException('Este paso ya ha sido completado o está en revisión.');
         }
 
-        $pasoActivo = $this->resolverPasoActivoCliente($expedienteId);
+        $pasoActivo = $this->completitudValidator->pasoActivoCliente($expedienteId);
         if (null === $pasoActivo || $pasoActivo !== $pasoEnum) {
             throw new \InvalidArgumentException('Debe completar los pasos en orden y esperar la validación del abogado.');
+        }
+
+        if (PasoContratacionCliente::Firmas === $pasoEnum && !$this->completitudValidator->firmasCompletas($expedienteId)) {
+            throw new \InvalidArgumentException('Debe firmar todos los documentos legales antes de continuar.');
+        }
+
+        if (PasoContratacionCliente::Pago === $pasoEnum && MetodoPagoExpediente::Manual === $expediente->metodoPago()) {
+            throw new \InvalidArgumentException(
+                'El pago manual lo confirma su abogado cuando reciba el cobro. No es necesario confirmarlo desde el portal.',
+            );
         }
 
         $this->contratacionRepository->savePaso($paso->marcarRealizadoCliente());
@@ -71,35 +84,9 @@ final class CompletarPasoClienteUseCase
             'type' => 'paso_completado',
             'paso' => $pasoEnum->value,
             'actor' => 'cliente',
+            'expedienteNumero' => $expediente->numero(),
+            'clienteNombre' => $expediente->clientName(),
         ]);
-    }
-
-    private function resolverPasoActivoCliente(ExpedienteId $expedienteId): ?PasoContratacionCliente
-    {
-        $pasos = $this->contratacionRepository->findPasosByExpediente($expedienteId);
-        $porPaso = [];
-        foreach ($pasos as $paso) {
-            $porPaso[$paso->paso()->value] = $paso;
-        }
-
-        foreach (PasoContratacionCliente::ordenados() as $ordenPaso) {
-            $paso = $porPaso[$ordenPaso->value] ?? null;
-            if (null === $paso) {
-                continue;
-            }
-
-            if ($paso->estado() === EstadoPasoContratacion::ValidadoAbogado) {
-                continue;
-            }
-
-            if ($paso->estado() === EstadoPasoContratacion::RealizadoCliente) {
-                return null;
-            }
-
-            return $ordenPaso;
-        }
-
-        return null;
     }
 
     private function actualizarEstadoExpediente(ExpedienteId $id): void
@@ -122,8 +109,8 @@ final class CompletarPasoClienteUseCase
             ? EstadoFaseExpediente::PendienteFirma
             : EstadoFaseExpediente::PendienteCliente;
 
-        if ($expediente->estadoFase() !== $nuevoEstado) {
-            $this->expedienteRepository->save($expediente->withEstadoFase($nuevoEstado));
-        }
+        $this->expedienteRepository->save(
+            $expediente->withEstadoFase($nuevoEstado)->touchEstadoCambio(),
+        );
     }
 }

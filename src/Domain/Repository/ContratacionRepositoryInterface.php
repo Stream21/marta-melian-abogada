@@ -26,4 +26,16 @@ interface ContratacionRepositoryInterface
      * @return ExpedienteHito[]
      */
     public function findHitosByExpediente(ExpedienteId $expedienteId): array;
+
+    /**
+     * @return ExpedienteHito[]
+     */
+    public function findRecentHitos(int $limit = 20): array;
+
+    /**
+     * @return ExpedienteHito[]
+     */
+    public function findHitosByExpedientePaginated(ExpedienteId $expedienteId, int $offset, int $limit): array;
+
+    public function countHitosByExpediente(ExpedienteId $expedienteId): int;
 }

@@ -69,6 +69,19 @@ class ExpedienteOrm
     #[ORM\Column(type: Types::STRING, length: 64, nullable: true)]
     private ?string $accessToken = null;
 
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?\DateTimeImmutable $fechaVencimientoFase = null;
+
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?\DateTimeImmutable $fechaUltimoCambioEstado = null;
+
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?\DateTimeImmutable $fechaFirmaContrato = null;
+
+    /** @var array<int, array<string, mixed>>|null */
+    #[ORM\Column(type: Types::JSON, nullable: true)]
+    private ?array $calendarioPagos = null;
+
     public function getId(): string
     {
         return $this->id;
@@ -257,5 +270,51 @@ class ExpedienteOrm
     public function setAccessToken(?string $accessToken): void
     {
         $this->accessToken = $accessToken;
+    }
+
+    public function getFechaVencimientoFase(): ?\DateTimeImmutable
+    {
+        return $this->fechaVencimientoFase;
+    }
+
+    public function setFechaVencimientoFase(?\DateTimeImmutable $fechaVencimientoFase): void
+    {
+        $this->fechaVencimientoFase = $fechaVencimientoFase;
+    }
+
+    public function getFechaUltimoCambioEstado(): ?\DateTimeImmutable
+    {
+        return $this->fechaUltimoCambioEstado;
+    }
+
+    public function setFechaUltimoCambioEstado(?\DateTimeImmutable $fechaUltimoCambioEstado): void
+    {
+        $this->fechaUltimoCambioEstado = $fechaUltimoCambioEstado;
+    }
+
+    public function getFechaFirmaContrato(): ?\DateTimeImmutable
+    {
+        return $this->fechaFirmaContrato;
+    }
+
+    public function setFechaFirmaContrato(?\DateTimeImmutable $fechaFirmaContrato): void
+    {
+        $this->fechaFirmaContrato = $fechaFirmaContrato;
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>|null
+     */
+    public function getCalendarioPagos(): ?array
+    {
+        return $this->calendarioPagos;
+    }
+
+    /**
+     * @param array<int, array<string, mixed>>|null $calendarioPagos
+     */
+    public function setCalendarioPagos(?array $calendarioPagos): void
+    {
+        $this->calendarioPagos = $calendarioPagos;
     }
 }

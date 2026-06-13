@@ -27,6 +27,25 @@ final class RealtimeController extends AbstractController
         }
 
         $topic = sprintf('/expedientes/%s/contratacion', $expedienteId);
+        $topics = [$topic, '/abogado/notificaciones'];
+        $token = $this->jwtFactory->create(subscribeTopics: $topics);
+
+        return new JsonResponse([
+            'token' => $token,
+            'hubUrl' => rtrim($this->mercurePublicUrl, '/') . '/.well-known/mercure',
+            'topic' => $topic,
+            'topics' => $topics,
+        ]);
+    }
+
+    #[Route(path: '/mercure-token-abogado', name: 'mercure_token_abogado', methods: ['GET'])]
+    public function mercureTokenAbogado(): JsonResponse
+    {
+        if ('' === trim($this->mercurePublicUrl)) {
+            return new JsonResponse(['message' => 'Mercure no configurado.'], Response::HTTP_SERVICE_UNAVAILABLE);
+        }
+
+        $topic = '/abogado/notificaciones';
         $token = $this->jwtFactory->create(subscribeTopics: [$topic]);
 
         return new JsonResponse([

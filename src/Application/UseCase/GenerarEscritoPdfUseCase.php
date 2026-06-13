@@ -38,8 +38,13 @@ final class GenerarEscritoPdfUseCase
     /**
      * @return array{pdfPath: string, filename: string, html: string, pdfBinary: string}
      */
-    public function __invoke(string $expedienteId, string $tipo, bool $incluirMembrete, bool $guardar = true): array
-    {
+    public function __invoke(
+        string $expedienteId,
+        string $tipo,
+        bool $incluirMembrete,
+        bool $guardar = true,
+        ?string $clientSignatureRelativePath = null,
+    ): array {
         $expediente = $this->expedienteRepository->findById(new ExpedienteId($expedienteId));
         if (null === $expediente) {
             throw new \InvalidArgumentException('Expediente no encontrado.');
@@ -63,6 +68,11 @@ final class GenerarEscritoPdfUseCase
 
         $despacho = ($this->obtenerDespacho)();
         $values = $this->variableResolver->resolve($despacho, $cliente, $tramite, $expediente);
+        if (null !== $clientSignatureRelativePath && '' !== $clientSignatureRelativePath) {
+            $values['FIRMA_CLIENTE_DATA_URI'] = $this->toDataUri(
+                $this->expedienteStorage->getAbsolutePath($clientSignatureRelativePath),
+            );
+        }
 
         $plantilla = $this->plantillaRepository->findByTramiteAndTipo(new TramiteId($tramiteId), $tipoEscrito);
         $bloques = null !== $plantilla
@@ -85,5 +95,17 @@ final class GenerarEscritoPdfUseCase
             'html' => $html,
             'pdfBinary' => $pdfBinary,
         ];
+    }
+
+    private function toDataUri(string $absolutePath): string
+    {
+        if (!is_file($absolutePath)) {
+            return '';
+        }
+
+        $mime = str_ends_with(strtolower($absolutePath), '.png') ? 'image/png' : 'image/jpeg';
+        $encoded = base64_encode((string) file_get_contents($absolutePath));
+
+        return 'data:' . $mime . ';base64,' . $encoded;
     }
 }

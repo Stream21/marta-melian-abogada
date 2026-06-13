@@ -1,24 +1,34 @@
+import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMercureContratacion } from '@/hooks/useMercureContratacion';
+import { ContratacionRevisionModal } from './ContratacionRevisionModal';
 import {
   CheckCircle2,
   Circle,
   Clock,
+  ChevronDown,
   CreditCard,
   FileText,
   PenLine,
   Radio,
-  Upload,
   User,
+  AlertTriangle,
 } from 'lucide-react';
 import { api, type ContratacionPasoResponse, type ContratacionResponse } from '@/api/client';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { EnlaceClienteModal } from './EnlaceClienteModal';
+import { CondicionesPagoPanel } from './CondicionesPagoPanel';
+import { ContratacionTimelinePanel } from './ContratacionTimelinePanel';
+import { RequerimientosEnConstruccionPanel } from './RequerimientosEnConstruccionPanel';
+import {
+  contarFirmasCompletadas,
+  FirmasProgresoResumen,
+} from './FirmasRevisionPanel';
+import type { ContratacionFirmaDocumentoResponse } from '@/api/client';
 
-const PASO_ICONS: Record<string, typeof Upload> = {
-  documentacion: Upload,
+const PASO_ICONS: Record<string, typeof User> = {
   datos_cliente: User,
   firmas: PenLine,
   pago: CreditCard,
@@ -28,7 +38,41 @@ interface ContratacionGestionPanelProps {
   expedienteId: string;
 }
 
-function estadoBadge(estado: string) {
+function vencimientoBadge(fecha: string | null | undefined) {
+  if (!fecha) return null;
+  const venc = new Date(fecha + 'T23:59:59');
+  const hoy = new Date();
+  hoy.setHours(0, 0, 0, 0);
+  const dias = Math.ceil((venc.getTime() - hoy.getTime()) / 86400000);
+  if (dias < 0) {
+    return (
+      <Badge variant="destructive" className="gap-1">
+        <AlertTriangle className="h-3 w-3" />
+        Vencido hace {Math.abs(dias)} día(s)
+      </Badge>
+    );
+  }
+  if (dias <= 7) {
+    return (
+      <Badge variant="warning" className="gap-1">
+        <AlertTriangle className="h-3 w-3" />
+        Vence en {dias} día(s)
+      </Badge>
+    );
+  }
+  return (
+    <Badge variant="secondary" className="gap-1">
+      <Clock className="h-3 w-3" />
+      Vence {venc.toLocaleDateString('es-ES')}
+    </Badge>
+  );
+}
+
+function estadoBadge(estado: string, esPagoManualPendiente = false) {
+  if (esPagoManualPendiente) {
+    return <Badge variant="warning">Pendiente de cobro</Badge>;
+  }
+
   switch (estado) {
     case 'validado_abogado':
       return <Badge variant="success">Validado</Badge>;
@@ -41,17 +85,26 @@ function estadoBadge(estado: string) {
 
 function PasoCard({
   paso,
+  metodoPago,
   metodoPagoLabel,
-  onValidar,
+  firmasDocumento,
+  onRevisar,
   validando,
 }: {
   paso: ContratacionPasoResponse;
+  metodoPago: string;
   metodoPagoLabel: string;
-  onValidar: (paso: string) => void;
+  firmasDocumento?: ContratacionFirmaDocumentoResponse[];
+  onRevisar: (paso: ContratacionPasoResponse) => void;
   validando: boolean;
 }) {
   const Icon = PASO_ICONS[paso.paso] ?? FileText;
   const esPago = paso.paso === 'pago';
+  const esFirmas = paso.paso === 'firmas';
+  const esPagoManualPendiente = esPago && metodoPago === 'manual' && paso.estado === 'pendiente';
+  const firmasEnCurso =
+    esFirmas && (paso.estado === 'pendiente' || paso.estado === 'realizado_cliente');
+  const firmasCompletadas = contarFirmasCompletadas(firmasDocumento);
 
   return (
     <div
@@ -77,15 +130,30 @@ function PasoCard({
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h3 className="font-semibold">{paso.label}</h3>
-            {estadoBadge(paso.estado)}
+            <div className="flex flex-wrap items-center gap-2">
+              {esFirmas && firmasEnCurso && (
+                <Badge variant={firmasCompletadas === 3 ? 'success' : 'info'}>
+                  {firmasCompletadas}/3 firmados
+                </Badge>
+              )}
+              {estadoBadge(paso.estado, esPagoManualPendiente)}
+            </div>
           </div>
           <p className="mt-1 text-sm text-muted-foreground">{paso.descripcion}</p>
 
           {esPago && (
             <p className="mt-2 text-xs text-muted-foreground">
-              Método acordado: <strong>{metodoPagoLabel}</strong>. El abogado debe confirmar que el
-              pago se ha efectuado correctamente.
+              Método acordado: <strong>{metodoPagoLabel}</strong>.
+              {metodoPago === 'manual'
+                ? ' Confirme usted que ha recibido el cobro inicial (efectivo, Bizum, transferencia, etc.).'
+                : ' El abogado debe confirmar que el pago se ha efectuado correctamente.'}
             </p>
+          )}
+
+          {esFirmas && firmasEnCurso && (firmasDocumento?.length ?? 0) > 0 && (
+            <div className="mt-4">
+              <FirmasProgresoResumen firmas={firmasDocumento} compact />
+            </div>
           )}
 
           {paso.realizadoAt && (
@@ -103,12 +171,18 @@ function PasoCard({
             <Button
               size="sm"
               className="mt-4"
-              onClick={() => onValidar(paso.paso)}
+              onClick={() => onRevisar(paso)}
               disabled={validando}
             >
               <CheckCircle2 className="mr-2 h-4 w-4" />
-              {esPago ? 'Confirmar pago recibido' : 'Validar y continuar'}
+              {esPago ? 'Revisar pago' : 'Revisar paso'}
             </Button>
+          )}
+
+          {paso.estado === 'pendiente' && paso.notaDevolucion && (
+            <p className="mt-3 text-xs text-amber-700 bg-amber-50 rounded-md p-2 border border-amber-200">
+              Devuelto al cliente: «{paso.notaDevolucion}»
+            </p>
           )}
         </div>
       </div>
@@ -116,7 +190,17 @@ function PasoCard({
   );
 }
 
-function StepperHorizontal({ pasos, pasoActivo }: { pasos: ContratacionPasoResponse[]; pasoActivo?: string }) {
+function StepperHorizontal({
+  pasos,
+  pasoActivo,
+  firmasDocumento,
+}: {
+  pasos: ContratacionPasoResponse[];
+  pasoActivo?: string;
+  firmasDocumento?: ContratacionFirmaDocumentoResponse[];
+}) {
+  const firmasCompletadas = contarFirmasCompletadas(firmasDocumento);
+
   return (
     <div className="mb-8 flex items-center gap-2 overflow-x-auto pb-2">
       {pasos.map((paso, i) => {
@@ -141,6 +225,9 @@ function StepperHorizontal({ pasos, pasoActivo }: { pasos: ContratacionPasoRespo
               <span className="text-center text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
                 {paso.label}
               </span>
+              {paso.paso === 'firmas' && paso.paso === pasoActivo && paso.estado === 'pendiente' && (
+                <span className="text-[10px] font-semibold text-primary">{firmasCompletadas}/3</span>
+              )}
             </div>
             {i < pasos.length - 1 && (
               <div className={cn('mx-1 h-0.5 w-8', completado ? 'bg-emerald-400' : 'bg-border')} />
@@ -159,10 +246,21 @@ export function ContratacionGestionPanel({ expedienteId }: ContratacionGestionPa
   const { data, isLoading, error } = useQuery({
     queryKey: ['contratacion', expedienteId],
     queryFn: () => api.getContratacion(expedienteId),
+    refetchInterval: 8000,
+    staleTime: 0,
   });
 
   const validarMutation = useMutation({
     mutationFn: (paso: string) => api.validarPasoContratacion(expedienteId, paso),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['contratacion', expedienteId] });
+      void queryClient.invalidateQueries({ queryKey: ['expedientes'] });
+    },
+  });
+
+  const devolverMutation = useMutation({
+    mutationFn: ({ paso, nota }: { paso: string; nota: string }) =>
+      api.devolverPasoContratacion(expedienteId, paso, nota),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['contratacion', expedienteId] });
       void queryClient.invalidateQueries({ queryKey: ['expedientes'] });
@@ -183,36 +281,65 @@ export function ContratacionGestionPanel({ expedienteId }: ContratacionGestionPa
 
   if (data.faseNegocio !== 'contratacion') {
     return (
-      <div className="panel p-8 text-center">
-        <p className="text-muted-foreground">
-          Este expediente ya no está en fase de contratación ({data.faseNegocioLabel}).
-        </p>
-      </div>
+      <RequerimientosEnConstruccionPanel
+        expedienteId={expedienteId}
+        numero={data.numero}
+      />
     );
   }
 
   return (
     <ContratacionContent
+      expedienteId={expedienteId}
       data={data}
       onValidar={(paso) => validarMutation.mutate(paso)}
+      onDevolver={(paso, nota) => devolverMutation.mutate({ paso, nota })}
       validando={validarMutation.isPending}
+      devolviendo={devolverMutation.isPending}
+      errorAccion={validarMutation.error?.message ?? devolverMutation.error?.message ?? null}
     />
   );
 }
 
 function ContratacionContent({
+  expedienteId,
   data,
   onValidar,
+  onDevolver,
   validando,
+  devolviendo,
+  errorAccion,
 }: {
+  expedienteId: string;
   data: ContratacionResponse;
   onValidar: (paso: string) => void;
+  onDevolver: (paso: string, nota: string) => void;
   validando: boolean;
+  devolviendo: boolean;
+  errorAccion: string | null;
 }) {
+  const [pasoRevision, setPasoRevision] = useState<ContratacionPasoResponse | null>(null);
   const pendientesRevision = data.pasos.filter((p) => p.requiereValidacionAbogado).length;
 
   return (
     <div className="space-y-6">
+      <ContratacionRevisionModal
+        expedienteId={expedienteId}
+        paso={pasoRevision}
+        open={pasoRevision !== null}
+        onClose={() => setPasoRevision(null)}
+        onValidar={(paso) => {
+          onValidar(paso);
+          setPasoRevision(null);
+        }}
+        onDevolver={(paso, nota) => {
+          onDevolver(paso, nota);
+          setPasoRevision(null);
+        }}
+        validando={validando}
+        devolviendo={devolviendo}
+        errorAccion={errorAccion}
+      />
       <div className="panel p-6">
         <div className="flex flex-wrap items-start justify-between gap-4 mb-6">
           <div>
@@ -226,23 +353,30 @@ function ContratacionContent({
             <Badge variant={pendientesRevision > 0 ? 'warning' : 'info'}>
               {pendientesRevision > 0 ? `${pendientesRevision} pendiente(s) de revisión` : 'En proceso'}
             </Badge>
+            {vencimientoBadge(data.fechaVencimientoFase)}
             <Badge variant="secondary" className="gap-1">
               <Radio className="h-3 w-3 text-emerald-600" />
               Tiempo real
             </Badge>
-            <EnlaceClienteModal accessUrl={data.accessUrl} />
+            <EnlaceClienteModal expedienteId={expedienteId} accessUrl={data.accessUrl} />
           </div>
         </div>
 
-        <StepperHorizontal pasos={data.pasos} pasoActivo={data.pasoActivo} />
+        <StepperHorizontal
+          pasos={data.pasos}
+          pasoActivo={data.pasoActivo ?? undefined}
+          firmasDocumento={data.firmasDocumento}
+        />
 
         <div className="grid gap-4">
           {data.pasos.map((paso) => (
             <PasoCard
               key={paso.paso}
               paso={paso}
+              metodoPago={data.metodoPago}
               metodoPagoLabel={data.metodoPagoLabel}
-              onValidar={onValidar}
+              firmasDocumento={data.firmasDocumento}
+              onRevisar={setPasoRevision}
               validando={validando}
             />
           ))}
@@ -257,57 +391,65 @@ function ContratacionContent({
         )}
       </div>
 
-      <div className="panel p-6">
-        <h3 className="section-label mb-4">Línea de tiempo</h3>
-        {data.hitos.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Sin actividad registrada aún.</p>
-        ) : (
-          <ul className="space-y-3">
-            {data.hitos.map((hito) => (
-              <li key={hito.id} className="flex gap-3 text-sm">
-                <div className="mt-0.5 text-muted-foreground">
-                  {hito.actor === 'cliente' ? (
-                    <User className="h-4 w-4" />
-                  ) : hito.actor === 'abogado' ? (
-                    <CheckCircle2 className="h-4 w-4 text-primary" />
-                  ) : (
-                    <Circle className="h-4 w-4" />
-                  )}
-                </div>
-                <div>
-                  <p>{hito.descripcion}</p>
-                  <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-                    <Clock className="h-3 w-3" />
-                    {new Date(hito.createdAt).toLocaleString('es-ES')}
-                    <span className="capitalize">· {hito.actor}</span>
-                  </p>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
+      <CondicionesPagoPanel expedienteId={expedienteId} data={data} />
 
-      <div className="grid gap-3 sm:grid-cols-3 text-sm">
-        <div className="rounded-lg border border-border p-4">
-          <p className="section-label">Honorarios</p>
-          <p className="font-bold text-primary mt-1">
-            {data.honorariosAcordados.toLocaleString('es-ES', { minimumFractionDigits: 2 })} €
-          </p>
+      {(data.firmasDocumento?.some((f) => f.firmado) ?? false) && (
+        <details className="group panel overflow-hidden" open={false}>
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-2 p-6 [&::-webkit-details-marker]:hidden">
+            <h3 className="section-label">Integridad de documentos firmados</h3>
+            <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" />
+          </summary>
+          <div className="border-t border-border px-6 pb-6">
+            <ul className="space-y-3 pt-4">
+              {data.firmasDocumento!
+                .filter((firma) => firma.firmado)
+                .map((firma) => (
+                  <li
+                    key={firma.tipo}
+                    className="rounded-lg border border-border bg-card px-4 py-3 text-sm space-y-2"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <span className="font-medium">{firma.label}</span>
+                      {firma.integridadOk === true && (
+                        <Badge variant="success">Integridad verificada</Badge>
+                      )}
+                      {firma.integridadOk === false && (
+                        <Badge variant="destructive">Archivo alterado</Badge>
+                      )}
+                      {firma.integridadOk === null && (
+                        <Badge variant="secondary">Sin huella registrada</Badge>
+                      )}
+                    </div>
+                    {firma.pdfSha256 && (
+                      <p className="text-[11px] text-muted-foreground font-mono break-all">
+                        SHA-256: {firma.pdfSha256}
+                      </p>
+                    )}
+                    {firma.firmadoAt && (
+                      <p className="text-xs text-muted-foreground">
+                        Firmado: {new Date(firma.firmadoAt).toLocaleString('es-ES')}
+                      </p>
+                    )}
+                  </li>
+                ))}
+            </ul>
+          </div>
+        </details>
+      )}
+
+      <details className="group panel overflow-hidden" open={false}>
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-2 p-6 [&::-webkit-details-marker]:hidden">
+          <h3 className="section-label">Línea de tiempo</h3>
+          <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" />
+        </summary>
+        <div className="border-t border-border px-6 pb-6 pt-4">
+          <ContratacionTimelinePanel
+            expedienteId={expedienteId}
+            initialHitos={data.hitos}
+            total={data.hitosTotal ?? data.hitos.length}
+          />
         </div>
-        <div className="rounded-lg border border-border p-4">
-          <p className="section-label">Método de pago</p>
-          <p className="font-medium mt-1">{data.metodoPagoLabel}</p>
-        </div>
-        <div className="rounded-lg border border-border p-4">
-          <p className="section-label">Plan</p>
-          <p className="font-medium mt-1">
-            {data.planPago === 'fraccionado'
-              ? `Fraccionado (${data.numCuotas} cuotas)`
-              : 'Pago único'}
-          </p>
-        </div>
-      </div>
+      </details>
     </div>
   );
 }

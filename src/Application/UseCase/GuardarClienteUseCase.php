@@ -34,8 +34,8 @@ final class GuardarClienteUseCase
         }
 
         $telefono = $this->telefonoNormalizer->normalize($input->telefono);
-        if ($altaMinima && null === $telefono) {
-            throw new \InvalidArgumentException('El teléfono del cliente es obligatorio.');
+        if (null === $telefono || !$this->telefonoNormalizer->isValid($telefono)) {
+            throw new \InvalidArgumentException('El teléfono móvil del cliente es obligatorio y debe ser válido.');
         }
 
         $this->emailValidator->assertValid($input->email);

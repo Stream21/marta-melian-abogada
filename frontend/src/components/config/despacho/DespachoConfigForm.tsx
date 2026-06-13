@@ -6,6 +6,7 @@ import { api, fetchAuthenticatedAsset, getDespachoAssetPath } from '@/api/client
 import { DespachoAssetPreview } from '@/components/config/despacho/DespachoAssetPreview';
 import { DespachoConfigSection } from '@/components/config/despacho/DespachoConfigSection';
 import { DespachoMembretePreview } from '@/components/config/despacho/DespachoMembretePreview';
+import { TwilioIntegracionPanel } from '@/components/config/TwilioIntegracionPanel';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -475,6 +476,7 @@ export function DespachoConfigForm() {
           </TabsContent>
 
           <TabsContent value="cobros" className="mt-6 space-y-6">
+            <TwilioIntegracionPanel />
             <DespachoConfigSection
               title="Cuenta para honorarios"
               description="Datos bancarios insertados en hojas de encargo mediante [[IBAN]], [[ENTIDAD_BANCARIA]] y [[TITULAR_CUENTA]]."

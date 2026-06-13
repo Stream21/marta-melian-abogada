@@ -12,7 +12,13 @@ services:
       DATABASE_URL: ${DATABASE_URL:-postgresql://bufete:bufete_secret@postgres:5432/bufete?serverVersion=16&charset=utf8}
       MERCURE_URL: ${MERCURE_URL:-http://mercure}
       MERCURE_PUBLIC_URL: ${MERCURE_PUBLIC_URL:-http://localhost:3000}
-      MERCURE_JWT_SECRET: ${MERCURE_JWT_SECRET:-!ChangeThisMercureHubJWTSecretKey!}
+      MERCURE_JWT_SECRET: ${MERCURE_JWT_SECRET:-ChangeThisMercureHubJWTSecretKeyForDev}
+      TWILIO_ACCOUNT_SID: ${TWILIO_ACCOUNT_SID:-}
+      TWILIO_AUTH_TOKEN: ${TWILIO_AUTH_TOKEN:-}
+      TWILIO_WHATSAPP_FROM: ${TWILIO_WHATSAPP_FROM:-}
+      TWILIO_SMS_FROM: ${TWILIO_SMS_FROM:-}
+    env_file:
+      - .env
     working_dir: /app
     depends_on:
       postgres:
@@ -40,8 +46,10 @@ services:
     image: dunglas/mercure
     environment:
       SERVER_NAME: ':80'
-      MERCURE_PUBLISHER_JWT_KEY: ${MERCURE_JWT_SECRET:-!ChangeThisMercureHubJWTSecretKey!}
-      MERCURE_SUBSCRIBER_JWT_KEY: ${MERCURE_JWT_SECRET:-!ChangeThisMercureHubJWTSecretKey!}
+      MERCURE_PUBLISHER_JWT_KEY: '${MERCURE_JWT_SECRET:-ChangeThisMercureHubJWTSecretKeyForDev}'
+      MERCURE_SUBSCRIBER_JWT_KEY: '${MERCURE_JWT_SECRET:-ChangeThisMercureHubJWTSecretKeyForDev}'
+      MERCURE_PUBLISHER_JWT_ALG: HS256
+      MERCURE_SUBSCRIBER_JWT_ALG: HS256
       MERCURE_EXTRA_DIRECTIVES: |
         cors_origins http://localhost:5173 http://localhost:8080 http://127.0.0.1:5173
     ports:
@@ -60,6 +68,7 @@ services:
       - "5173:5173"
     environment:
       PROXY_TARGET: http://nginx:80
+      MERCURE_PROXY_TARGET: http://mercure:80
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:5173/"]
       interval: 5s

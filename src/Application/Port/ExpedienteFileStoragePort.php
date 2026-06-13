@@ -18,4 +18,8 @@ interface ExpedienteFileStoragePort
      * Retorna la ruta relativa del archivo guardado.
      */
     public function savePdf(ExpedienteId $expedienteId, string $filename, string $content): string;
+
+    public function readRelativePath(string $relativePath): string;
+
+    public function getAbsolutePath(string $relativePath): string;
 }

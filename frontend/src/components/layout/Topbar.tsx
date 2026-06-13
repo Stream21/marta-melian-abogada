@@ -1,15 +1,9 @@
 import { useState } from 'react';
-import {
-  Bell,
-  Search,
-  Menu,
-  X,
-  AlertTriangle,
-  Banknote,
-  PenLine,
-  CheckCircle,
-  CalendarCheck,
-} from 'lucide-react';
+import { useNavigate } from '@tanstack/react-router';
+import { useQuery } from '@tanstack/react-query';
+import { Bell, Search, Menu, X, PenLine, CheckCircle, User } from 'lucide-react';
+import { api, type NotificacionResponse } from '@/api/client';
+import { useMercureAbogado } from '@/hooks/useMercureAbogado';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -17,61 +11,41 @@ export interface TopbarProps {
   onMobileMenuToggle: () => void;
 }
 
-interface Notificacion {
-  icon: React.ElementType;
-  iconBg: string;
-  iconColor: string;
-  title: string;
-  sub?: string;
-  time: string;
+function formatRelativeTime(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'Ahora';
+  if (mins < 60) return `Hace ${mins} min`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `Hace ${hours} h`;
+  return new Date(iso).toLocaleDateString('es-ES');
 }
 
-const notificaciones: Notificacion[] = [
-  {
-    icon: PenLine,
-    iconBg: 'bg-blue-100',
-    iconColor: 'text-blue-700',
-    title: 'Carlos Ruiz firmó Hoja de Encargo',
-    time: 'Hace 15 min',
-  },
-  {
-    icon: AlertTriangle,
-    iconBg: 'bg-orange-100',
-    iconColor: 'text-orange-700',
-    title: 'Notificación de resolución recibida',
-    sub: 'Expediente #3302 - Extranjería',
-    time: 'Hace 1h',
-  },
-  {
-    icon: Banknote,
-    iconBg: 'bg-emerald-100',
-    iconColor: 'text-emerald-700',
-    title: 'Ana Belén realizó el pago de cuota 2/12',
-    time: 'Hace 2h',
-  },
-  {
-    icon: CheckCircle,
-    iconBg: 'bg-indigo-100',
-    iconColor: 'text-indigo-700',
-    title: 'Documentos validados por Administrativo',
-    time: 'Hace 3h',
-  },
-  {
-    icon: CalendarCheck,
-    iconBg: 'bg-purple-100',
-    iconColor: 'text-purple-700',
-    title: 'Nueva cita agendada por cliente',
-    sub: 'Mañana a las 10:30 - Presencial',
-    time: 'Hace 5h',
-  },
-];
+function notificacionVisual(n: NotificacionResponse) {
+  if (n.tipo.includes('firma') || n.tipo.includes('paso_completado')) {
+    return { icon: PenLine, iconBg: 'bg-blue-100', iconColor: 'text-blue-700' };
+  }
+  if (n.tipo.includes('validado') || n.tipo.includes('fase_completada')) {
+    return { icon: CheckCircle, iconBg: 'bg-emerald-100', iconColor: 'text-emerald-700' };
+  }
+  return { icon: User, iconBg: 'bg-indigo-100', iconColor: 'text-indigo-700' };
+}
 
 export function Topbar({ onMobileMenuToggle }: TopbarProps) {
+  useMercureAbogado();
+  const navigate = useNavigate();
   const [notifOpen, setNotifOpen] = useState(false);
   const { userEmail } = useAuth();
 
+  const { data: notificaciones = [] } = useQuery({
+    queryKey: ['notificaciones'],
+    queryFn: () => api.getNotificacionesRecientes(),
+    refetchInterval: 60_000,
+  });
+
   const displayName = userEmail ?? 'Usuario';
   const initials = displayName.charAt(0).toUpperCase();
+  const pendientes = notificaciones.filter((n) => n.actor === 'cliente').length;
 
   return (
     <>
@@ -98,91 +72,78 @@ export function Topbar({ onMobileMenuToggle }: TopbarProps) {
           </div>
         </div>
 
-        <div className="flex items-center gap-4">
-          <button
-            onClick={() => setNotifOpen((p) => !p)}
-            aria-label="Notificaciones"
-            className="relative text-muted-foreground hover:text-primary transition-colors p-2 hover:bg-muted rounded-full"
-          >
-            <Bell className="h-5 w-5" />
-            <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-destructive ring-2 ring-card" />
-          </button>
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <button
+              onClick={() => setNotifOpen((p) => !p)}
+              className="relative rounded-lg p-2 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+              aria-label="Notificaciones"
+            >
+              <Bell className="h-5 w-5" />
+              {pendientes > 0 && (
+                <span className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-white">
+                  {pendientes > 9 ? '9+' : pendientes}
+                </span>
+              )}
+            </button>
 
-          <div className="h-8 w-px bg-border" />
+            {notifOpen && (
+              <>
+                <div className="fixed inset-0 z-30" onClick={() => setNotifOpen(false)} />
+                <div className="absolute right-0 top-full z-40 mt-2 w-80 rounded-xl border bg-card shadow-lg">
+                  <div className="flex items-center justify-between border-b px-4 py-3">
+                    <h3 className="font-semibold text-sm">Notificaciones</h3>
+                    <button onClick={() => setNotifOpen(false)} className="text-muted-foreground hover:text-foreground">
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                  <div className="max-h-80 overflow-y-auto">
+                    {notificaciones.length === 0 ? (
+                      <p className="p-4 text-sm text-muted-foreground">Sin notificaciones recientes.</p>
+                    ) : (
+                      notificaciones.map((n) => {
+                        const visual = notificacionVisual(n);
+                        const Icon = visual.icon;
+                        return (
+                          <button
+                            key={n.id}
+                            type="button"
+                            onClick={() => {
+                              setNotifOpen(false);
+                              void navigate({
+                                to: '/expedientes/$expedienteId',
+                                params: { expedienteId: n.expedienteId },
+                              });
+                            }}
+                            className="flex w-full gap-3 border-b px-4 py-3 last:border-0 hover:bg-muted/50 text-left"
+                          >
+                            <div className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-full', visual.iconBg)}>
+                              <Icon className={cn('h-4 w-4', visual.iconColor)} />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium leading-snug">{n.descripcion}</p>
+                              <p className="text-xs text-muted-foreground mt-0.5">
+                                {n.expedienteNumero} · {n.clienteNombre}
+                              </p>
+                              <p className="text-xs text-muted-foreground mt-0.5">
+                                {formatRelativeTime(n.createdAt)}
+                              </p>
+                            </div>
+                          </button>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
 
-          <div className="flex items-center gap-2.5">
-            <div className="h-9 w-9 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-sm font-bold shrink-0">
-              {initials}
-            </div>
-            <div className="hidden md:flex flex-col">
-              <span className="text-sm font-bold text-foreground leading-none">{displayName}</span>
-              <span className="text-[11px] text-muted-foreground font-medium">Socio Principal</span>
-            </div>
+          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground">
+            {initials}
           </div>
         </div>
       </header>
-
-      {/* Notifications panel */}
-      <div
-        className={cn(
-          'fixed inset-y-0 right-0 z-40 w-80 bg-card shadow-2xl border-l flex flex-col transition-transform duration-300 ease-in-out',
-          notifOpen ? 'translate-x-0' : 'translate-x-full',
-        )}
-      >
-        <div className="flex items-center justify-between p-5 border-b shrink-0">
-          <div className="flex items-center gap-2">
-            <h3 className="text-base font-bold text-foreground">Notificaciones</h3>
-            <span className="text-[11px] font-bold bg-destructive text-destructive-foreground px-1.5 py-0.5 rounded-full">
-              {notificaciones.length}
-            </span>
-          </div>
-          <button
-            onClick={() => setNotifOpen(false)}
-            aria-label="Cerrar notificaciones"
-            className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded-md hover:bg-muted"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-
-        <div className="flex-1 overflow-y-auto p-5">
-          <div className="relative">
-            <div className="absolute left-4 top-2 bottom-2 w-px bg-border" />
-            <div className="flex flex-col gap-6">
-              {notificaciones.map((n, i) => (
-                <div key={i} className="flex gap-4 relative">
-                  <div
-                    className={cn(
-                      'size-8 rounded-full flex items-center justify-center shrink-0 z-10 border-2 border-card ring-1 ring-border shadow-sm',
-                      n.iconBg,
-                      n.iconColor,
-                    )}
-                  >
-                    <n.icon className="h-4 w-4" />
-                  </div>
-                  <div className="flex flex-col pb-2">
-                    <p className="text-sm text-foreground">{n.title}</p>
-                    {n.sub && <p className="text-[11px] text-muted-foreground mt-1">{n.sub}</p>}
-                    <span className="text-[10px] text-muted-foreground/60 mt-1.5 font-bold uppercase tracking-wide">
-                      {n.time}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        <div className="panel-footer">
-          <button className="link-brand">
-            Ver todas las notificaciones
-          </button>
-        </div>
-      </div>
-
-      {notifOpen && (
-        <div className="fixed inset-0 z-30 bg-black/20" onClick={() => setNotifOpen(false)} />
-      )}
     </>
   );
 }

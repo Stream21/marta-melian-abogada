@@ -9,6 +9,10 @@ use App\Application\Port\TwilioPort;
 use App\Domain\Entity\Cliente;
 use App\Domain\Entity\Expediente;
 
+/**
+ * Notificaciones al cliente (alta, enlace de acceso): WhatsApp o email.
+ * El SMS queda reservado al OTP de firma (FirmaOtpService).
+ */
 final class NotificarAltaExpedienteService
 {
     public function __construct(
@@ -37,9 +41,42 @@ final class NotificarAltaExpedienteService
             $accessUrl,
         );
 
-        $canales = [];
+        return $this->enviarPorCanales($cliente, $expediente->numero(), $mensaje, $canalesSolicitados);
+    }
 
+    /**
+     * @param string[] $canalesSolicitados
+     *
+     * @return string[]
+     */
+    public function enviarEnlace(
+        Expediente $expediente,
+        Cliente $cliente,
+        string $tramiteNombre,
+        array $canalesSolicitados,
+    ): array {
+        $accessUrl = rtrim($this->frontendBaseUrl, '/') . '/acceso/' . $expediente->accessToken();
+        $mensaje = sprintf(
+            'Acceda a su expediente %s (%s) en Marta Melián Abogados: %s',
+            $expediente->numero(),
+            $tramiteNombre,
+            $accessUrl,
+        );
+
+        return $this->enviarPorCanales($cliente, $expediente->numero(), $mensaje, $canalesSolicitados);
+    }
+
+    /**
+     * @param string[] $canalesSolicitados
+     *
+     * @return string[]
+     */
+    private function enviarPorCanales(Cliente $cliente, string $numeroExpediente, string $mensaje, array $canalesSolicitados): array
+    {
+        $canales = [];
         $telefono = trim($cliente->telefono());
+        $email = trim($cliente->email());
+
         if (in_array('whatsapp', $canalesSolicitados, true) && '' !== $telefono) {
             try {
                 $this->twilioPort->sendWhatsAppMessage($telefono, $mensaje);
@@ -49,11 +86,10 @@ final class NotificarAltaExpedienteService
             }
         }
 
-        $email = trim($cliente->email());
         if (in_array('email', $canalesSolicitados, true) && '' !== $email) {
             $this->emailPort->send(
                 $email,
-                'Apertura de expediente ' . $expediente->numero(),
+                'Expediente ' . $numeroExpediente,
                 $mensaje,
             );
             $canales[] = 'email';

@@ -34,6 +34,9 @@ class TramiteOrm
     #[ORM\Column(type: Types::BOOLEAN)]
     private bool $activo = true;
 
+    #[ORM\Column(type: Types::BOOLEAN)]
+    private bool $requiereOtpFirma = true;
+
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private \DateTimeImmutable $createdAt;
 
@@ -108,6 +111,16 @@ class TramiteOrm
     public function setActivo(bool $activo): void
     {
         $this->activo = $activo;
+    }
+
+    public function isRequiereOtpFirma(): bool
+    {
+        return $this->requiereOtpFirma;
+    }
+
+    public function setRequiereOtpFirma(bool $requiereOtpFirma): void
+    {
+        $this->requiereOtpFirma = $requiereOtpFirma;
     }
 
     public function getCreatedAt(): \DateTimeImmutable

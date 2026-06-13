@@ -176,9 +176,9 @@ export function DocumentosRequeridosPanel({ tramiteId }: DocumentosRequeridosPan
           </div>
           <div className="flex-1">
             <h2 className="panel-title text-base">Documentación requerida</h2>
-            <p className="text-sm text-muted-foreground">
+            {/* <p className="text-sm text-muted-foreground">
               Etapa 2 — el cliente podrá subir foto o archivo; se convertirá a PDF automáticamente.
-            </p>
+            </p> */}
           </div>
           <Button type="button" size="sm" onClick={openCreate} disabled={isPending}>
             <Plus className="h-4 w-4" />

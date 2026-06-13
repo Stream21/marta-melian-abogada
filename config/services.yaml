@@ -23,6 +23,9 @@ services:
     App\Domain\Repository\ClienteRepositoryInterface: '@App\Infrastructure\Persistence\Doctrine\Repository\ClienteRepository'
     App\Domain\Repository\TramiteDocumentoRequeridoRepositoryInterface: '@App\Infrastructure\Persistence\Doctrine\Repository\TramiteDocumentoRequeridoRepository'
     App\Domain\Repository\ContratacionRepositoryInterface: '@App\Infrastructure\Persistence\Doctrine\Repository\ContratacionRepository'
+    App\Domain\Repository\ExpedienteDocumentoRepositoryInterface: '@App\Infrastructure\Persistence\Doctrine\Repository\ExpedienteDocumentoRepository'
+    App\Domain\Repository\ExpedienteFirmaRepositoryInterface: '@App\Infrastructure\Persistence\Doctrine\Repository\ExpedienteFirmaRepository'
+    App\Domain\Repository\FirmaOtpRepositoryInterface: '@App\Infrastructure\Persistence\Doctrine\Repository\FirmaOtpRepository'
     App\Application\Port\DespachoFileStoragePort: '@App\Infrastructure\Storage\DespachoFileStorage'
     App\Application\Port\HoldedPort: '@App\Infrastructure\ApiClient\HoldedService'
     App\Application\Port\StripePort: '@App\Infrastructure\ApiClient\StripeService'
@@ -78,6 +81,7 @@ services:
             $accountSid: '%env(TWILIO_ACCOUNT_SID)%'
             $authToken: '%env(TWILIO_AUTH_TOKEN)%'
             $whatsAppFrom: '%env(TWILIO_WHATSAPP_FROM)%'
+            $smsFrom: '%env(TWILIO_SMS_FROM)%'
 
     App\Infrastructure\Storage\ExpedienteFileStorage:
         arguments:
@@ -108,6 +112,23 @@ services:
     App\Application\UseCase\ObtenerContratacionExpedienteUseCase:
         arguments:
             $frontendBaseUrl: '%env(FRONTEND_BASE_URL)%'
+
+    App\Application\UseCase\ObtenerExpedienteUseCase:
+        arguments:
+            $frontendBaseUrl: '%env(FRONTEND_BASE_URL)%'
+
+    App\Application\UseCase\SubirDocumentoContratacionUseCase:
+        arguments:
+            $projectDir: '%kernel.project_dir%'
+
+    App\Application\UseCase\IniciarPagoAccesoUseCase:
+        arguments:
+            $frontendSuccessUrl: '%env(FRONTEND_SUCCESS_URL)%'
+            $frontendCancelUrl: '%env(FRONTEND_CANCEL_URL)%'
+
+    App\Infrastructure\Symfony\Controller\AccesoController:
+        arguments:
+            $mercurePublicUrl: '%env(MERCURE_PUBLIC_URL)%'
 
     App\Infrastructure\Symfony\Controller\ExpedienteController:
         arguments:

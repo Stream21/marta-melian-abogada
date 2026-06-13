@@ -41,6 +41,7 @@ export function NuevoExpedientePage() {
           ...(state.canalesNotificacion.whatsapp && state.telefono.trim() ? ['whatsapp' as const] : []),
           ...(state.canalesNotificacion.email && state.email.trim() ? ['email' as const] : []),
         ],
+        fechaVencimientoFase: state.fechaVencimientoFase.trim() || null,
       }),
     onSuccess: (result) => {
       void queryClient.invalidateQueries({ queryKey: ['expedientes'] });
@@ -112,7 +113,7 @@ export function NuevoExpedientePage() {
       case 3:
         return <PasoPagoPanel state={state} onChange={patch} />;
       case 4:
-        return <PasoResumenPanel state={state} />;
+        return <PasoResumenPanel state={state} onChange={patch} />;
       case 5:
         return <PasoFinalizarPanel state={state} onChange={patch} />;
       default:

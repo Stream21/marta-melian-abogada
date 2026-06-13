@@ -103,35 +103,35 @@ export function PasoPagoPanel({ state, onChange }: PasoPagoPanelProps) {
               </p>
               <input
                 type="range"
-                min={1}
+                min={2}
                 max={4}
                 value={state.numCuotas}
                 onChange={(e) => onChange({ numCuotas: parseInt(e.target.value, 10) })}
                 className="w-full accent-primary"
               />
               <div className="flex justify-between text-xs text-muted-foreground">
-                <span>1 mes</span>
+                <span>2 meses</span>
                 <span>4 meses</span>
               </div>
             </div>
           )}
 
-          <div className="mt-6 grid gap-3 sm:grid-cols-3">
+          <div className={cn('mt-6 grid gap-3', state.planPago === 'fraccionado' ? 'sm:grid-cols-3' : 'sm:grid-cols-2')}>
             <div className="rounded-lg border border-border p-4">
               <p className="section-label">Precio total</p>
               <p className="mt-1 text-lg font-bold">
                 {state.honorarios.toLocaleString('es-ES', { minimumFractionDigits: 2 })} €
               </p>
             </div>
-            <div className="rounded-lg border-2 border-primary bg-primary/5 p-4">
-              <p className="section-label text-primary">Cuota mensual</p>
-              <p className="mt-1 text-lg font-bold text-primary">
-                {cuotaMensual.toLocaleString('es-ES', { minimumFractionDigits: 2 })} € / mes
-              </p>
-              {state.planPago === 'fraccionado' && (
+            {state.planPago === 'fraccionado' && (
+              <div className="rounded-lg border-2 border-primary bg-primary/5 p-4">
+                <p className="section-label text-primary">Cuota mensual</p>
+                <p className="mt-1 text-lg font-bold text-primary">
+                  {cuotaMensual.toLocaleString('es-ES', { minimumFractionDigits: 2 })} € / mes
+                </p>
                 <p className="text-xs text-muted-foreground">Durante {state.numCuotas} meses</p>
-              )}
-            </div>
+              </div>
+            )}
             <div className="rounded-lg border border-border p-4">
               <p className="section-label">Cargos adicionales</p>
               <p className="mt-1 text-sm font-medium text-emerald-700">Sin intereses</p>

@@ -17,6 +17,7 @@ final readonly class Tramite
         private PlataformaTramitacion $plataforma,
         private bool $requiereProcurador,
         private bool $activo = true,
+        private bool $requiereOtpFirma = true,
         private ?string $servicioNombre = null,
         private ?\DateTimeImmutable $createdAt = null,
         private ?\DateTimeImmutable $updatedAt = null,
@@ -58,6 +59,11 @@ final readonly class Tramite
         return $this->activo;
     }
 
+    public function requiereOtpFirma(): bool
+    {
+        return $this->requiereOtpFirma;
+    }
+
     public function servicioNombre(): ?string
     {
         return $this->servicioNombre;
@@ -88,6 +94,24 @@ final readonly class Tramite
             $plataforma,
             $requiereProcurador,
             $this->activo,
+            $this->requiereOtpFirma,
+            $this->servicioNombre,
+            $this->createdAt,
+            $this->updatedAt,
+        );
+    }
+
+    public function withRequiereOtpFirma(bool $requiereOtpFirma): self
+    {
+        return new self(
+            $this->id,
+            $this->servicioId,
+            $this->nombre,
+            $this->honorarios,
+            $this->plataforma,
+            $this->requiereProcurador,
+            $this->activo,
+            $requiereOtpFirma,
             $this->servicioNombre,
             $this->createdAt,
             $this->updatedAt,
@@ -104,6 +128,7 @@ final readonly class Tramite
             $this->plataforma,
             $this->requiereProcurador,
             $activo,
+            $this->requiereOtpFirma,
             $this->servicioNombre,
             $this->createdAt,
             $this->updatedAt,

@@ -70,19 +70,7 @@ final class CreateManualPaymentUseCase
 
             $this->paymentRepository->save($payment);
 
-            // Actualizar estado de pago del expediente (persistir expediente con payment_status actualizado)
-            $expedienteUpdated = new \App\Domain\Entity\Expediente(
-                $expediente->id(),
-                $expediente->numero(),
-                $expediente->titulo(),
-                $expediente->estado(),
-                $expediente->fechaApertura(),
-                $expediente->clientName(),
-                $expediente->caseReference(),
-                $expediente->folderPath(),
-                'paid',
-            );
-            $this->expedienteRepository->save($expedienteUpdated);
+            $this->expedienteRepository->save($expediente->withPaymentStatus('paid'));
 
             $pdfUrl = '/api/expedientes/' . $expedienteId->value() . '/invoices/' . $payment->id()->value() . '/pdf';
 

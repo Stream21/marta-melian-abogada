@@ -4,8 +4,15 @@ declare(strict_types=1);
 
 namespace App\Application\UseCase;
 
+use App\Application\Port\ContratacionRealtimePort;
 use App\Application\Port\HoldedPort;
+use App\Domain\Entity\ActorHitoExpediente;
+use App\Domain\Entity\EstadoFaseExpediente;
+use App\Domain\Entity\EstadoPasoContratacion;
+use App\Domain\Entity\ExpedienteHito;
+use App\Domain\Entity\PasoContratacionCliente;
 use App\Domain\Entity\PaymentStatus;
+use App\Domain\Repository\ContratacionRepositoryInterface;
 use App\Domain\Repository\ExpedienteRepositoryInterface;
 use App\Domain\Repository\PaymentRepositoryInterface;
 use App\Domain\ValueObject\ExpedienteId;
@@ -15,7 +22,9 @@ final class HandleStripeWebhookUseCase
     public function __construct(
         private PaymentRepositoryInterface $paymentRepository,
         private ExpedienteRepositoryInterface $expedienteRepository,
+        private ContratacionRepositoryInterface $contratacionRepository,
         private HoldedPort $holdedPort,
+        private ContratacionRealtimePort $realtime,
         private string $stripeWebhookSecret,
     ) {
     }
@@ -81,18 +90,29 @@ final class HandleStripeWebhookUseCase
             new \DateTimeImmutable('now'),
         ));
 
-        $expedienteUpdated = new \App\Domain\Entity\Expediente(
-            $expediente->id(),
-            $expediente->numero(),
-            $expediente->titulo(),
-            $expediente->estado(),
-            $expediente->fechaApertura(),
-            $expediente->clientName(),
-            $expediente->caseReference(),
-            $expediente->folderPath(),
-            'paid',
-        );
-        $this->expedienteRepository->save($expedienteUpdated);
+        $this->expedienteRepository->save($expediente->withPaymentStatus('paid')->touchEstadoCambio());
+
+        $pasoPago = $this->contratacionRepository->findPaso($payment->expedienteId(), PasoContratacionCliente::Pago);
+        if (null !== $pasoPago && $pasoPago->estado() === EstadoPasoContratacion::Pendiente) {
+            $this->contratacionRepository->savePaso($pasoPago->marcarRealizadoCliente());
+            $this->contratacionRepository->saveHito(new ExpedienteHito(
+                bin2hex(random_bytes(16)),
+                $payment->expedienteId(),
+                'paso_completado',
+                'Pago digital confirmado vía Stripe.',
+                ActorHitoExpediente::Sistema,
+                new \DateTimeImmutable('now'),
+                PasoContratacionCliente::Pago,
+            ));
+            $this->expedienteRepository->save(
+                $expediente->withPaymentStatus('paid')->withEstadoFase(EstadoFaseExpediente::PendienteFirma)->touchEstadoCambio(),
+            );
+            $this->realtime->publishContratacionUpdate($payment->expedienteId()->value(), [
+                'type' => 'paso_completado',
+                'paso' => PasoContratacionCliente::Pago->value,
+                'actor' => 'sistema',
+            ]);
+        }
 
         return true;
     }

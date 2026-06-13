@@ -18,6 +18,7 @@ final readonly class AltaExpedienteInput
         public bool $notificar = true,
         /** @var string[] */
         public array $canalesNotificacion = [],
+        public ?string $fechaVencimientoFase = null,
     ) {
     }
 }

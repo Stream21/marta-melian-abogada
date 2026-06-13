@@ -1,4 +1,4 @@
-import { Link } from '@tanstack/react-router';
+import { Link, useNavigate } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/api/client';
 import { Badge } from '@/components/ui/badge';
@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { FolderOpen, Plus } from 'lucide-react';
 
 export function ExpedientesPage() {
+  const navigate = useNavigate();
   const { data: expedientes, isLoading } = useQuery({
     queryKey: ['expedientes'],
     queryFn: () => api.getExpedientes(),
@@ -54,17 +55,19 @@ export function ExpedientesPage() {
             </thead>
             <tbody className="divide-y divide-border">
               {expedientes.map((exp) => (
-                <tr key={exp.id} className="hover:bg-primary/5 transition-colors">
+                <tr
+                  key={exp.id}
+                  className="cursor-pointer hover:bg-primary/5 transition-colors"
+                  title="Doble clic para abrir"
+                  onDoubleClick={() =>
+                    navigate({
+                      to: '/expedientes/$expedienteId',
+                      params: { expedienteId: exp.id },
+                    })
+                  }
+                >
                   <td className="px-4 py-3 font-mono text-muted-foreground">{exp.numero}</td>
-                  <td className="px-4 py-3">
-                    <Link
-                      to="/expedientes/$expedienteId"
-                      params={{ expedienteId: exp.id }}
-                      className="font-medium text-primary hover:underline"
-                    >
-                      {exp.titulo}
-                    </Link>
-                  </td>
+                  <td className="px-4 py-3 font-medium">{exp.titulo}</td>
                   <td className="px-4 py-3 text-muted-foreground">{exp.clientName}</td>
                   <td className="px-4 py-3">
                     {exp.faseNegocio ? (

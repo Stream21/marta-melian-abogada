@@ -9,7 +9,9 @@ use App\Application\DTO\CrearExpedienteInput;
 use App\Application\DTO\ExpedienteResponseMapper;
 use App\Application\UseCase\AltaExpedienteUseCase;
 use App\Application\UseCase\CrearExpedienteUseCase;
+use App\Application\UseCase\ListarAuditoriaExpedienteUseCase;
 use App\Application\UseCase\ListarExpedientesUseCase;
+use App\Application\UseCase\ObtenerExpedienteUseCase;
 use App\Application\UseCase\VincularExpedienteClienteUseCase;
 use App\Domain\Exception\TelefonoClienteDuplicadoException;
 use App\Domain\Repository\PaymentRepositoryInterface;
@@ -27,6 +29,8 @@ final class ExpedienteController extends AbstractController
         private ListarExpedientesUseCase $listarExpedientes,
         private CrearExpedienteUseCase $crearExpediente,
         private AltaExpedienteUseCase $altaExpediente,
+        private ObtenerExpedienteUseCase $obtenerExpediente,
+        private ListarAuditoriaExpedienteUseCase $listarAuditoria,
         private PaymentRepositoryInterface $paymentRepository,
         private VincularExpedienteClienteUseCase $vincularExpediente,
         private string $frontendBaseUrl = 'http://localhost:5173',
@@ -85,6 +89,7 @@ final class ExpedienteController extends AbstractController
                     (array) ($data['canalesNotificacion'] ?? []),
                     fn ($c) => is_string($c) && in_array($c, ['whatsapp', 'email'], true),
                 )),
+                fechaVencimientoFase: isset($data['fechaVencimientoFase']) ? (string) $data['fechaVencimientoFase'] : null,
             ));
         } catch (TelefonoClienteDuplicadoException $e) {
             return new JsonResponse([
@@ -101,6 +106,26 @@ final class ExpedienteController extends AbstractController
             'accessUrl' => $result->accessUrl,
             'canalesNotificados' => $result->canalesNotificados,
         ], JsonResponse::HTTP_CREATED);
+    }
+
+    #[Route(path: '/{id}', name: 'show', methods: ['GET'], priority: -1)]
+    public function show(string $id): JsonResponse
+    {
+        try {
+            return new JsonResponse(($this->obtenerExpediente)($id));
+        } catch (\InvalidArgumentException $e) {
+            return new JsonResponse(['message' => $e->getMessage()], Response::HTTP_NOT_FOUND);
+        }
+    }
+
+    #[Route(path: '/{id}/auditoria', name: 'auditoria', methods: ['GET'])]
+    public function auditoria(string $id): JsonResponse
+    {
+        try {
+            return new JsonResponse(($this->listarAuditoria)($id));
+        } catch (\InvalidArgumentException $e) {
+            return new JsonResponse(['message' => $e->getMessage()], Response::HTTP_NOT_FOUND);
+        }
     }
 
     #[Route(path: '/{id}/payments', name: 'payments', methods: ['GET'])]

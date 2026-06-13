@@ -68,6 +68,7 @@ final class TramiteController extends AbstractController
                 honorarios: (float) ($data['honorarios'] ?? 0),
                 plataforma: (string) ($data['plataforma'] ?? 'mercurio'),
                 requiereProcurador: (bool) ($data['requiereProcurador'] ?? false),
+                requiereOtpFirma: (bool) ($data['requiereOtpFirma'] ?? true),
             ));
         } catch (\InvalidArgumentException $e) {
             return new JsonResponse(['message' => $e->getMessage()], Response::HTTP_BAD_REQUEST);
@@ -93,6 +94,7 @@ final class TramiteController extends AbstractController
                 honorarios: (float) ($data['honorarios'] ?? 0),
                 plataforma: (string) ($data['plataforma'] ?? 'mercurio'),
                 requiereProcurador: (bool) ($data['requiereProcurador'] ?? false),
+                requiereOtpFirma: (bool) ($data['requiereOtpFirma'] ?? true),
             ));
         } catch (\InvalidArgumentException $e) {
             $code = str_contains($e->getMessage(), 'no encontrado') ? Response::HTTP_NOT_FOUND : Response::HTTP_BAD_REQUEST;
@@ -139,6 +141,7 @@ final class TramiteController extends AbstractController
             'plataforma' => $t->plataforma()->value,
             'plataformaLabel' => $t->plataforma()->label(),
             'requiereProcurador' => $t->requiereProcurador(),
+            'requiereOtpFirma' => $t->requiereOtpFirma(),
             'activo' => $t->activo(),
             'createdAt' => $t->createdAt()?->format(\DateTimeInterface::ATOM),
             'updatedAt' => $t->updatedAt()?->format(\DateTimeInterface::ATOM),

@@ -5,6 +5,7 @@ import { api, type ClienteResponse } from '@/api/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { TelefonoInput } from '@/components/ui/TelefonoInput';
 import { ESTADOS_CIVILES } from '@/lib/cliente-datos';
 
 export function ClienteDatosPanel() {
@@ -210,9 +211,14 @@ export function ClienteDatosPanel() {
             <Label htmlFor="cli-provincia">Provincia</Label>
             <Input id="cli-provincia" value={provincia} onChange={(e) => setProvincia(e.target.value)} />
           </div>
-          <div className="space-y-1">
-            <Label htmlFor="cli-telefono">Teléfono</Label>
-            <Input id="cli-telefono" value={telefono} onChange={(e) => setTelefono(e.target.value)} />
+          <div className="space-y-1 md:col-span-2">
+            <Label htmlFor="cli-telefono">Teléfono móvil <span className="text-destructive">*</span></Label>
+            <TelefonoInput
+              id="cli-telefono"
+              value={telefono}
+              onChange={setTelefono}
+              required
+            />
           </div>
           <div className="space-y-1">
             <Label htmlFor="cli-email">Email</Label>

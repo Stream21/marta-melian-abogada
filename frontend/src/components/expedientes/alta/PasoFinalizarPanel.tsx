@@ -16,7 +16,7 @@ export function PasoFinalizarPanel({ state, onChange }: PasoFinalizarPanelProps)
       ? [
           {
             id: 'whatsapp' as const,
-            label: 'SMS / WhatsApp',
+            label: 'WhatsApp',
             icon: MessageCircle,
             desc: 'Notificación instantánea con enlace de acceso.',
           },

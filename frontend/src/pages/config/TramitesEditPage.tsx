@@ -51,6 +51,7 @@ export function TramitesEditPage({ tramiteId }: TramitesEditPageProps) {
               initialHonorarios={data.honorarios}
               initialPlataforma={data.plataforma as 'mercurio' | 'lexnet'}
               initialRequiereProcurador={data.requiereProcurador}
+              initialRequiereOtpFirma={data.requiereOtpFirma}
             />
           )}
         </div>

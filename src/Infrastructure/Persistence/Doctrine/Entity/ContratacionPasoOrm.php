@@ -31,6 +31,9 @@ class ContratacionPasoOrm
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
     private ?\DateTimeImmutable $validadoAt = null;
 
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $notaDevolucion = null;
+
     public function getId(): string
     {
         return $this->id;
@@ -89,5 +92,15 @@ class ContratacionPasoOrm
     public function setValidadoAt(?\DateTimeImmutable $validadoAt): void
     {
         $this->validadoAt = $validadoAt;
+    }
+
+    public function getNotaDevolucion(): ?string
+    {
+        return $this->notaDevolucion;
+    }
+
+    public function setNotaDevolucion(?string $notaDevolucion): void
+    {
+        $this->notaDevolucion = $notaDevolucion;
     }
 }

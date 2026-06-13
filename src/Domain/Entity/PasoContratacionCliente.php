@@ -6,7 +6,6 @@ namespace App\Domain\Entity;
 
 enum PasoContratacionCliente: string
 {
-    case Documentacion = 'documentacion';
     case DatosCliente = 'datos_cliente';
     case Firmas = 'firmas';
     case Pago = 'pago';
@@ -14,8 +13,7 @@ enum PasoContratacionCliente: string
     public function label(): string
     {
         return match ($this) {
-            self::Documentacion => 'Documentación',
-            self::DatosCliente => 'Datos del cliente',
+            self::DatosCliente => 'Identidad y datos',
             self::Firmas => 'Firmas legales',
             self::Pago => 'Pago inicial',
         };
@@ -24,20 +22,18 @@ enum PasoContratacionCliente: string
     public function descripcion(): string
     {
         return match ($this) {
-            self::Documentacion => 'Subida de documentación identificativa y requerida',
-            self::DatosCliente => 'Extracción automática y datos complementarios del cliente',
+            self::DatosCliente => 'Escaneo del DNI/NIE/pasaporte y verificación de datos personales',
             self::Firmas => 'Firma de hoja de encargo, designación y RGPD',
-            self::Pago => 'Realización del pago según método acordado',
+            self::Pago => 'Instrucciones de pago según método acordado (el abogado confirma el cobro manual)',
         };
     }
 
     public function orden(): int
     {
         return match ($this) {
-            self::Documentacion => 1,
-            self::DatosCliente => 2,
-            self::Firmas => 3,
-            self::Pago => 4,
+            self::DatosCliente => 1,
+            self::Firmas => 2,
+            self::Pago => 3,
         };
     }
 

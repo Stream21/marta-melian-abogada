@@ -4,13 +4,16 @@ declare(strict_types=1);
 
 namespace App\Application\UseCase;
 
+use App\Application\DTO\ManualPaymentRequest;
+use App\Application\Port\ContratacionRealtimePort;
+use App\Application\Service\CalendarioPagoService;
 use App\Domain\Entity\ActorHitoExpediente;
 use App\Domain\Entity\EstadoFaseExpediente;
 use App\Domain\Entity\EstadoPasoContratacion;
 use App\Domain\Entity\ExpedienteHito;
 use App\Domain\Entity\FaseNegocioExpediente;
+use App\Domain\Entity\MetodoPagoExpediente;
 use App\Domain\Entity\PasoContratacionCliente;
-use App\Application\Port\ContratacionRealtimePort;
 use App\Domain\Repository\ContratacionRepositoryInterface;
 use App\Domain\Repository\ExpedienteRepositoryInterface;
 use App\Domain\ValueObject\ExpedienteId;
@@ -22,6 +25,8 @@ final class ValidarPasoContratacionUseCase
         private ContratacionRepositoryInterface $contratacionRepository,
         private ContratacionRealtimePort $realtime,
         private SincronizarClienteHoldedUseCase $sincronizarClienteHolded,
+        private CreateManualPaymentUseCase $createManualPayment,
+        private CalendarioPagoService $calendarioPagoService,
     ) {
     }
 
@@ -45,8 +50,36 @@ final class ValidarPasoContratacionUseCase
             throw new \InvalidArgumentException('Paso no encontrado.');
         }
 
-        if ($paso->estado() !== EstadoPasoContratacion::RealizadoCliente) {
+        $esPagoManualPendiente = PasoContratacionCliente::Pago === $pasoEnum
+            && MetodoPagoExpediente::Manual === $expediente->metodoPago()
+            && EstadoPasoContratacion::Pendiente === $paso->estado();
+
+        if ($esPagoManualPendiente && !$this->pasoFirmasValidado($id)) {
+            throw new \InvalidArgumentException('Debe validar las firmas antes de confirmar el pago.');
+        }
+
+        if (!$esPagoManualPendiente && EstadoPasoContratacion::RealizadoCliente !== $paso->estado()) {
             throw new \InvalidArgumentException('Este paso aún no ha sido completado por el cliente.');
+        }
+
+        if (PasoContratacionCliente::DatosCliente === $pasoEnum) {
+            $this->sincronizarClienteHoldedTrasContratacion($expediente->clienteId());
+        }
+
+        if (PasoContratacionCliente::Pago === $pasoEnum && MetodoPagoExpediente::Manual === $expediente->metodoPago()) {
+            $importeInicial = $this->calendarioPagoService->importePagoInicial(
+                $expediente->honorariosAcordados(),
+                $expediente->planPago(),
+                $expediente->numCuotas(),
+                $expediente->calendarioPagos(),
+            );
+
+            ($this->createManualPayment)(new ManualPaymentRequest(
+                expedienteId: $expedienteId,
+                amount: (string) $importeInicial,
+                clientName: $expediente->clientName(),
+                caseReference: $expediente->caseReference(),
+            ));
         }
 
         $this->contratacionRepository->savePaso($paso->marcarValidadoAbogado());
@@ -61,16 +94,30 @@ final class ValidarPasoContratacionUseCase
             $pasoEnum,
         ));
 
-        $this->actualizarEstadoExpediente($id);
+        $faseCompletada = $this->actualizarEstadoExpediente($id);
 
-        $this->realtime->publishContratacionUpdate($id->value(), [
+        $payload = [
             'type' => 'paso_validado',
             'paso' => $pasoEnum->value,
             'actor' => 'abogado',
-        ]);
+            'expedienteNumero' => $expediente->numero(),
+            'clienteNombre' => $expediente->clientName(),
+        ];
+
+        if ($faseCompletada) {
+            $payload = [
+                'type' => 'fase_completada',
+                'faseNegocio' => FaseNegocioExpediente::Requerimientos->value,
+                'actor' => 'sistema',
+                'expedienteNumero' => $expediente->numero(),
+                'clienteNombre' => $expediente->clientName(),
+            ];
+        }
+
+        $this->realtime->publishContratacionUpdate($id->value(), $payload);
     }
 
-    private function actualizarEstadoExpediente(ExpedienteId $id): void
+    private function actualizarEstadoExpediente(ExpedienteId $id): bool
     {
         $pasos = $this->contratacionRepository->findPasosByExpediente($id);
         $todosValidados = true;
@@ -87,14 +134,15 @@ final class ValidarPasoContratacionUseCase
 
         $expediente = $this->expedienteRepository->findById($id);
         if (null === $expediente) {
-            return;
+            return false;
         }
 
         if ($todosValidados) {
             $this->expedienteRepository->save(
                 $expediente
                     ->withFaseNegocio(FaseNegocioExpediente::Requerimientos, EstadoFaseExpediente::PendienteCliente)
-                    ->withPaymentStatus('paid'),
+                    ->withPaymentStatus('paid')
+                    ->touchEstadoCambio(),
             );
 
             $this->contratacionRepository->saveHito(new ExpedienteHito(
@@ -106,9 +154,7 @@ final class ValidarPasoContratacionUseCase
                 new \DateTimeImmutable('now'),
             ));
 
-            $this->sincronizarClienteHoldedTrasContratacion($expediente->clienteId());
-
-            return;
+            return true;
         }
 
         $nuevoEstado = $hayPendienteCliente
@@ -116,8 +162,18 @@ final class ValidarPasoContratacionUseCase
             : EstadoFaseExpediente::PendienteFirma;
 
         if ($expediente->estadoFase() !== $nuevoEstado) {
-            $this->expedienteRepository->save($expediente->withEstadoFase($nuevoEstado));
+            $this->expedienteRepository->save($expediente->withEstadoFase($nuevoEstado)->touchEstadoCambio());
         }
+
+        return false;
+    }
+
+    private function pasoFirmasValidado(ExpedienteId $id): bool
+    {
+        $pasoFirmas = $this->contratacionRepository->findPaso($id, PasoContratacionCliente::Firmas);
+
+        return null !== $pasoFirmas
+            && EstadoPasoContratacion::ValidadoAbogado === $pasoFirmas->estado();
     }
 
     private function sincronizarClienteHoldedTrasContratacion(?string $clienteId): void

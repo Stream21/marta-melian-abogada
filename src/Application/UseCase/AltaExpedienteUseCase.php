@@ -82,6 +82,7 @@ final class AltaExpedienteUseCase
             $planPago,
             $numCuotas,
             $accessToken,
+            $this->parseFechaVencimiento($input->fechaVencimientoFase),
         );
 
         $this->expedienteRepository->save($expediente);
@@ -112,7 +113,7 @@ final class AltaExpedienteUseCase
         )));
 
         if ([] === $solicitados) {
-            throw new \InvalidArgumentException('Debe seleccionar al menos un canal de notificación.');
+            throw new \InvalidArgumentException('Debe seleccionar al menos un canal de notificación (WhatsApp o email).');
         }
 
         $telefono = trim($cliente->telefono());
@@ -129,12 +130,30 @@ final class AltaExpedienteUseCase
         return $solicitados;
     }
 
+    private function parseFechaVencimiento(?string $fecha): ?\DateTimeImmutable
+    {
+        if (null === $fecha || '' === trim($fecha)) {
+            return (new \DateTimeImmutable('now'))->modify('+1 month')->setTime(23, 59, 59);
+        }
+
+        $parsed = \DateTimeImmutable::createFromFormat('Y-m-d', trim($fecha));
+
+        return $parsed
+            ? $parsed->setTime(23, 59, 59)
+            : throw new \InvalidArgumentException('Fecha de vencimiento no válida.');
+    }
+
     private function resolverCliente(AltaExpedienteInput $input): \App\Domain\Entity\Cliente
     {
         if (null !== $input->clienteId && '' !== $input->clienteId) {
             $cliente = $this->clienteRepository->findById(new ClienteId($input->clienteId));
             if (null === $cliente) {
                 throw new \InvalidArgumentException('Cliente no encontrado.');
+            }
+
+            $telefono = $this->telefonoNormalizer->normalize($cliente->telefono());
+            if (null === $telefono || !$this->telefonoNormalizer->isValid($telefono)) {
+                throw new \InvalidArgumentException('El cliente debe tener un teléfono móvil válido.');
             }
 
             return $cliente;

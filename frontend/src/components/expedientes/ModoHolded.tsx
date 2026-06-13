@@ -18,7 +18,7 @@ export function ModoHolded({ expedienteId, invoices }: ModoHoldedProps) {
   const [cantidad, setCantidad] = useState('');
 
   const mutation = useMutation({
-    mutationFn: () => api.postInvoiceHolded({ expedienteId, concepto, amount: cantidad }),
+    mutationFn: () => api.postInvoiceHolded({ expedienteId, concepto, importe: cantidad }),
     onSuccess: () => {
       setConcepto('');
       setCantidad('');

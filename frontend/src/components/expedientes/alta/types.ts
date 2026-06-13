@@ -1,6 +1,12 @@
 import type { MetodoPago, PlanPago } from '@/api/client';
 import type { TipoServicioValue } from '@/lib/servicio-tipos';
 
+function defaultFechaVencimientoFase(): string {
+  const d = new Date();
+  d.setMonth(d.getMonth() + 1);
+  return d.toISOString().slice(0, 10);
+}
+
 export interface ExpedienteAltaState {
   step: number;
   modoCliente: 'existente' | 'nuevo';
@@ -23,6 +29,7 @@ export interface ExpedienteAltaState {
     whatsapp: boolean;
     email: boolean;
   };
+  fechaVencimientoFase: string;
 }
 
 export const initialAltaState: ExpedienteAltaState = {
@@ -44,6 +51,7 @@ export const initialAltaState: ExpedienteAltaState = {
   planPago: 'unico',
   numCuotas: 1,
   canalesNotificacion: { whatsapp: false, email: false },
+  fechaVencimientoFase: defaultFechaVencimientoFase(),
 };
 
 export function canalesNotificacionPorDefecto(telefono: string, email: string): {

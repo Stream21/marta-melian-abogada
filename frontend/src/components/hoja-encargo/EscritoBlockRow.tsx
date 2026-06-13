@@ -2,6 +2,8 @@ import { GripVertical } from 'lucide-react';
 import {
   getRowInsertPosition,
   handleRowDragOver,
+  parseRowDragData,
+  ROW_DRAG_MIME,
   type RowInsertPosition,
   setRowDragData,
 } from '@/lib/escrito-row-drag';
@@ -52,10 +54,16 @@ export function EscritoBlockRow({
         dragging && 'opacity-40',
       )}
       onDragOver={(event) => {
+        if (!event.dataTransfer.types.includes(ROW_DRAG_MIME)) {
+          return;
+        }
         handleRowDragOver(event);
         onDragOverRow(blockId, getRowInsertPosition(event, event.currentTarget));
       }}
       onDrop={(event) => {
+        if (!parseRowDragData(event.dataTransfer)) {
+          return;
+        }
         event.preventDefault();
         event.stopPropagation();
         onDrop(blockId, event);

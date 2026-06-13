@@ -15,6 +15,7 @@ final readonly class ContratacionPaso
         private EstadoPasoContratacion $estado,
         private ?\DateTimeImmutable $realizadoAt = null,
         private ?\DateTimeImmutable $validadoAt = null,
+        private ?string $notaDevolucion = null,
     ) {
     }
 
@@ -48,6 +49,11 @@ final readonly class ContratacionPaso
         return $this->validadoAt;
     }
 
+    public function notaDevolucion(): ?string
+    {
+        return $this->notaDevolucion;
+    }
+
     public function marcarRealizadoCliente(): self
     {
         return new self(
@@ -57,6 +63,7 @@ final readonly class ContratacionPaso
             EstadoPasoContratacion::RealizadoCliente,
             new \DateTimeImmutable('now'),
             $this->validadoAt,
+            null,
         );
     }
 
@@ -69,6 +76,25 @@ final readonly class ContratacionPaso
             EstadoPasoContratacion::ValidadoAbogado,
             $this->realizadoAt,
             new \DateTimeImmutable('now'),
+            null,
+        );
+    }
+
+    public function devolverConNota(string $nota): self
+    {
+        $nota = trim($nota);
+        if ('' === $nota) {
+            throw new \InvalidArgumentException('La nota de devolución es obligatoria.');
+        }
+
+        return new self(
+            $this->id,
+            $this->expedienteId,
+            $this->paso,
+            EstadoPasoContratacion::Pendiente,
+            null,
+            null,
+            $nota,
         );
     }
 }

@@ -59,7 +59,7 @@ final class ActualizarTramiteUseCase
             $input->honorarios,
             $plataforma,
             $input->requiereProcurador,
-        );
+        )->withRequiereOtpFirma($input->requiereOtpFirma);
         $this->tramiteRepository->save($updated);
 
         return $this->tramiteRepository->findById($id) ?? $updated;

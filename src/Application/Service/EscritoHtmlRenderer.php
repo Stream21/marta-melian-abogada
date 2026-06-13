@@ -357,9 +357,14 @@ HTML;
         $type = (string) ($bloque['type'] ?? '');
         $isClient = 'signature_client' === $type;
         $slotLabel = $isClient ? 'POR EL CLIENTE' : 'POR LA ABOGADA';
-        $inner = !$isClient && null !== $selloUri
-            ? '<img class="stamp" src="' . htmlspecialchars($selloUri, ENT_QUOTES, 'UTF-8') . '" alt="" />'
-            : '<div class="signature-placeholder">' . ($isClient ? 'Firma del cliente' : 'Firma de la letrada') . '</div>';
+        $clientSig = trim($variables['FIRMA_CLIENTE_DATA_URI'] ?? '');
+        if ($isClient && '' !== $clientSig) {
+            $inner = '<img class="stamp" src="' . htmlspecialchars($clientSig, ENT_QUOTES, 'UTF-8') . '" alt="" />';
+        } elseif (!$isClient && null !== $selloUri) {
+            $inner = '<img class="stamp" src="' . htmlspecialchars($selloUri, ENT_QUOTES, 'UTF-8') . '" alt="" />';
+        } else {
+            $inner = '<div class="signature-placeholder">' . ($isClient ? 'Firma del cliente' : 'Firma de la letrada') . '</div>';
+        }
         $nameKeys = $isClient ? ['NOMBRE_CLIENTE'] : ['NOMBRE_LETRADA', 'NOMBRE_FIRMA'];
 
         return $this->renderSignatureArea($inner, $logoUri)

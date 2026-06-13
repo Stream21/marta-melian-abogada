@@ -1,4 +1,4 @@
-import { PenLine, Smartphone } from 'lucide-react';
+import { PenLine } from 'lucide-react';
 import { SignatureAreaSurface } from '@/components/hoja-encargo/SignatureAreaSurface';
 import { VariableChip } from '@/components/hoja-encargo/VariableChip';
 import { cn } from '@/lib/utils';
@@ -46,8 +46,8 @@ export function SignatureZoneBlock({
             <p className="text-[10px] italic text-muted-foreground">Firma del cliente</p>
           ) : (
             <>
-              <Smartphone className="mb-2 h-5 w-5 text-primary" aria-hidden />
-              <p className="text-[10px] font-medium text-muted-foreground">Captura en el expediente</p>
+              <PenLine className="mb-2 h-5 w-5 text-primary" aria-hidden />
+              <p className="text-[10px] font-medium text-muted-foreground">Firma en el portal del cliente</p>
             </>
           )
         ) : selloUrl ? (

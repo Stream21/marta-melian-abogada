@@ -33,6 +33,7 @@ final class ContratacionRepository implements ContratacionRepositoryInterface
             $existing->setEstado($paso->estado()->value);
             $existing->setRealizadoAt($paso->realizadoAt());
             $existing->setValidadoAt($paso->validadoAt());
+            $existing->setNotaDevolucion($paso->notaDevolucion());
         } else {
             $orm = new ContratacionPasoOrm();
             $orm->setId($paso->id());
@@ -41,6 +42,7 @@ final class ContratacionRepository implements ContratacionRepositoryInterface
             $orm->setEstado($paso->estado()->value);
             $orm->setRealizadoAt($paso->realizadoAt());
             $orm->setValidadoAt($paso->validadoAt());
+            $orm->setNotaDevolucion($paso->notaDevolucion());
             $this->entityManager->persist($orm);
         }
 
@@ -53,7 +55,15 @@ final class ContratacionRepository implements ContratacionRepositoryInterface
             ['expedienteId' => $expedienteId->value()],
         );
 
-        return array_map($this->pasoOrmToDomain(...), $orms);
+        $pasos = [];
+        foreach ($orms as $orm) {
+            $paso = $this->pasoOrmToDomain($orm);
+            if (null !== $paso) {
+                $pasos[] = $paso;
+            }
+        }
+
+        return $pasos;
     }
 
     public function findPaso(ExpedienteId $expedienteId, PasoContratacionCliente $paso): ?ContratacionPaso
@@ -90,15 +100,58 @@ final class ContratacionRepository implements ContratacionRepositoryInterface
         return array_map($this->hitoOrmToDomain(...), $orms);
     }
 
-    private function pasoOrmToDomain(ContratacionPasoOrm $orm): ContratacionPaso
+    public function findHitosByExpedientePaginated(ExpedienteId $expedienteId, int $offset, int $limit): array
     {
+        $orms = $this->entityManager->getRepository(ExpedienteHitoOrm::class)
+            ->createQueryBuilder('h')
+            ->where('h.expedienteId = :expedienteId')
+            ->setParameter('expedienteId', $expedienteId->value())
+            ->orderBy('h.createdAt', 'DESC')
+            ->setFirstResult(max(0, $offset))
+            ->setMaxResults(max(1, $limit))
+            ->getQuery()
+            ->getResult();
+
+        return array_map($this->hitoOrmToDomain(...), $orms);
+    }
+
+    public function countHitosByExpediente(ExpedienteId $expedienteId): int
+    {
+        return (int) $this->entityManager->getRepository(ExpedienteHitoOrm::class)
+            ->createQueryBuilder('h')
+            ->select('COUNT(h.id)')
+            ->where('h.expedienteId = :expedienteId')
+            ->setParameter('expedienteId', $expedienteId->value())
+            ->getQuery()
+            ->getSingleScalarResult();
+    }
+
+    public function findRecentHitos(int $limit = 20): array
+    {
+        $orms = $this->entityManager->getRepository(ExpedienteHitoOrm::class)->findBy(
+            [],
+            ['createdAt' => 'DESC'],
+            $limit,
+        );
+
+        return array_map($this->hitoOrmToDomain(...), $orms);
+    }
+
+    private function pasoOrmToDomain(ContratacionPasoOrm $orm): ?ContratacionPaso
+    {
+        $paso = PasoContratacionCliente::tryFrom($orm->getPaso());
+        if (null === $paso) {
+            return null;
+        }
+
         return new ContratacionPaso(
             $orm->getId(),
             new ExpedienteId($orm->getExpedienteId()),
-            PasoContratacionCliente::from($orm->getPaso()),
+            $paso,
             EstadoPasoContratacion::from($orm->getEstado()),
             $orm->getRealizadoAt(),
             $orm->getValidadoAt(),
+            $orm->getNotaDevolucion(),
         );
     }
 
@@ -111,7 +164,7 @@ final class ContratacionRepository implements ContratacionRepositoryInterface
             $orm->getDescripcion(),
             ActorHitoExpediente::from($orm->getActor()),
             $orm->getCreatedAt(),
-            null !== $orm->getPaso() ? PasoContratacionCliente::from($orm->getPaso()) : null,
+            null !== $orm->getPaso() ? PasoContratacionCliente::tryFrom($orm->getPaso()) : null,
         );
     }
 }

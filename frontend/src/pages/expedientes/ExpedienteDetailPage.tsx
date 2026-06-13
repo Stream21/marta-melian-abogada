@@ -1,7 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/api/client';
 import { ContratacionGestionPanel } from '@/components/expedientes/contratacion/ContratacionGestionPanel';
+import { RequerimientosEnConstruccionPanel } from '@/components/expedientes/contratacion/RequerimientosEnConstruccionPanel';
 import { EscritoGeneradorPanel } from '@/components/expedientes/EscritoGeneradorPanel';
+import { ExpedienteDocumentacionPanel } from '@/components/expedientes/ExpedienteDocumentacionPanel';
+import { ExpedienteAuditoriaPanel } from '@/components/expedientes/ExpedienteAuditoriaPanel';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
@@ -22,11 +25,11 @@ const FASE_LABELS: Record<string, string> = {
 
 export function ExpedienteDetailPage({ expedienteId }: ExpedienteDetailPageProps) {
   const { data: expediente } = useQuery({
-    queryKey: ['expedientes'],
-    queryFn: () => api.getExpedientes().then((list) => list.find((e) => e.id === expedienteId)),
+    queryKey: ['expediente', expedienteId],
+    queryFn: () => api.getExpediente(expedienteId),
   });
 
-  const defaultTab = expediente?.faseNegocio === 'contratacion' ? 'gestion' : 'escritos';
+  const defaultTab = expediente?.faseNegocio === 'contratacion' ? 'gestion' : 'gestion';
 
   return (
     <div className="p-6">
@@ -56,28 +59,57 @@ export function ExpedienteDetailPage({ expedienteId }: ExpedienteDetailPageProps
       <Tabs defaultValue={defaultTab} className="w-full">
         <TabsList className="mb-6 h-10 rounded-lg bg-muted p-1">
           <TabsTrigger value="gestion">Gestión de Fases</TabsTrigger>
-          <TabsTrigger value="escritos">Escritos</TabsTrigger>
+          <TabsTrigger value="escritos" disabled={expediente?.faseNegocio === 'contratacion'}>
+            Escritos
+          </TabsTrigger>
           <TabsTrigger value="documentacion">Documentación</TabsTrigger>
+          <TabsTrigger value="auditoria">Auditoría</TabsTrigger>
           <TabsTrigger value="facturacion">Facturación</TabsTrigger>
         </TabsList>
 
         <TabsContent value="gestion">
           {expediente?.faseNegocio === 'contratacion' ? (
             <ContratacionGestionPanel expedienteId={expedienteId} />
+          ) : expediente ? (
+            <RequerimientosEnConstruccionPanel
+              expedienteId={expedienteId}
+              numero={expediente.numero}
+            />
           ) : (
             <StubTab label="Gestión de Fases" />
           )}
         </TabsContent>
         <TabsContent value="escritos">
-          {expediente ? <EscritoGeneradorPanel expediente={expediente} /> : <StubTab label="Escritos" />}
+          {expediente?.faseNegocio === 'contratacion' ? (
+            <FaseEscritosNoDisponible />
+          ) : expediente ? (
+            <EscritoGeneradorPanel expediente={expediente} />
+          ) : (
+            <StubTab label="Escritos" />
+          )}
         </TabsContent>
         <TabsContent value="documentacion">
-          <StubTab label="Documentación" />
+          <ExpedienteDocumentacionPanel expedienteId={expedienteId} />
+        </TabsContent>
+        <TabsContent value="auditoria">
+          <ExpedienteAuditoriaPanel expedienteId={expedienteId} />
         </TabsContent>
         <TabsContent value="facturacion">
           <FacturacionTab expedienteId={expedienteId} />
         </TabsContent>
       </Tabs>
+    </div>
+  );
+}
+
+function FaseEscritosNoDisponible() {
+  return (
+    <div className="panel p-8 text-center">
+      <p className="font-medium">Escritos no disponibles en fase de contratación</p>
+      <p className="mt-2 text-sm text-muted-foreground max-w-md mx-auto">
+        Los escritos adicionales (requerimientos, tramitación, resolución) estarán disponibles a partir de la fase 2.
+        En contratación solo se generan los documentos legales firmados por el cliente.
+      </p>
     </div>
   );
 }
@@ -118,7 +150,7 @@ function FacturacionTab({ expedienteId }: { expedienteId: string }) {
       />
       <Separator />
       <div className="grid gap-6 lg:grid-cols-2">
-        <ModoHolded expedienteId={expedienteId} />
+        <ModoHolded expedienteId={expedienteId} invoices={invoices ?? []} />
         <ModoStripe expedienteId={expedienteId} />
       </div>
     </div>

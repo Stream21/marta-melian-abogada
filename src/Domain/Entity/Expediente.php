@@ -28,6 +28,11 @@ final readonly class Expediente
         private PlanPagoExpediente $planPago = PlanPagoExpediente::Unico,
         private int $numCuotas = 1,
         private ?string $accessToken = null,
+        private ?\DateTimeImmutable $fechaVencimientoFase = null,
+        private ?\DateTimeImmutable $fechaUltimoCambioEstado = null,
+        private ?\DateTimeImmutable $fechaFirmaContrato = null,
+        /** @var list<array{numero: int, importe: float, fechaVencimiento: string, estado: string}>|null */
+        private ?array $calendarioPagos = null,
     ) {
     }
 
@@ -126,6 +131,56 @@ final readonly class Expediente
         return $this->accessToken;
     }
 
+    public function fechaVencimientoFase(): ?\DateTimeImmutable
+    {
+        return $this->fechaVencimientoFase;
+    }
+
+    public function fechaUltimoCambioEstado(): ?\DateTimeImmutable
+    {
+        return $this->fechaUltimoCambioEstado;
+    }
+
+    public function fechaFirmaContrato(): ?\DateTimeImmutable
+    {
+        return $this->fechaFirmaContrato;
+    }
+
+    /**
+     * @return list<array{numero: int, importe: float, fechaVencimiento: string, estado: string}>|null
+     */
+    public function calendarioPagos(): ?array
+    {
+        return $this->calendarioPagos;
+    }
+
+    public function withCondicionesPago(
+        float $honorariosAcordados,
+        MetodoPagoExpediente $metodoPago,
+        PlanPagoExpediente $planPago,
+        int $numCuotas,
+    ): self {
+        return $this->rebuild(
+            honorariosAcordados: $honorariosAcordados,
+            metodoPago: $metodoPago,
+            planPago: $planPago,
+            numCuotas: $numCuotas,
+        );
+    }
+
+    /**
+     * @param list<array{numero: int, importe: float, fechaVencimiento: string, estado: string}>|null $calendarioPagos
+     */
+    public function withCalendarioPagos(?array $calendarioPagos): self
+    {
+        return $this->rebuild(calendarioPagos: $calendarioPagos, calendarioPagosProvided: true);
+    }
+
+    public function withFechaFirmaContrato(?\DateTimeImmutable $fechaFirmaContrato): self
+    {
+        return $this->rebuild(fechaFirmaContrato: $fechaFirmaContrato);
+    }
+
     public function withClienteId(?string $clienteId): self
     {
         return $this->rebuild(clienteId: $clienteId);
@@ -156,6 +211,16 @@ final readonly class Expediente
         return $this->rebuild(clientName: $clientName);
     }
 
+    public function withFechaVencimientoFase(?\DateTimeImmutable $fecha): self
+    {
+        return $this->rebuild(fechaVencimientoFase: $fecha);
+    }
+
+    public function touchEstadoCambio(): self
+    {
+        return $this->rebuild(fechaUltimoCambioEstado: new \DateTimeImmutable('now'));
+    }
+
     private function rebuild(
         ?string $clienteId = null,
         ?string $tramiteId = null,
@@ -172,6 +237,11 @@ final readonly class Expediente
         ?string $numero = null,
         ?string $titulo = null,
         ?string $paymentStatus = null,
+        ?\DateTimeImmutable $fechaVencimientoFase = null,
+        ?\DateTimeImmutable $fechaUltimoCambioEstado = null,
+        ?\DateTimeImmutable $fechaFirmaContrato = null,
+        ?array $calendarioPagos = null,
+        bool $calendarioPagosProvided = false,
     ): self {
         return new self(
             $this->id,
@@ -193,6 +263,10 @@ final readonly class Expediente
             $planPago ?? $this->planPago,
             $numCuotas ?? $this->numCuotas,
             $accessToken ?? $this->accessToken,
+            $fechaVencimientoFase ?? $this->fechaVencimientoFase,
+            $fechaUltimoCambioEstado ?? $this->fechaUltimoCambioEstado,
+            $fechaFirmaContrato ?? $this->fechaFirmaContrato,
+            $calendarioPagosProvided ? $calendarioPagos : $this->calendarioPagos,
         );
     }
 
@@ -210,6 +284,7 @@ final readonly class Expediente
         PlanPagoExpediente $planPago,
         int $numCuotas,
         string $accessToken,
+        ?\DateTimeImmutable $fechaVencimientoFase = null,
     ): self {
         return new self(
             $id,
@@ -231,6 +306,8 @@ final readonly class Expediente
             $planPago,
             $numCuotas,
             $accessToken,
+            $fechaVencimientoFase,
+            new \DateTimeImmutable('now'),
         );
     }
 }
