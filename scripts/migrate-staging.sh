@@ -35,34 +35,31 @@ EOF
 }
 
 if [[ ! -f .env ]]; then
-  echo "Falta .env. Copia .env.example y configura secretos:"
-  echo "  cp .env.example .env && nano .env"
+  echo "Falta .env en $ROOT_DIR"
   exit 1
 fi
 
-echo "==> Build frontend"
-cd frontend
-npm ci
-VITE_API_BASE_URL= npm run build
-cd "$ROOT_DIR"
+echo "==> Levantar postgres + php"
+"${COMPOSE[@]}" up -d postgres php
 
-echo "==> Build PHP image"
-"${COMPOSE[@]}" build php
-
-echo "==> Start services"
-"${COMPOSE[@]}" up -d postgres mailpit mercure php nginx
-
-echo "==> Composer + Symfony"
+echo "==> Composer (sin scripts si falta bin/console)"
 ensure_bin_console
 "${COMPOSE[@]}" exec -T php composer install --no-dev --optimize-autoloader --no-scripts
 ensure_bin_console
 "${COMPOSE[@]}" exec -T php composer install --no-dev --optimize-autoloader
+
 if [[ ! -f config/jwt/private.pem ]]; then
+  echo "==> Generar JWT"
   "${COMPOSE[@]}" exec -T php php bin/console lexik:jwt:generate-keypair
 fi
-"${COMPOSE[@]}" exec -T php php bin/console doctrine:migrations:migrate --no-interaction
-"${COMPOSE[@]}" exec -T php php bin/console cache:clear --env=prod
+
+echo "==> Migraciones"
+"${COMPOSE[@]}" exec -T php php bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration
+
+echo "==> Estado migraciones"
+"${COMPOSE[@]}" exec -T php php bin/console doctrine:migrations:status
+
+echo "==> Tablas en PostgreSQL"
+"${COMPOSE[@]}" exec -T postgres psql -U "${POSTGRES_USER:-bufete}" -d "${POSTGRES_DB:-bufete}" -c '\dt'
 
 echo "==> Done"
-echo "App:    http://$(hostname -I | awk '{print $1}')"
-echo "Mailpit: http://$(hostname -I | awk '{print $1}'):8025"
