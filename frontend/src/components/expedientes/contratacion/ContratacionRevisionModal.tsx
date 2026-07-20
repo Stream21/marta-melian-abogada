@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { api, type ContratacionPasoResponse } from '@/api/client';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { api, type ContratacionPasoResponse, type MotivoDevolucionIdentidad } from '@/api/client';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { ClienteDatosRevisionPanel } from './ClienteDatosRevisionPanel';
+import { AbogadoContratacionIdentidadCarga } from './AbogadoContratacionIdentidadCarga';
 import { FirmasRevisionPanel } from './FirmasRevisionPanel';
 import { ContratacionPdfEmbed } from './ContratacionPdfEmbed';
 import { formatEuros, getImportePagoInicial } from '@/lib/pago-contratacion';
@@ -22,7 +23,7 @@ interface ContratacionRevisionModalProps {
   open: boolean;
   onClose: () => void;
   onValidar: (paso: string) => void;
-  onDevolver: (paso: string, nota: string) => void;
+  onDevolver: (paso: string, nota: string, motivos?: MotivoDevolucionIdentidad[]) => void;
   validando: boolean;
   devolviendo: boolean;
   errorAccion?: string | null;
@@ -39,13 +40,24 @@ export function ContratacionRevisionModal({
   devolviendo,
   errorAccion,
 }: ContratacionRevisionModalProps) {
+  const queryClient = useQueryClient();
   const [nota, setNota] = useState('');
   const [mostrarDevolucion, setMostrarDevolucion] = useState(false);
+  const [motivos, setMotivos] = useState<MotivoDevolucionIdentidad[]>([]);
+
+  const MOTIVOS_DATOS_CLIENTE: { id: MotivoDevolucionIdentidad; label: string }[] = [
+    { id: 'datos_personales', label: 'Corregir datos personales (domicilio, email, etc.)' },
+    { id: 'documento_anverso', label: 'Nueva foto del anverso del documento' },
+    { id: 'documento_reverso', label: 'Nueva foto del reverso (MRZ)' },
+    { id: 'documento_completo', label: 'Actualizar documento completo' },
+    { id: 'documentacion_adicional', label: 'Documentación adicional del trámite' },
+  ];
 
   useEffect(() => {
     if (!open) {
       setNota('');
       setMostrarDevolucion(false);
+      setMotivos([]);
     }
   }, [open, paso?.paso]);
 
@@ -89,6 +101,15 @@ export function ContratacionRevisionModal({
         <div className="space-y-5 py-2">
           {paso.paso === 'datos_cliente' && (
             <>
+              <AbogadoContratacionIdentidadCarga
+                expedienteId={expedienteId}
+                onGuardado={() => {
+                  void queryClient.invalidateQueries({ queryKey: ['contratacion', expedienteId] });
+                  if (contratacion?.clienteId) {
+                    void queryClient.invalidateQueries({ queryKey: ['cliente', contratacion.clienteId] });
+                  }
+                }}
+              />
               {contratacion?.clienteId && <ClienteDatosRevisionPanel clienteId={contratacion.clienteId} />}
               {docsEntregados.length > 0 && (
                 <div className="space-y-4">
@@ -148,18 +169,49 @@ export function ContratacionRevisionModal({
 
           {mostrarDevolucion && (
             <div className="rounded-lg border border-amber-200 bg-amber-50/50 p-4 space-y-3">
+              {paso.paso === 'datos_cliente' && (
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-amber-900">¿Qué debe corregir el cliente?</p>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {MOTIVOS_DATOS_CLIENTE.map((m) => (
+                      <label
+                        key={m.id}
+                        className="flex cursor-pointer items-start gap-2 rounded-md border border-amber-200/80 bg-white/60 px-3 py-2 text-sm"
+                      >
+                        <input
+                          type="checkbox"
+                          className="mt-0.5"
+                          checked={motivos.includes(m.id)}
+                          onChange={(e) => {
+                            setMotivos((prev) =>
+                              e.target.checked ? [...prev, m.id] : prev.filter((x) => x !== m.id),
+                            );
+                          }}
+                        />
+                        <span>{m.label}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
               <Label htmlFor="nota-devolucion" className="text-sm font-medium">
-                Nota para el cliente
+                {esPagoManual ? 'Mensaje para el cliente' : 'Nota para el cliente'}
               </Label>
               <textarea
                 id="nota-devolucion"
                 className="input-field min-h-[100px] w-full resize-y"
-                placeholder="Indique qué debe corregir o revisar el cliente…"
+                placeholder={
+                  esPagoManual
+                    ? 'Indique si ha tenido algún problema con el pago o qué debe hacer el cliente…'
+                    : 'Indique qué debe corregir o revisar el cliente…'
+                }
                 value={nota}
                 onChange={(e) => setNota(e.target.value)}
                 maxLength={1000}
               />
-              <p className="text-xs text-muted-foreground">Mínimo 5 caracteres. El cliente verá este mensaje en su portal.</p>
+              <p className="text-xs text-muted-foreground">
+                Mínimo 5 caracteres. El cliente recibirá un correo y verá este mensaje en su portal.
+              </p>
             </div>
           )}
 
@@ -170,16 +222,28 @@ export function ContratacionRevisionModal({
 
         <DialogFooter className="flex-col gap-2 sm:flex-row sm:justify-between">
           <div className="flex flex-wrap gap-2">
-            {!mostrarDevolucion && !esPagoManual ? (
-              <Button
-                type="button"
-                variant="outline"
-                className="border-amber-300 text-amber-800 hover:bg-amber-50"
-                onClick={() => setMostrarDevolucion(true)}
-                disabled={procesando}
-              >
-                Devolver al cliente
-              </Button>
+            {!mostrarDevolucion ? (
+              esPagoManual ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="border-amber-300 text-amber-800 hover:bg-amber-50"
+                  onClick={() => setMostrarDevolucion(true)}
+                  disabled={procesando}
+                >
+                  Notificar al cliente
+                </Button>
+              ) : (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="border-amber-300 text-amber-800 hover:bg-amber-50"
+                  onClick={() => setMostrarDevolucion(true)}
+                  disabled={procesando}
+                >
+                  Devolver al cliente
+                </Button>
+              )
             ) : (
               <>
                 <Button
@@ -188,18 +252,23 @@ export function ContratacionRevisionModal({
                   onClick={() => {
                     setMostrarDevolucion(false);
                     setNota('');
+                    setMotivos([]);
                   }}
                   disabled={procesando}
                 >
-                  Cancelar devolución
+                  Cancelar
                 </Button>
                 <Button
                   type="button"
                   variant="destructive"
-                  onClick={() => onDevolver(paso.paso, nota.trim())}
+                  onClick={() => onDevolver(paso.paso, nota.trim(), motivos)}
                   disabled={procesando || nota.trim().length < 5}
                 >
-                  {devolviendo ? 'Enviando…' : 'Enviar nota y devolver'}
+                  {devolviendo
+                    ? 'Enviando…'
+                    : esPagoManual
+                      ? 'Enviar nota al cliente'
+                      : 'Enviar nota y devolver'}
                 </Button>
               </>
             )}

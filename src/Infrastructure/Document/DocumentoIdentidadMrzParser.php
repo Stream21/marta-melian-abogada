@@ -37,6 +37,12 @@ final class DocumentoIdentidadMrzParser
         $nacionalidad = rtrim(substr($line2, 15, 3), '<');
 
         $nombres = $this->parseNombres($line3);
+        if ('' === trim($nombres['nombre'])) {
+            $line3Alt = $this->buscarLinea3EnTexto($text);
+            if ('' !== $line3Alt) {
+                $nombres = $this->parseNombres($line3Alt);
+            }
+        }
 
         if ('' === $numDocumento && '' === $nombres['nombre']) {
             return null;
@@ -55,6 +61,25 @@ final class DocumentoIdentidadMrzParser
         ];
     }
 
+    /** Extrae solo el nombre completo desde la línea 3 de la MRZ. */
+    public function parseNombreFromText(string $text): string
+    {
+        $lines = $this->extractTd1Lines($text);
+        if (null !== $lines) {
+            $nombre = $this->parseNombres($lines[2])['nombre'];
+            if ('' !== trim($nombre)) {
+                return $nombre;
+            }
+        }
+
+        $line3 = $this->buscarLinea3EnTexto($text);
+        if ('' !== $line3) {
+            return $this->parseNombres($line3)['nombre'];
+        }
+
+        return '';
+    }
+
     /**
      * @return array{0: string, 1: string, 2: string}|null
      */
@@ -63,14 +88,14 @@ final class DocumentoIdentidadMrzParser
         $normalized = strtoupper($text);
         $normalized = str_replace([' ', "\t"], '', $normalized);
 
-        if (preg_match_all('/[A-Z0-9<]{30}/', $normalized, $matches) && count($matches[0]) >= 3) {
+        if (preg_match_all('/[A-Z0-9<]{27,32}/', $normalized, $matches) && count($matches[0]) >= 3) {
             foreach ($matches[0] as $i => $line) {
                 if ($i + 2 >= count($matches[0])) {
                     break;
                 }
-                $l1 = $matches[0][$i];
-                $l2 = $matches[0][$i + 1];
-                $l3 = $matches[0][$i + 2];
+                $l1 = $this->padMrzLine($matches[0][$i]);
+                $l2 = $this->padMrzLine($matches[0][$i + 1]);
+                $l3 = $this->padMrzLine($matches[0][$i + 2]);
                 if ($this->looksLikeSpanishIdMrz($l1, $l2)) {
                     return [$l1, $l2, $l3];
                 }
@@ -81,8 +106,8 @@ final class DocumentoIdentidadMrzParser
         $candidates = [];
         foreach ($rawLines as $line) {
             $line = preg_replace('/[^A-Z0-9<]/', '', $line) ?? '';
-            if (30 === strlen($line)) {
-                $candidates[] = $line;
+            if (strlen($line) >= 27) {
+                $candidates[] = $this->padMrzLine($line);
             }
         }
 
@@ -93,6 +118,44 @@ final class DocumentoIdentidadMrzParser
         }
 
         return null;
+    }
+
+    private function padMrzLine(string $line): string
+    {
+        if (strlen($line) >= 30) {
+            return substr($line, 0, 30);
+        }
+
+        return str_pad($line, 30, '<');
+    }
+
+    private function buscarLinea3EnTexto(string $text): string
+    {
+        $rawLines = preg_split('/\R/', strtoupper($text)) ?: [];
+        $candidatos = [];
+
+        foreach ($rawLines as $line) {
+            $clean = preg_replace('/[^A-Z0-9<]/', '', $line) ?? '';
+            if (strlen($clean) >= 15) {
+                $candidatos[] = $clean;
+            }
+        }
+
+        foreach (array_reverse($candidatos) as $clean) {
+            if (preg_match('/[A-Z]{4,}/', $clean) && substr_count($clean, '<') >= 2) {
+                return $this->padMrzLine($clean);
+            }
+        }
+
+        $normalized = strtoupper(str_replace([' ', "\t", "\n", "\r"], '', $text));
+        if (preg_match_all('/[A-Z0-9<]{20,}/', $normalized, $matches) && count($matches[0]) > 0) {
+            $ultima = $matches[0][count($matches[0]) - 1];
+            if (is_string($ultima) && preg_match('/[A-Z]{4,}/', $ultima) && substr_count($ultima, '<') >= 1) {
+                return $this->padMrzLine($ultima);
+            }
+        }
+
+        return '';
     }
 
     private function looksLikeSpanishIdMrz(string $line1, string $line2): bool
@@ -110,9 +173,26 @@ final class DocumentoIdentidadMrzParser
      */
     private function parseNombres(string $line3): array
     {
-        $parts = explode('<<', trim($line3, '<'));
-        $apellidos = str_replace('<', ' ', $parts[0] ?? '');
-        $nombre = str_replace('<', ' ', $parts[1] ?? '');
+        $line3 = trim($line3, '<');
+
+        if (str_contains($line3, '<<')) {
+            $parts = explode('<<', $line3, 2);
+            $apellidos = str_replace('<', ' ', $parts[0] ?? '');
+            $nombre = str_replace('<', ' ', $parts[1] ?? '');
+        } else {
+            $segmentos = array_values(array_filter(
+                array_map('trim', explode('<', $line3)),
+                static fn (string $p): bool => '' !== $p,
+            ));
+
+            if (count($segmentos) >= 2) {
+                $nombre = array_pop($segmentos);
+                $apellidos = implode(' ', $segmentos);
+            } else {
+                $apellidos = str_replace('<', ' ', $line3);
+                $nombre = '';
+            }
+        }
 
         $apellidos = trim(preg_replace('/\s+/', ' ', $apellidos) ?? '');
         $nombre = trim(preg_replace('/\s+/', ' ', $nombre) ?? '');

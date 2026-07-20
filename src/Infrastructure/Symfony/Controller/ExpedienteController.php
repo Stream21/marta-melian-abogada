@@ -7,14 +7,18 @@ namespace App\Infrastructure\Symfony\Controller;
 use App\Application\DTO\AltaExpedienteInput;
 use App\Application\DTO\CrearExpedienteInput;
 use App\Application\DTO\ExpedienteResponseMapper;
+use App\Application\Service\ExpedienteAvisosAggregator;
 use App\Application\UseCase\AltaExpedienteUseCase;
 use App\Application\UseCase\CrearExpedienteUseCase;
 use App\Application\UseCase\ListarAuditoriaExpedienteUseCase;
 use App\Application\UseCase\ListarExpedientesUseCase;
 use App\Application\UseCase\ObtenerExpedienteUseCase;
+use App\Application\UseCase\ObtenerFacturacionExpedienteUseCase;
+use App\Application\UseCase\SincronizarCobrosExpedienteHoldedUseCase;
 use App\Application\UseCase\VincularExpedienteClienteUseCase;
-use App\Domain\Exception\TelefonoClienteDuplicadoException;
+use App\Domain\Exception\ClienteDuplicadoExceptionInterface;
 use App\Domain\Repository\PaymentRepositoryInterface;
+use App\Infrastructure\Http\ClienteDuplicadoJsonResponse;
 use App\Domain\ValueObject\ExpedienteId;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -33,6 +37,9 @@ final class ExpedienteController extends AbstractController
         private ListarAuditoriaExpedienteUseCase $listarAuditoria,
         private PaymentRepositoryInterface $paymentRepository,
         private VincularExpedienteClienteUseCase $vincularExpediente,
+        private ObtenerFacturacionExpedienteUseCase $obtenerFacturacion,
+        private SincronizarCobrosExpedienteHoldedUseCase $sincronizarCobrosHolded,
+        private ExpedienteAvisosAggregator $avisosAggregator,
         private string $frontendBaseUrl = 'http://localhost:5173',
     ) {
     }
@@ -41,9 +48,14 @@ final class ExpedienteController extends AbstractController
     public function list(): JsonResponse
     {
         $expedientes = ($this->listarExpedientes)();
+        $avisosPorExpediente = $this->avisosAggregator->aggregate($expedientes);
 
         return new JsonResponse(array_map(
-            fn ($e) => ExpedienteResponseMapper::fromDomain($e, $this->frontendBaseUrl),
+            fn ($e) => ExpedienteResponseMapper::fromDomain(
+                $e,
+                $this->frontendBaseUrl,
+                $avisosPorExpediente[$e->id()->value()] ?? null,
+            ),
             $expedientes,
         ));
     }
@@ -91,12 +103,8 @@ final class ExpedienteController extends AbstractController
                 )),
                 fechaVencimientoFase: isset($data['fechaVencimientoFase']) ? (string) $data['fechaVencimientoFase'] : null,
             ));
-        } catch (TelefonoClienteDuplicadoException $e) {
-            return new JsonResponse([
-                'message' => $e->getMessage(),
-                'clienteExistenteId' => $e->clienteExistenteId,
-                'clienteExistenteNombre' => $e->clienteExistenteNombre,
-            ], Response::HTTP_CONFLICT);
+        } catch (ClienteDuplicadoExceptionInterface $e) {
+            return ClienteDuplicadoJsonResponse::create($e);
         } catch (\InvalidArgumentException $e) {
             return new JsonResponse(['message' => $e->getMessage()], Response::HTTP_BAD_REQUEST);
         }
@@ -141,12 +149,43 @@ final class ExpedienteController extends AbstractController
                 'status' => $p->status()->value,
                 'type' => $p->type()->value,
                 'amount' => $p->amount(),
-                'pdfUrl' => $p->pdfPath() ? '/api/expedientes/' . $id . '/invoices/' . $p->id()->value() . '/pdf' : null,
+                'holdedEstado' => $p->holdedEstado()->value,
+                'holdedEstadoLabel' => $p->holdedEstado()->label(),
+                'holdedSyncError' => $p->holdedSyncError(),
+                'holdedInvoiceId' => $p->holdedInvoiceId(),
+                'pdfUrl' => $p->invoicePdfUrl(),
+                'cuotaNumero' => $p->cuotaNumero(),
                 'createdAt' => $p->createdAt()->format(\DateTimeInterface::ATOM),
             ];
         }
 
         return new JsonResponse($list);
+    }
+
+    #[Route(path: '/{id}/facturacion', name: 'facturacion', methods: ['GET'])]
+    public function facturacion(string $id): JsonResponse
+    {
+        try {
+            return new JsonResponse(($this->obtenerFacturacion)($id));
+        } catch (\InvalidArgumentException $e) {
+            return new JsonResponse(['message' => $e->getMessage()], Response::HTTP_NOT_FOUND);
+        }
+    }
+
+    #[Route(path: '/{id}/sincronizar-holded', name: 'sincronizar_holded', methods: ['POST'])]
+    public function sincronizarHolded(string $id): JsonResponse
+    {
+        try {
+            $result = ($this->sincronizarCobrosHolded)($id);
+
+            if (!$result['success']) {
+                return new JsonResponse($result, Response::HTTP_UNPROCESSABLE_ENTITY);
+            }
+
+            return new JsonResponse($result);
+        } catch (\InvalidArgumentException $e) {
+            return new JsonResponse(['success' => false, 'error' => $e->getMessage()], Response::HTTP_BAD_REQUEST);
+        }
     }
 
     #[Route(path: '/{id}/vincular', name: 'vincular', methods: ['PUT'])]

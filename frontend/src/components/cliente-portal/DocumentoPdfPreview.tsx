@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { CheckCircle2, Eye, Loader2 } from 'lucide-react';
+import { CheckCircle2, ChevronsDown, Eye, Loader2 } from 'lucide-react';
 import { fetchAccesoPdf } from '@/api/client';
 import { isScrollAtEnd, renderPdfPages } from '@/lib/pdf-viewer';
 import { Button } from '@/components/ui/button';
@@ -62,6 +62,13 @@ export function DocumentoPdfPreview({
       markFullyRead();
     }
   }, [markFullyRead]);
+
+  const scrollToEnd = useCallback(() => {
+    const scrollEl = scrollRef.current;
+    if (!scrollEl || scrollCompleteRef.current) return;
+    scrollEl.scrollTo({ top: scrollEl.scrollHeight, behavior: 'smooth' });
+    window.setTimeout(() => tryDetectScrollEnd(), 450);
+  }, [tryDetectScrollEnd]);
 
   useEffect(() => {
     if (fullyRead) {
@@ -170,7 +177,7 @@ export function DocumentoPdfPreview({
           <DialogTitle>{label}</DialogTitle>
           <DialogDescription>
             {requireFullRead && !scrollComplete
-              ? 'Desplácese hasta el final del documento para poder cerrar esta ventana y continuar.'
+              ? 'Desplácese hasta el final del documento para poder cerrar esta ventana y continuar. También puede usar el botón «Ir al final».'
               : 'Revise el documento con atención antes de firmar.'}
           </DialogDescription>
         </DialogHeader>
@@ -193,6 +200,18 @@ export function DocumentoPdfPreview({
           )}
           <div ref={pagesRef} className={cn((loading || rendering || error) && 'hidden')} />
         </div>
+
+        {pageCount > 0 && !scrollComplete && requireFullRead && !loading && !rendering && (
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full"
+            onClick={scrollToEnd}
+          >
+            <ChevronsDown className="mr-2 h-4 w-4" />
+            Ir al final del documento
+          </Button>
+        )}
 
         {pageCount > 0 && !scrollComplete && requireFullRead && (
           <p className="text-xs text-amber-800 rounded-md border border-amber-200 bg-amber-50 px-3 py-2">

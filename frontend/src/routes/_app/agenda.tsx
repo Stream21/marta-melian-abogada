@@ -1,6 +1,8 @@
-import { createFileRoute } from '@tanstack/react-router';
-import { AgendaPage } from '@/pages/AgendaPage';
+import { createFileRoute, redirect } from '@tanstack/react-router';
 
 export const Route = createFileRoute('/_app/agenda')({
-  component: AgendaPage,
+  beforeLoad: () => {
+    throw redirect({ to: '/expedientes' });
+  },
+  component: () => null,
 });

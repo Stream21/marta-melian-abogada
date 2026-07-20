@@ -6,10 +6,11 @@ namespace App\Application\UseCase;
 
 use App\Application\DTO\ClienteInput;
 use App\Application\Service\ClienteEdicionPolicy;
+use App\Application\Service\ClienteUnicidadValidator;
+use App\Application\Service\DocumentoIdentidadNormalizer;
 use App\Application\Service\EmailValidator;
 use App\Application\Service\TelefonoNormalizer;
 use App\Domain\Entity\Cliente;
-use App\Domain\Exception\TelefonoClienteDuplicadoException;
 use App\Domain\Repository\ClienteRepositoryInterface;
 use App\Domain\ValueObject\ClienteId;
 
@@ -18,8 +19,10 @@ final class GuardarClienteUseCase
     public function __construct(
         private ClienteRepositoryInterface $repository,
         private TelefonoNormalizer $telefonoNormalizer,
+        private DocumentoIdentidadNormalizer $documentoNormalizer,
         private EmailValidator $emailValidator,
         private ClienteEdicionPolicy $edicionPolicy,
+        private ClienteUnicidadValidator $unicidadValidator,
     ) {
     }
 
@@ -38,9 +41,12 @@ final class GuardarClienteUseCase
             throw new \InvalidArgumentException('El teléfono móvil del cliente es obligatorio y debe ser válido.');
         }
 
+        $numDocumento = $this->documentoNormalizer->normalize($input->numDocumento);
+
         $this->emailValidator->assertValid($input->email);
 
-        $this->assertTelefonoUnico($telefono, $id);
+        $this->unicidadValidator->assertTelefonoUnico($telefono, $id);
+        $this->unicidadValidator->assertDocumentoUnico($numDocumento, $id);
 
         $fechaNacimiento = null;
         if (null !== $input->fechaNacimiento && '' !== trim($input->fechaNacimiento)) {
@@ -65,7 +71,7 @@ final class GuardarClienteUseCase
                 $nombre,
                 trim($input->nacionalidad),
                 trim($input->tipoDocumento),
-                trim($input->numDocumento),
+                $numDocumento,
                 $fechaNacimiento,
                 trim($input->lugarNacimiento),
                 trim($input->estadoCivil),
@@ -75,7 +81,7 @@ final class GuardarClienteUseCase
                 trim($input->provincia),
                 trim($input->nombrePadre),
                 trim($input->nombreMadre),
-                $telefono ?? '',
+                $telefono,
                 trim($input->email),
             );
         } else {
@@ -84,7 +90,7 @@ final class GuardarClienteUseCase
                 $nombre,
                 trim($input->nacionalidad),
                 trim($input->tipoDocumento),
-                trim($input->numDocumento),
+                $numDocumento,
                 $fechaNacimiento,
                 trim($input->lugarNacimiento),
                 trim($input->estadoCivil),
@@ -94,7 +100,7 @@ final class GuardarClienteUseCase
                 trim($input->provincia),
                 trim($input->nombrePadre),
                 trim($input->nombreMadre),
-                $telefono ?? '',
+                $telefono,
                 trim($input->email),
             );
         }
@@ -102,27 +108,5 @@ final class GuardarClienteUseCase
         $this->repository->save($cliente);
 
         return $cliente;
-    }
-
-    private function assertTelefonoUnico(?string $telefono, ?string $excludeId): void
-    {
-        if (null === $telefono) {
-            return;
-        }
-
-        $existente = $this->repository->findByTelefono($telefono);
-        if (null === $existente) {
-            return;
-        }
-
-        if (null !== $excludeId && $excludeId === $existente->id()->value()) {
-            return;
-        }
-
-        throw new TelefonoClienteDuplicadoException(
-            $telefono,
-            $existente->id()->value(),
-            $existente->nombre(),
-        );
     }
 }

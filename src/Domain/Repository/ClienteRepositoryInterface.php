@@ -15,6 +15,8 @@ interface ClienteRepositoryInterface
 
     public function findByTelefono(string $telefono): ?Cliente;
 
+    public function findByNumDocumento(string $numDocumento): ?Cliente;
+
     /**
      * @return Cliente[]
      */
@@ -24,4 +26,6 @@ interface ClienteRepositoryInterface
      * @return Cliente[]
      */
     public function findAll(): array;
+
+    public function delete(ClienteId $id): void;
 }

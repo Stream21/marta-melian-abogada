@@ -56,8 +56,8 @@ const tipoOptions: Array<{
   },
   {
     value: 'conjunto',
-    title: 'Conjunto de imágenes',
-    description: 'Varias fotos dentro del mismo requisito (p. ej. páginas de nóminas).',
+    title: 'Conjunto de archivos',
+    description: 'Varios archivos dentro del mismo requisito (p. ej. páginas de nóminas).',
     icon: Images,
   },
 ];
@@ -114,11 +114,11 @@ export function DocumentoRequeridoFormModal({
 
     if (values.tipo === 'conjunto') {
       if (values.maxImagenes < 2) {
-        setMaxImagenesError('Indique al menos 2 imágenes.');
+        setMaxImagenesError('Indique al menos 2 archivos.');
         return;
       }
       if (values.maxImagenes > MAX_IMAGENES_CONJUNTO) {
-        setMaxImagenesError(`El máximo permitido es ${MAX_IMAGENES_CONJUNTO} imágenes.`);
+        setMaxImagenesError(`El máximo permitido es ${MAX_IMAGENES_CONJUNTO} archivos.`);
         return;
       }
     }
@@ -141,7 +141,7 @@ export function DocumentoRequeridoFormModal({
               {mode === 'create' ? 'Añadir documento' : 'Editar documento'}
             </DialogTitle>
             <DialogDescription>
-              Defina qué debe aportar el cliente. Las imágenes se convertirán automáticamente a
+              Defina qué debe aportar el cliente. Los archivos se convertirán automáticamente a
               PDF para las plataformas.
             </DialogDescription>
           </DialogHeader>
@@ -212,7 +212,7 @@ export function DocumentoRequeridoFormModal({
             {values.tipo === 'conjunto' && (
               <div className="space-y-2">
                 <Label htmlFor="doc-max-imagenes">
-                  Máximo de imágenes que puede anexar el cliente
+                  Máximo de archivos que puede anexar el cliente
                 </Label>
                 <Input
                   id="doc-max-imagenes"
@@ -232,8 +232,8 @@ export function DocumentoRequeridoFormModal({
                   aria-invalid={maxImagenesError !== null}
                 />
                 <p className="text-xs text-muted-foreground">
-                  El cliente podrá subir entre 1 y {values.maxImagenes} imágenes en este requisito.
-                  Todas se unirán en un PDF.
+                  El cliente podrá subir entre 1 y {values.maxImagenes} archivos en este requisito.
+                  Todos se convertirán y unirán en un PDF.
                 </p>
                 {maxImagenesError && (
                   <p className="text-xs text-destructive">{maxImagenesError}</p>

@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Application\UseCase;
 
+use App\Domain\Entity\EstadoDocumentoEntregado;
 use App\Domain\Entity\FaseDocumentoTramite;
 use App\Domain\Entity\FaseNegocioExpediente;
 use App\Domain\Repository\ClienteRepositoryInterface;
 use App\Domain\Repository\ExpedienteDocumentoRepositoryInterface;
+use App\Domain\Repository\ExpedienteDocumentoRequeridoRepositoryInterface;
 use App\Domain\Repository\ExpedienteFirmaRepositoryInterface;
 use App\Domain\Repository\ExpedienteRepositoryInterface;
 use App\Domain\Repository\TramiteDocumentoRequeridoRepositoryInterface;
@@ -21,6 +23,7 @@ final class ListarDocumentacionExpedienteUseCase
         private ExpedienteRepositoryInterface $expedienteRepository,
         private ClienteRepositoryInterface $clienteRepository,
         private TramiteDocumentoRequeridoRepositoryInterface $documentoRepository,
+        private ExpedienteDocumentoRequeridoRepositoryInterface $expedienteDocumentoRequeridoRepository,
         private ExpedienteDocumentoRepositoryInterface $documentoEntregadoRepository,
         private ExpedienteFirmaRepositoryInterface $firmaRepository,
     ) {
@@ -64,14 +67,25 @@ final class ListarDocumentacionExpedienteUseCase
             }
         }
 
-        if (null !== $expediente->tramiteId()) {
-            $entregados = [];
-            foreach ($this->documentoEntregadoRepository->findByExpediente($expediente->id()) as $doc) {
-                $entregados[$doc->documentoRequeridoId()->value()] = $doc;
+        $entregasTramite = [];
+        $entregasExpediente = [];
+        foreach ($this->documentoEntregadoRepository->findByExpediente($expediente->id()) as $doc) {
+            if (null !== $doc->documentoRequeridoId()) {
+                $entregasTramite[$doc->documentoRequeridoId()->value()] = $doc;
             }
+            $expDocId = $doc->expedienteDocumentoRequeridoId();
+            if (null !== $expDocId) {
+                $entregasExpediente[$expDocId->value()] = $doc;
+            }
+        }
 
+        if (null !== $expediente->tramiteId()) {
             foreach ($this->documentoRepository->findByTramiteId(new TramiteId($expediente->tramiteId())) as $doc) {
-                $entregado = $entregados[$doc->id()->value()] ?? null;
+                if (FaseDocumentoTramite::DocumentosCliente === $doc->fase()) {
+                    continue;
+                }
+
+                $entregado = $entregasTramite[$doc->id()->value()] ?? null;
                 $faseNegocio = $this->faseNegocioDesdeDocumento($doc->fase());
 
                 $items[] = [
@@ -94,6 +108,30 @@ final class ListarDocumentacionExpedienteUseCase
                     'mediaTipo' => 'pdf',
                 ];
             }
+        }
+
+        foreach ($this->expedienteDocumentoRequeridoRepository->findByExpediente($expediente->id()) as $doc) {
+            $entregado = $entregasExpediente[$doc->id()->value()] ?? null;
+
+            $items[] = [
+                'id' => $doc->id()->value(),
+                'nombre' => $doc->nombre(),
+                'descripcion' => $doc->descripcion(),
+                'tipo' => 'documento',
+                'fase' => FaseDocumentoTramite::DocumentosCliente->value,
+                'faseLabel' => FaseDocumentoTramite::DocumentosCliente->label(),
+                'faseNegocio' => FaseNegocioExpediente::Requerimientos->value,
+                'faseNegocioLabel' => FaseNegocioExpediente::Requerimientos->label(),
+                'origen' => 'requisito_expediente_' . $doc->origen()->value,
+                'origenLabel' => $doc->origen()->label(),
+                'obligatorio' => $doc->obligatorio(),
+                'estado' => $entregado?->estado()->value ?? EstadoDocumentoEntregado::Pendiente->value,
+                'entregadoAt' => $entregado?->entregadoAt()->format(\DateTimeInterface::ATOM),
+                'descargaUrl' => null !== $entregado && '' !== $entregado->archivoPath()
+                    ? sprintf('/api/expedientes/%s/documentacion/%s/archivo', $expedienteId, $doc->id()->value())
+                    : null,
+                'mediaTipo' => 'pdf',
+            ];
         }
 
         foreach ($this->firmaRepository->findByExpediente($expediente->id()) as $firma) {

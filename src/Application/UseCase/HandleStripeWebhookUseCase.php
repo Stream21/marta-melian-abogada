@@ -4,34 +4,29 @@ declare(strict_types=1);
 
 namespace App\Application\UseCase;
 
-use App\Application\Port\ContratacionRealtimePort;
-use App\Application\Port\HoldedPort;
-use App\Domain\Entity\ActorHitoExpediente;
-use App\Domain\Entity\EstadoFaseExpediente;
-use App\Domain\Entity\EstadoPasoContratacion;
-use App\Domain\Entity\ExpedienteHito;
-use App\Domain\Entity\PasoContratacionCliente;
+use App\Application\Service\FinalizarPagoStripeService;
+use App\Application\Service\PaymentHoldedSyncService;
+use App\Domain\Entity\PaymentHoldedEstado;
 use App\Domain\Entity\PaymentStatus;
-use App\Domain\Repository\ContratacionRepositoryInterface;
 use App\Domain\Repository\ExpedienteRepositoryInterface;
 use App\Domain\Repository\PaymentRepositoryInterface;
-use App\Domain\ValueObject\ExpedienteId;
+use Psr\Log\LoggerInterface;
 
 final class HandleStripeWebhookUseCase
 {
     public function __construct(
         private PaymentRepositoryInterface $paymentRepository,
         private ExpedienteRepositoryInterface $expedienteRepository,
-        private ContratacionRepositoryInterface $contratacionRepository,
-        private HoldedPort $holdedPort,
-        private ContratacionRealtimePort $realtime,
+        private PaymentHoldedSyncService $holdedSync,
+        private FinalizarPagoStripeService $finalizarPagoStripe,
+        private LoggerInterface $logger,
         private string $stripeWebhookSecret,
     ) {
     }
 
     /**
      * Verifica la firma del payload y procesa el evento checkout.session.completed.
-     * Retorna true si se procesó correctamente, false si la firma es inválida o no hay que procesar.
+     * Retorna true si se procesó correctamente, false si la firma es inválida.
      */
     public function __invoke(string $payload, string $signature): bool
     {
@@ -57,62 +52,24 @@ final class HandleStripeWebhookUseCase
             return true;
         }
 
+        $cuotaNumero = $this->finalizarPagoStripe->resolverCuotaNumero($session, $payment);
+
         if ($payment->status() === PaymentStatus::Paid) {
+            $expediente = $this->expedienteRepository->findById($payment->expedienteId());
+            if (null !== $expediente) {
+                $this->finalizarPagoStripe->aplicar($payment, $cuotaNumero, false, false);
+                if ($payment->holdedEstado() === PaymentHoldedEstado::PendienteSync
+                    || $payment->holdedEstado() === PaymentHoldedEstado::Error
+                ) {
+                    $result = $this->holdedSync->sync($payment, $expediente);
+                    $this->paymentRepository->save($result['payment']);
+                }
+            }
+
             return true;
         }
 
-        $expediente = $this->expedienteRepository->findById($payment->expedienteId());
-        if ($expediente === null) {
-            return true;
-        }
-
-        try {
-            $holdedInvoiceId = $this->holdedPort->createInvoice([
-                'client' => $expediente->clientName(),
-                'reference' => $expediente->caseReference(),
-                'amount' => $payment->amount(),
-            ]);
-            $this->holdedPort->markAsPaid($holdedInvoiceId);
-        } catch (\Throwable $e) {
-            return false;
-        }
-
-        $this->paymentRepository->save(new \App\Domain\Entity\Payment(
-            $payment->id(),
-            $payment->expedienteId(),
-            PaymentStatus::Paid,
-            $payment->type(),
-            $holdedInvoiceId,
-            $payment->stripeSessionId(),
-            $payment->amount(),
-            $payment->pdfPath(),
-            $payment->createdAt(),
-            new \DateTimeImmutable('now'),
-        ));
-
-        $this->expedienteRepository->save($expediente->withPaymentStatus('paid')->touchEstadoCambio());
-
-        $pasoPago = $this->contratacionRepository->findPaso($payment->expedienteId(), PasoContratacionCliente::Pago);
-        if (null !== $pasoPago && $pasoPago->estado() === EstadoPasoContratacion::Pendiente) {
-            $this->contratacionRepository->savePaso($pasoPago->marcarRealizadoCliente());
-            $this->contratacionRepository->saveHito(new ExpedienteHito(
-                bin2hex(random_bytes(16)),
-                $payment->expedienteId(),
-                'paso_completado',
-                'Pago digital confirmado vía Stripe.',
-                ActorHitoExpediente::Sistema,
-                new \DateTimeImmutable('now'),
-                PasoContratacionCliente::Pago,
-            ));
-            $this->expedienteRepository->save(
-                $expediente->withPaymentStatus('paid')->withEstadoFase(EstadoFaseExpediente::PendienteFirma)->touchEstadoCambio(),
-            );
-            $this->realtime->publishContratacionUpdate($payment->expedienteId()->value(), [
-                'type' => 'paso_completado',
-                'paso' => PasoContratacionCliente::Pago->value,
-                'actor' => 'sistema',
-            ]);
-        }
+        $this->finalizarPagoStripe->aplicar($payment, $cuotaNumero);
 
         return true;
     }

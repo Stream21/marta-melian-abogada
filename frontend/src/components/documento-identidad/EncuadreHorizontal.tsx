@@ -1,17 +1,34 @@
-/** Marco guía: documento en posición horizontal (landscape). */
-export function EncuadreHorizontal() {
+import { cn } from '@/lib/utils';
+
+interface EncuadreHorizontalProps {
+  /** Vista compacta sin etiquetas flotantes (móvil). */
+  compacto?: boolean;
+  className?: string;
+}
+
+/** Marco guía ilustrativo: documento en posición horizontal (landscape). */
+export function EncuadreHorizontal({ compacto = false, className }: EncuadreHorizontalProps) {
   return (
     <div
-      className="pointer-events-none absolute inset-6 flex items-center justify-center"
+      className={cn(
+        'flex w-full items-center justify-center',
+        compacto ? 'py-2' : 'py-4',
+        className,
+      )}
       aria-hidden
     >
-      <div className="relative h-[38%] w-[88%] max-w-md rounded-lg border-2 border-dashed border-primary/50">
-        <span className="absolute -top-6 left-0 text-[10px] font-medium uppercase tracking-wide text-primary/80">
-          Horizontal
-        </span>
-        <span className="absolute -bottom-6 right-0 text-[10px] text-muted-foreground">
-          Ancho &gt; alto
-        </span>
+      <div
+        className={cn(
+          'relative rounded-lg border-2 border-dashed border-primary/40 bg-primary/5',
+          compacto ? 'h-16 w-[85%] max-w-xs' : 'h-20 w-[88%] max-w-sm',
+        )}
+      >
+        {!compacto && (
+          <span className="absolute -top-5 left-0 text-[10px] font-medium uppercase tracking-wide text-primary/70">
+            Horizontal
+          </span>
+        )}
+        <div className="absolute inset-2 rounded border border-primary/15" />
       </div>
     </div>
   );

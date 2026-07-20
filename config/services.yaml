@@ -22,15 +22,19 @@ services:
     App\Domain\Repository\EscritoPlantillaRepositoryInterface: '@App\Infrastructure\Persistence\Doctrine\Repository\EscritoPlantillaRepository'
     App\Domain\Repository\ClienteRepositoryInterface: '@App\Infrastructure\Persistence\Doctrine\Repository\ClienteRepository'
     App\Domain\Repository\TramiteDocumentoRequeridoRepositoryInterface: '@App\Infrastructure\Persistence\Doctrine\Repository\TramiteDocumentoRequeridoRepository'
+    App\Domain\Repository\ServicioDocumentoRequeridoRepositoryInterface: '@App\Infrastructure\Persistence\Doctrine\Repository\ServicioDocumentoRequeridoRepository'
     App\Domain\Repository\ContratacionRepositoryInterface: '@App\Infrastructure\Persistence\Doctrine\Repository\ContratacionRepository'
+    App\Domain\Repository\ExpedienteDocumentoArchivoRepositoryInterface: '@App\Infrastructure\Persistence\Doctrine\Repository\ExpedienteDocumentoArchivoRepository'
     App\Domain\Repository\ExpedienteDocumentoRepositoryInterface: '@App\Infrastructure\Persistence\Doctrine\Repository\ExpedienteDocumentoRepository'
+    App\Domain\Repository\ExpedienteDocumentoRequeridoRepositoryInterface: '@App\Infrastructure\Persistence\Doctrine\Repository\ExpedienteDocumentoRequeridoRepository'
+    App\Domain\Repository\ExpedienteEscritoRepositoryInterface: '@App\Infrastructure\Persistence\Doctrine\Repository\ExpedienteEscritoRepository'
     App\Domain\Repository\ExpedienteFirmaRepositoryInterface: '@App\Infrastructure\Persistence\Doctrine\Repository\ExpedienteFirmaRepository'
     App\Domain\Repository\FirmaOtpRepositoryInterface: '@App\Infrastructure\Persistence\Doctrine\Repository\FirmaOtpRepository'
     App\Application\Port\DespachoFileStoragePort: '@App\Infrastructure\Storage\DespachoFileStorage'
     App\Application\Port\HoldedPort: '@App\Infrastructure\ApiClient\HoldedService'
     App\Application\Port\StripePort: '@App\Infrastructure\ApiClient\StripeService'
     App\Application\Port\TwilioPort: '@App\Infrastructure\ApiClient\TwilioService'
-    App\Application\Port\EmailPort: '@App\Infrastructure\Notification\LogEmailService'
+    App\Application\Port\EmailPort: '@App\Infrastructure\Notification\SymfonyMailerEmailService'
     App\Application\Port\ExpedienteFileStoragePort: '@App\Infrastructure\Storage\ExpedienteFileStorage'
     App\Application\Port\DocumentToPdfConverterPort: '@App\Infrastructure\Document\ImagickDocumentToPdfConverter'
     App\Application\Port\EscritoPdfGeneratorPort: '@App\Infrastructure\Document\DompdfEscritoPdfGenerator'
@@ -83,6 +87,12 @@ services:
             $whatsAppFrom: '%env(TWILIO_WHATSAPP_FROM)%'
             $smsFrom: '%env(TWILIO_SMS_FROM)%'
 
+    App\Infrastructure\Notification\SymfonyMailerEmailService:
+        arguments:
+            $fromAddress: '%env(MAILER_FROM)%'
+            $fromName: '%env(MAILER_FROM_NAME)%'
+            $mailerDsn: '%env(MAILER_DSN)%'
+
     App\Infrastructure\Storage\ExpedienteFileStorage:
         arguments:
             $projectDir: '%kernel.project_dir%'
@@ -105,6 +115,22 @@ services:
         arguments:
             $frontendBaseUrl: '%env(FRONTEND_BASE_URL)%'
 
+    App\Application\Service\NotificarContratacionClienteService:
+        arguments:
+            $frontendBaseUrl: '%env(FRONTEND_BASE_URL)%'
+
+    App\Application\Service\NotificarRequerimientosClienteService:
+        arguments:
+            $frontendBaseUrl: '%env(FRONTEND_BASE_URL)%'
+
+    App\Application\Service\NotificarExpedienteClienteService:
+        arguments:
+            $frontendBaseUrl: '%env(FRONTEND_BASE_URL)%'
+
+    App\Application\UseCase\ProbarEmailUseCase:
+        arguments:
+            $mailerDsn: '%env(MAILER_DSN)%'
+
     App\Application\UseCase\AltaExpedienteUseCase:
         arguments:
             $frontendBaseUrl: '%env(FRONTEND_BASE_URL)%'
@@ -117,9 +143,26 @@ services:
         arguments:
             $frontendBaseUrl: '%env(FRONTEND_BASE_URL)%'
 
-    App\Application\UseCase\SubirDocumentoContratacionUseCase:
+    App\Application\UseCase\ObtenerRequerimientosExpedienteUseCase:
+        arguments:
+            $frontendBaseUrl: '%env(FRONTEND_BASE_URL)%'
+
+    App\Application\UseCase\GenerarPdfConjuntoRequerimientosUseCase:
         arguments:
             $projectDir: '%kernel.project_dir%'
+
+    # $projectDir solo en DocumentoUploadNormalizer (no en los UseCase de subida).
+    App\Application\Service\DocumentoEntregaArchivosService:
+        arguments:
+            $projectDir: '%kernel.project_dir%'
+
+    App\Application\Service\DocumentoUploadNormalizer:
+        arguments:
+            $projectDir: '%kernel.project_dir%'
+
+    App\Application\UseCase\SubirDocumentoContratacionUseCase: ~
+
+    App\Application\UseCase\SubirDocumentoRequerimientosUseCase: ~
 
     App\Application\UseCase\IniciarPagoAccesoUseCase:
         arguments:
@@ -148,6 +191,11 @@ services:
             $holdedMockKey: '%env(HOLDED_MOCK_KEY)%'
 
     App\Infrastructure\Symfony\Controller\HoldedMockController:
+        arguments:
+            $projectDir: '%kernel.project_dir%'
+            $holdedMockKey: '%env(HOLDED_MOCK_KEY)%'
+
+    App\Infrastructure\Symfony\Controller\HoldedInvoicingMockController:
         arguments:
             $projectDir: '%kernel.project_dir%'
             $holdedMockKey: '%env(HOLDED_MOCK_KEY)%'

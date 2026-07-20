@@ -7,6 +7,7 @@ import { DespachoAssetPreview } from '@/components/config/despacho/DespachoAsset
 import { DespachoConfigSection } from '@/components/config/despacho/DespachoConfigSection';
 import { DespachoMembretePreview } from '@/components/config/despacho/DespachoMembretePreview';
 import { TwilioIntegracionPanel } from '@/components/config/TwilioIntegracionPanel';
+import { EmailIntegracionPanel } from '@/components/config/EmailIntegracionPanel';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -197,18 +198,6 @@ export function DespachoConfigForm() {
 
   return (
     <form onSubmit={handleSubmit} className="panel">
-      <div className="panel-header">
-        <div className="panel-header-icon">
-          <Building2 className="h-5 w-5" />
-        </div>
-        <div>
-          <h2 className="panel-title">Configuración del despacho</h2>
-          <p className="text-sm text-muted-foreground">
-            Datos del bufete para hojas de encargo, designaciones, RGPD y el resto de documentos generados.
-          </p>
-        </div>
-      </div>
-
       <div className="space-y-6 p-6">
         {saveError && (
           <p
@@ -476,6 +465,7 @@ export function DespachoConfigForm() {
           </TabsContent>
 
           <TabsContent value="cobros" className="mt-6 space-y-6">
+            <EmailIntegracionPanel />
             <TwilioIntegracionPanel />
             <DespachoConfigSection
               title="Cuenta para honorarios"

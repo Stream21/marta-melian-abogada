@@ -1,4 +1,15 @@
-const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
+import { apiAbsoluteUrl, getApiBase } from './apiBase';
+import { mergeFetchHeaders } from '@/lib/ngrok-headers';
+
+export { apiAbsoluteUrl, getApiBase };
+
+const API_BASE = getApiBase();
+
+function appendArchivosToFormData(formData: FormData, files: File[]): void {
+  for (const file of files) {
+    formData.append('archivos[]', file);
+  }
+}
 const TOKEN_KEY = 'bufete_jwt_token';
 
 function getAuthHeaders(): Record<string, string> {
@@ -7,15 +18,26 @@ function getAuthHeaders(): Record<string, string> {
   return { Authorization: `Bearer ${token}` };
 }
 
+function parseApiError(status: number, err: unknown): string {
+  const payload = err as {
+    error?: string;
+    message?: string;
+    clienteExistenteNombre?: string;
+  };
+  let message = payload.message || payload.error || 'Error';
+  if (status === 409 && payload.clienteExistenteNombre) {
+    message = `${message} (${payload.clienteExistenteNombre})`;
+  }
+  return message;
+}
+
 async function uploadRequest<T>(path: string, file: File): Promise<T> {
   const formData = new FormData();
   formData.append('file', file);
 
   const res = await fetch(API_BASE + path, {
     method: 'POST',
-    headers: {
-      ...getAuthHeaders(),
-    },
+    headers: mergeFetchHeaders(getAuthHeaders()),
     body: formData,
   });
 
@@ -27,11 +49,7 @@ async function uploadRequest<T>(path: string, file: File): Promise<T> {
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }));
-    throw new Error(
-      (err as { error?: string; message?: string }).message ||
-        (err as { error?: string }).error ||
-        'Error',
-    );
+    throw new Error(parseApiError(res.status, err));
   }
 
   return res.json() as Promise<T>;
@@ -55,9 +73,7 @@ export async function fetchAuthenticatedBlob(path: string, cacheKey?: string): P
       : basePath;
 
   const res = await fetch(url, {
-    headers: {
-      ...getAuthHeaders(),
-    },
+    headers: mergeFetchHeaders(getAuthHeaders()),
     cache: 'no-store',
   });
 
@@ -97,7 +113,7 @@ export function getDespachoAssetPath(tipo: 'logo' | 'sello'): string {
 
 export async function fetchAccesoPdf(previewUrl: string): Promise<string> {
   const url = previewUrl.startsWith('http') ? previewUrl : `${API_BASE}${previewUrl}`;
-  const res = await fetch(url, { cache: 'no-store' });
+  const res = await fetch(url, { cache: 'no-store', headers: mergeFetchHeaders() });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ message: res.statusText }));
     throw new Error((err as { message?: string }).message ?? 'No se pudo cargar el documento');
@@ -109,19 +125,15 @@ export async function fetchAccesoPdf(previewUrl: string): Promise<string> {
 async function publicRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
   const res = await fetch(API_BASE + path, {
     ...options,
-    headers: {
+    headers: mergeFetchHeaders({
       'Content-Type': 'application/json',
       ...options.headers,
-    },
+    }),
   });
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }));
-    throw new Error(
-      (err as { error?: string; message?: string }).message ||
-        (err as { error?: string }).error ||
-        'Error',
-    );
+    throw new Error(parseApiError(res.status, err));
   }
 
   return res.json() as Promise<T>;
@@ -130,16 +142,13 @@ async function publicRequest<T>(path: string, options: RequestInit = {}): Promis
 async function publicMultipartRequest<T>(path: string, formData: FormData, method = 'POST'): Promise<T> {
   const res = await fetch(API_BASE + path, {
     method,
+    headers: mergeFetchHeaders(),
     body: formData,
   });
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }));
-    throw new Error(
-      (err as { error?: string; message?: string }).message ||
-        (err as { error?: string }).error ||
-        'Error',
-    );
+    throw new Error(parseApiError(res.status, err));
   }
 
   return res.json() as Promise<T>;
@@ -148,9 +157,7 @@ async function publicMultipartRequest<T>(path: string, formData: FormData, metho
 async function multipartRequest<T>(path: string, formData: FormData, method = 'POST'): Promise<T> {
   const res = await fetch(API_BASE + path, {
     method,
-    headers: {
-      ...getAuthHeaders(),
-    },
+    headers: mergeFetchHeaders(getAuthHeaders()),
     body: formData,
   });
 
@@ -162,11 +169,7 @@ async function multipartRequest<T>(path: string, formData: FormData, method = 'P
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }));
-    throw new Error(
-      (err as { error?: string; message?: string }).message ||
-        (err as { error?: string }).error ||
-        'Error',
-    );
+    throw new Error(parseApiError(res.status, err));
   }
 
   return res.json() as Promise<T>;
@@ -175,11 +178,11 @@ async function multipartRequest<T>(path: string, formData: FormData, method = 'P
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const res = await fetch(API_BASE + path, {
     ...options,
-    headers: {
+    headers: mergeFetchHeaders({
       'Content-Type': 'application/json',
       ...getAuthHeaders(),
       ...options.headers,
-    },
+    }),
   });
 
   if (res.status === 401) {
@@ -190,11 +193,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }));
-    throw new Error(
-      (err as { error?: string; message?: string }).message ||
-        (err as { error?: string }).error ||
-        'Error',
-    );
+    throw new Error(parseApiError(res.status, err));
   }
   if (res.status === 204) {
     return undefined as T;
@@ -209,7 +208,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 export async function loginRequest(email: string, password: string): Promise<{ token: string }> {
   const res = await fetch(API_BASE + '/api/auth/login', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: mergeFetchHeaders({ 'Content-Type': 'application/json' }),
     body: JSON.stringify({ email, password }),
   });
 
@@ -226,8 +225,55 @@ export interface PaymentResponse {
   status: string;
   type: string;
   amount: string;
+  holdedEstado?: string;
+  holdedEstadoLabel?: string;
+  holdedSyncError?: string | null;
+  holdedInvoiceId?: string | null;
+  pdfUrl: string | null;
+  cuotaNumero?: number | null;
+  createdAt: string;
+}
+
+export type PaymentHoldedEstado = 'no_aplica' | 'pendiente_sync' | 'sincronizado' | 'error';
+
+export interface CobroGlobalItem {
+  id: string;
+  expedienteId: string;
+  expedienteNumero: string;
+  clienteNombre: string;
+  tramiteNombre: string;
+  amount: string;
+  status: 'pending' | 'paid' | 'failed';
+  statusLabel: string;
+  type: string;
+  typeLabel: string;
+  holdedEstado: PaymentHoldedEstado;
+  holdedEstadoLabel: string;
+  holdedSyncError: string | null;
+  holdedInvoiceId: string | null;
+  holdedSyncedAt: string | null;
+  stripeSessionId: string | null;
   pdfUrl: string | null;
   createdAt: string;
+  updatedAt: string;
+}
+
+export interface CobrosGlobalesResponse {
+  items: CobroGlobalItem[];
+  kpis: {
+    cobradoMes: number;
+    pendienteSyncHolded: number;
+    stripePendientes: number;
+  };
+}
+
+export interface CobrosGlobalesFilters {
+  estadoCobro?: string[];
+  holdedEstado?: string[];
+  tipo?: string[];
+  desde?: string;
+  hasta?: string;
+  q?: string;
 }
 
 export const api = {
@@ -243,11 +289,42 @@ export const api = {
   getExpedientePayments: (expedienteId: string) =>
     request<PaymentResponse[]>('/api/expedientes/' + expedienteId + '/payments'),
 
+  getCobrosGlobales: (filters: CobrosGlobalesFilters = {}) => {
+    const params = new URLSearchParams();
+    if (filters.estadoCobro?.length) params.set('estadoCobro', filters.estadoCobro.join(','));
+    if (filters.holdedEstado?.length) params.set('holdedEstado', filters.holdedEstado.join(','));
+    if (filters.tipo?.length) params.set('tipo', filters.tipo.join(','));
+    if (filters.desde) params.set('desde', filters.desde);
+    if (filters.hasta) params.set('hasta', filters.hasta);
+    if (filters.q) params.set('q', filters.q);
+    const qs = params.toString();
+    return request<CobrosGlobalesResponse>('/api/cobros' + (qs ? '?' + qs : ''));
+  },
+
+  sincronizarPagoHolded: (paymentId: string) =>
+    request<{ success: boolean; holdedInvoiceId?: string; error?: string }>(
+      '/api/cobros/' + encodeURIComponent(paymentId) + '/sincronizar-holded',
+      { method: 'POST' },
+    ),
+
+  sincronizarCobrosExpedienteHolded: (expedienteId: string) =>
+    request<{
+      success: boolean;
+      total: number;
+      sincronizados: number;
+      fallidos: number;
+      errores: Array<{ paymentId: string; cuotaNumero: number | null; error: string }>;
+      error?: string;
+    }>('/api/expedientes/' + encodeURIComponent(expedienteId) + '/sincronizar-holded', {
+      method: 'POST',
+    }),
+
   postPaymentManual: (body: {
     expedienteId: string;
     amount: string;
     clientName?: string;
     caseReference?: string;
+    cuotaNumero?: number;
   }) =>
     request<{
       success: boolean;
@@ -260,7 +337,13 @@ export const api = {
       body: JSON.stringify(body),
     }),
 
-  postPaymentGenerateLink: (body: { expedienteId: string; amount: string; phone: string }) =>
+  postPaymentGenerateLink: (body: {
+    expedienteId: string;
+    amount: string;
+    phone?: string;
+    email?: string;
+    cuotaNumero?: number;
+  }) =>
     request<{ success: boolean; url?: string; sessionId?: string; error?: string }>(
       '/api/payments/generate-link',
       {
@@ -278,8 +361,14 @@ export const api = {
       },
     ),
 
+  confirmarPagoStripeSesion: (sessionId: string) =>
+    publicRequest<{ success: boolean; message?: string }>('/api/payments/confirm-session', {
+      method: 'POST',
+      body: JSON.stringify({ sessionId }),
+    }),
+
   getPdfUrl: (expedienteId: string, paymentId: string) =>
-    `${API_BASE}/api/expedientes/${expedienteId}/invoices/${paymentId}/pdf`,
+    `/api/expedientes/${encodeURIComponent(expedienteId)}/invoices/${encodeURIComponent(paymentId)}/pdf`,
 
   getInvoices: (expedienteId: string) =>
     request<InvoiceResponse[]>('/api/expedientes/' + expedienteId + '/invoices'),
@@ -456,10 +545,10 @@ export const api = {
         '/pdf-preview',
       {
         method: 'POST',
-        headers: {
+        headers: mergeFetchHeaders({
           'Content-Type': 'application/json',
           ...getAuthHeaders(),
-        },
+        }),
         body: JSON.stringify({ bloques, incluirMembrete }),
       },
     );
@@ -525,14 +614,20 @@ export const api = {
     token: string,
     input: {
       tipoEscaneo: TipoEscaneoDocumentoIdentidad;
-      anverso: File;
+      anverso: File | null;
       reverso: File | null;
       datos: ClienteInput;
+      soloDatos?: boolean;
     },
   ) => {
     const formData = new FormData();
+    if (input.soloDatos) {
+      formData.append('soloDatos', '1');
+    }
     formData.append('tipoEscaneo', input.tipoEscaneo);
-    formData.append('anverso', input.anverso);
+    if (input.anverso) {
+      formData.append('anverso', input.anverso);
+    }
     if (input.reverso) {
       formData.append('reverso', input.reverso);
     }
@@ -547,6 +642,12 @@ export const api = {
     );
   },
 
+  reutilizarDocumentoIdentidadAcceso: (token: string) =>
+    publicRequest<AccesoExpedienteResponse>(
+      '/api/acceso/' + encodeURIComponent(token) + '/reutilizar-documento-identidad',
+      { method: 'POST' },
+    ),
+
   getMercureToken: (expedienteId: string) =>
     request<MercureTokenResponse>('/api/realtime/mercure-token/' + encodeURIComponent(expedienteId)),
 
@@ -555,20 +656,21 @@ export const api = {
 
   getMercureTokenAbogado: () => request<MercureTokenResponse>('/api/realtime/mercure-token-abogado'),
 
-  getNotificacionesRecientes: () => request<NotificacionResponse[]>('/api/notificaciones/recientes'),
+  getNotificacionesRecientes: () =>
+    request<NotificacionesRecientesResponse>('/api/notificaciones/recientes'),
+
+  marcarNotificacionLeida: (hitoId: string) =>
+    request<{ ok: boolean }>('/api/notificaciones/' + encodeURIComponent(hitoId) + '/leida', {
+      method: 'POST',
+    }),
+
+  marcarTodasNotificacionesLeidas: () =>
+    request<{ ok: boolean; marcadas: number }>('/api/notificaciones/leidas', {
+      method: 'POST',
+    }),
 
   getContratacion: (expedienteId: string) =>
     request<ContratacionResponse>('/api/expedientes/' + encodeURIComponent(expedienteId) + '/contratacion'),
-
-  getContratacionHitos: (expedienteId: string, offset = 0, limit = 20) =>
-    request<ContratacionHitosPageResponse>(
-      '/api/expedientes/' +
-        encodeURIComponent(expedienteId) +
-        '/contratacion/hitos?offset=' +
-        offset +
-        '&limit=' +
-        limit,
-    ),
 
   getDocumentacionExpediente: (expedienteId: string) =>
     request<DocumentacionExpedienteItemResponse[]>(
@@ -576,12 +678,20 @@ export const api = {
     ),
 
   documentacionArchivoUrl: (expedienteId: string, docId: string) =>
-    `${API_BASE}/api/expedientes/${encodeURIComponent(expedienteId)}/documentacion/${encodeURIComponent(docId)}/archivo`,
+    `/api/expedientes/${encodeURIComponent(expedienteId)}/documentacion/${encodeURIComponent(docId)}/archivo`,
 
   documentacionIdentidadUrl: (expedienteId: string, lado: 'anverso' | 'reverso') =>
-    `${API_BASE}/api/expedientes/${encodeURIComponent(expedienteId)}/documentacion/identidad/${lado}`,
+    `/api/expedientes/${encodeURIComponent(expedienteId)}/documentacion/identidad/${lado}`,
 
   getTwilioEstado: () => request<TwilioEstadoResponse>('/api/integraciones/twilio/estado'),
+
+  getEmailEstado: () => request<EmailEstadoResponse>('/api/integraciones/email/estado'),
+
+  probarEmail: (body: { email: string; asunto?: string; mensaje?: string }) =>
+    request<{ enviado: boolean }>('/api/integraciones/email/probar', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
 
   probarTwilio: (body: { canal: 'sms' | 'whatsapp'; telefono: string; mensaje?: string }) =>
     request<{ canal: string; enviado: boolean }>('/api/integraciones/twilio/probar', {
@@ -600,15 +710,41 @@ export const api = {
       '/api/expedientes/' + encodeURIComponent(expedienteId) + '/contratacion/documentos',
     ),
 
+  subirDocumentoIdentidadContratacion: (
+    expedienteId: string,
+    input: {
+      tipoEscaneo: TipoEscaneoDocumentoIdentidad;
+      anverso: File;
+      reverso: File | null;
+      datos: ClienteInput;
+    },
+  ) => {
+    const formData = new FormData();
+    formData.append('tipoEscaneo', input.tipoEscaneo);
+    formData.append('anverso', input.anverso);
+    if (input.reverso) {
+      formData.append('reverso', input.reverso);
+    }
+    Object.entries(input.datos).forEach(([key, value]) => {
+      if (value != null && value !== '') {
+        formData.append(`datos[${key}]`, String(value));
+      }
+    });
+    return multipartRequest<ContratacionResponse>(
+      '/api/expedientes/' + encodeURIComponent(expedienteId) + '/contratacion/documento-identidad',
+      formData,
+    );
+  },
+
   contratacionDocumentoArchivoUrl: (expedienteId: string, docId: string) =>
-    `${API_BASE}/api/expedientes/${encodeURIComponent(expedienteId)}/contratacion/documentos/${encodeURIComponent(docId)}/archivo`,
+    `/api/expedientes/${encodeURIComponent(expedienteId)}/contratacion/documentos/${encodeURIComponent(docId)}/archivo`,
 
   contratacionFirmaPdfUrl: (expedienteId: string, tipo: string) =>
-    `${API_BASE}/api/expedientes/${encodeURIComponent(expedienteId)}/contratacion/firmas/${encodeURIComponent(tipo)}/pdf`,
+    `/api/expedientes/${encodeURIComponent(expedienteId)}/contratacion/firmas/${encodeURIComponent(tipo)}/pdf`,
 
-  subirDocumentoContratacion: (token: string, docId: string, file: File) => {
+  subirDocumentoContratacion: (token: string, docId: string, files: File[]) => {
     const formData = new FormData();
-    formData.append('archivo', file);
+    appendArchivosToFormData(formData, files);
     return publicMultipartRequest<AccesoExpedienteResponse>(
       '/api/acceso/' + encodeURIComponent(token) + '/documentos/' + encodeURIComponent(docId),
       formData,
@@ -647,11 +783,216 @@ export const api = {
       { method: 'POST' },
     ),
 
-  devolverPasoContratacion: (expedienteId: string, paso: string, nota: string) =>
+  devolverPasoContratacion: (
+    expedienteId: string,
+    paso: string,
+    nota: string,
+    motivos?: MotivoDevolucionIdentidad[],
+  ) =>
     request<ContratacionResponse>(
       '/api/expedientes/' + encodeURIComponent(expedienteId) + '/contratacion/devolver/' + encodeURIComponent(paso),
+      { method: 'POST', body: JSON.stringify({ nota, motivos: motivos ?? [] }) },
+    ),
+
+  getRequerimientos: (expedienteId: string) =>
+    request<RequerimientosResponse>(
+      '/api/expedientes/' + encodeURIComponent(expedienteId) + '/requerimientos',
+    ),
+
+  agregarDocumentoRequerimientos: (
+    expedienteId: string,
+    body: {
+      nombre: string;
+      descripcion?: string;
+      obligatorio?: boolean;
+      tipo?: 'individual' | 'conjunto';
+      maxImagenes?: number;
+    },
+  ) =>
+    request<{ id: string }>(
+      '/api/expedientes/' + encodeURIComponent(expedienteId) + '/requerimientos/documentos',
+      { method: 'POST', body: JSON.stringify(body) },
+    ),
+
+  validarDocumentoRequerimientos: (expedienteId: string, docId: string) =>
+    request<RequerimientosResponse>(
+      '/api/expedientes/' +
+        encodeURIComponent(expedienteId) +
+        '/requerimientos/documentos/' +
+        encodeURIComponent(docId) +
+        '/validar',
+      { method: 'POST' },
+    ),
+
+  devolverDocumentoRequerimientos: (expedienteId: string, docId: string, nota: string) =>
+    request<RequerimientosResponse>(
+      '/api/expedientes/' +
+        encodeURIComponent(expedienteId) +
+        '/requerimientos/documentos/' +
+        encodeURIComponent(docId) +
+        '/devolver',
       { method: 'POST', body: JSON.stringify({ nota }) },
     ),
+
+  asignarDocumentoRequerimientoAbogado: (expedienteId: string, docId: string) =>
+    request<RequerimientosResponse>(
+      '/api/expedientes/' +
+        encodeURIComponent(expedienteId) +
+        '/requerimientos/documentos/' +
+        encodeURIComponent(docId) +
+        '/asignar-abogado',
+      { method: 'POST' },
+    ),
+
+  derivarDocumentoRequerimientoCliente: (
+    expedienteId: string,
+    docId: string,
+    nota?: string,
+  ) =>
+    request<RequerimientosResponse>(
+      '/api/expedientes/' +
+        encodeURIComponent(expedienteId) +
+        '/requerimientos/documentos/' +
+        encodeURIComponent(docId) +
+        '/derivar-cliente',
+      { method: 'POST', body: JSON.stringify({ nota: nota ?? '' }) },
+    ),
+
+  requerimientosDocumentoArchivoUrl: (expedienteId: string, docId: string, archivoId?: string) => {
+    const base = `/api/expedientes/${encodeURIComponent(expedienteId)}/requerimientos/documentos/${encodeURIComponent(docId)}/archivo`;
+    return archivoId ? `${base}?archivoId=${encodeURIComponent(archivoId)}` : base;
+  },
+
+  guardarEscritoRequerimientos: (
+    expedienteId: string,
+    body: { titulo: string; contenidoHtml: string },
+  ) =>
+    request<{ id: string; titulo: string; pdfPath: string }>(
+      '/api/expedientes/' + encodeURIComponent(expedienteId) + '/requerimientos/escritos',
+      { method: 'POST', body: JSON.stringify(body) },
+    ),
+
+  requerimientosEscritoPdfUrl: (expedienteId: string, escritoId: string) =>
+    `/api/expedientes/${encodeURIComponent(expedienteId)}/requerimientos/escritos/${encodeURIComponent(escritoId)}/pdf`,
+
+  getEscritosExpediente: (expedienteId: string) =>
+    request<ExpedienteEscritoListItem[]>(
+      '/api/expedientes/' + encodeURIComponent(expedienteId) + '/escritos',
+    ),
+
+  getEscritoExpediente: (expedienteId: string, escritoId: string) =>
+    request<ExpedienteEscritoDetail>(
+      '/api/expedientes/' +
+        encodeURIComponent(expedienteId) +
+        '/escritos/' +
+        encodeURIComponent(escritoId),
+    ),
+
+  crearEscritoExpediente: (expedienteId: string, body: { titulo: string; contenidoHtml: string }) =>
+    request<{ id: string; titulo: string; pdfPath: string }>(
+      '/api/expedientes/' + encodeURIComponent(expedienteId) + '/escritos',
+      { method: 'POST', body: JSON.stringify(body) },
+    ),
+
+  actualizarEscritoExpediente: (
+    expedienteId: string,
+    escritoId: string,
+    body: { titulo: string; contenidoHtml: string },
+  ) =>
+    request<{ id: string; titulo: string; pdfPath: string }>(
+      '/api/expedientes/' +
+        encodeURIComponent(expedienteId) +
+        '/escritos/' +
+        encodeURIComponent(escritoId),
+      { method: 'PUT', body: JSON.stringify(body) },
+    ),
+
+  escritoExpedientePdfUrl: (expedienteId: string, escritoId: string) =>
+    `/api/expedientes/${encodeURIComponent(expedienteId)}/escritos/${encodeURIComponent(escritoId)}/pdf`,
+
+  getFacturacionExpediente: (expedienteId: string) =>
+    request<FacturacionExpedienteResponse>(
+      '/api/expedientes/' + encodeURIComponent(expedienteId) + '/facturacion',
+    ),
+
+  avanzarTramitacion: (expedienteId: string) =>
+    request<{ message: string }>(
+      '/api/expedientes/' + encodeURIComponent(expedienteId) + '/requerimientos/avanzar-tramitacion',
+      { method: 'POST' },
+    ),
+
+  generarPdfConjuntoRequerimientos: async (
+    expedienteId: string,
+    archivoIds: string[],
+  ): Promise<{ blob: Blob; filename: string }> => {
+    const res = await fetch(
+      API_BASE +
+        '/api/expedientes/' +
+        encodeURIComponent(expedienteId) +
+        '/requerimientos/pdf-conjunto',
+      {
+        method: 'POST',
+        headers: mergeFetchHeaders({
+          'Content-Type': 'application/json',
+          ...getAuthHeaders(),
+        }),
+        body: JSON.stringify({ archivoIds }),
+      },
+    );
+
+    if (res.status === 401) {
+      localStorage.removeItem(TOKEN_KEY);
+      window.location.href = '/login';
+      throw new Error('Sesión expirada. Por favor, inicie sesión de nuevo.');
+    }
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ message: res.statusText }));
+      throw new Error(
+        (err as { error?: string; message?: string }).message ||
+          (err as { error?: string }).error ||
+          'No se pudo generar el PDF conjunto.',
+      );
+    }
+
+    const disposition = res.headers.get('Content-Disposition');
+    const filenameMatch = disposition ? /filename="([^"]+)"/i.exec(disposition) : null;
+    const filename = filenameMatch?.[1] ?? `mercurio-${expedienteId}.pdf`;
+
+    return { blob: await res.blob(), filename };
+  },
+
+  subirDocumentoRequerimientos: (token: string, docId: string, files: File[]) => {
+    const formData = new FormData();
+    appendArchivosToFormData(formData, files);
+    return publicMultipartRequest<AccesoExpedienteResponse>(
+      '/api/acceso/' +
+        encodeURIComponent(token) +
+        '/requerimientos/documentos/' +
+        encodeURIComponent(docId),
+      formData,
+    );
+  },
+
+  subirDocumentoRequerimientosAbogado: (
+    expedienteId: string,
+    docId: string,
+    files: File[],
+    modo: 'validar' | 'aportar' = 'validar',
+  ) => {
+    const formData = new FormData();
+    appendArchivosToFormData(formData, files);
+    const query = modo === 'aportar' ? '?modo=aportar' : '';
+    return multipartRequest<RequerimientosResponse>(
+      '/api/expedientes/' +
+        encodeURIComponent(expedienteId) +
+        '/requerimientos/documentos/' +
+        encodeURIComponent(docId) +
+        '/subir' +
+        query,
+      formData,
+    );
+  },
 
   actualizarCondicionesPagoContratacion: (
     expedienteId: string,
@@ -716,6 +1057,11 @@ export const api = {
       body: JSON.stringify(body),
     }),
 
+  deleteCliente: (id: string) =>
+    request<void>('/api/clientes/' + encodeURIComponent(id), {
+      method: 'DELETE',
+    }),
+
   vincularExpediente: (expedienteId: string, body: { clienteId?: string | null; tramiteId?: string | null }) =>
     request<{ success: boolean }>('/api/expedientes/' + encodeURIComponent(expedienteId) + '/vincular', {
       method: 'PUT',
@@ -741,10 +1087,10 @@ export const api = {
         '/pdf',
       {
         method: 'POST',
-        headers: {
+        headers: mergeFetchHeaders({
           'Content-Type': 'application/json',
           ...getAuthHeaders(),
-        },
+        }),
         body: JSON.stringify({ incluirMembrete }),
       },
     );
@@ -765,6 +1111,20 @@ export const api = {
   putDocumentosRequeridos: (tramiteId: string, documentos: DocumentoRequeridoInput[]) =>
     request<DocumentosRequeridosResponse>(
       '/api/tramites/' + encodeURIComponent(tramiteId) + '/documentos-requeridos',
+      {
+        method: 'PUT',
+        body: JSON.stringify({ documentos }),
+      },
+    ),
+
+  getDocumentosRequeridosServicio: (servicioId: string) =>
+    request<DocumentosRequeridosResponse>(
+      '/api/servicios/' + encodeURIComponent(servicioId) + '/documentos-requeridos',
+    ),
+
+  putDocumentosRequeridosServicio: (servicioId: string, documentos: DocumentoRequeridoInput[]) =>
+    request<DocumentosRequeridosResponse>(
+      '/api/servicios/' + encodeURIComponent(servicioId) + '/documentos-requeridos',
       {
         method: 'PUT',
         body: JSON.stringify({ documentos }),
@@ -846,6 +1206,11 @@ export interface ExpedienteResponse {
   planPago?: PlanPago;
   numCuotas?: number;
   accessUrl?: string | null;
+  avisosPendientes?: number;
+  avisosDetalle?: {
+    contratacion: number;
+    requerimientos: number;
+  };
 }
 
 export interface AltaExpedienteInput {
@@ -881,6 +1246,22 @@ export interface BuscarClientesResponse {
   clientes: ClienteBusquedaItem[];
 }
 
+export type MotivoDevolucionIdentidad =
+  | 'datos_personales'
+  | 'documento_anverso'
+  | 'documento_reverso'
+  | 'documento_completo'
+  | 'documentacion_adicional';
+
+export interface AccesoIdentidadEdicionResponse {
+  modoCorreccion: boolean;
+  tieneDocumentoPrevio?: boolean;
+  tipoEscaneo?: TipoEscaneoDocumentoIdentidad | string | null;
+  anversoUrl?: string | null;
+  reversoUrl?: string | null;
+  motivosDevolucion?: MotivoDevolucionIdentidad[];
+}
+
 export interface AccesoPasoResponse {
   paso: string;
   label: string;
@@ -888,6 +1269,7 @@ export interface AccesoPasoResponse {
   estadoLabel: string;
   esActivo?: boolean;
   notaDevolucion?: string | null;
+  motivosDevolucion?: MotivoDevolucionIdentidad[];
 }
 
 export interface AccesoDocumentoFirmaResponse {
@@ -935,10 +1317,12 @@ export interface AccesoClienteDatosResponse {
 export interface AccesoExpedienteResponse {
   expedienteNumero: string;
   tramiteNombre: string;
+  tipoServicio?: string | null;
   faseNegocio: FaseNegocio;
   faseNegocioLabel: string;
   estadoFase: string;
   estadoFaseLabel: string;
+  fechaVencimientoFase?: string | null;
   honorariosAcordados: number;
   metodoPago?: MetodoPago;
   planPago?: PlanPago;
@@ -949,9 +1333,48 @@ export interface AccesoExpedienteResponse {
   documentosFirma?: AccesoDocumentoFirmaResponse[];
   resumenPago?: AccesoResumenPagoResponse;
   clienteDatos?: AccesoClienteDatosResponse | null;
+  datosClienteEditables?: ClienteInput | null;
+  identidadEdicion?: AccesoIdentidadEdicionResponse | null;
   clienteNombre?: string | null;
   despachoLogoUrl?: string | null;
+  despachoNombreFirma?: string | null;
+  despachoSubtitulo?: string | null;
   firmas?: AccesoFirmasConfigResponse;
+  requerimientos?: AccesoRequerimientosResponse | null;
+}
+
+export interface RequerimientoDocumentoArchivoResponse {
+  id: string;
+  nombre: string;
+  orden: number;
+}
+
+export interface AccesoRequerimientosDocumentoResponse {
+  id: string;
+  nombre: string;
+  descripcion: string;
+  obligatorio: boolean;
+  tipo: string;
+  maxImagenes: number;
+  estado: string;
+  estadoLabel?: string;
+  subidoPor?: 'cliente' | 'abogado';
+  notaRechazo?: string | null;
+  entregadoAt?: string | null;
+  archivos?: RequerimientoDocumentoArchivoResponse[];
+  puedeSubir: boolean;
+  responsableActual?: 'cliente' | 'abogado';
+  puedeTomarAbogado?: boolean;
+  puedeDerivarCliente?: boolean;
+  parcialConArchivos?: boolean;
+}
+
+export interface AccesoRequerimientosResponse {
+  documentos: AccesoRequerimientosDocumentoResponse[];
+  pendientesSubida: number;
+  enRevision: number;
+  esperandoAbogado: boolean;
+  agenteResponsableExpediente?: 'cliente' | 'abogado' | null;
 }
 
 export interface AccesoFirmasConfigResponse {
@@ -983,14 +1406,15 @@ export interface ContratacionPasoResponse {
   validadoAt: string | null;
   requiereValidacionAbogado: boolean;
   notaDevolucion?: string | null;
+  motivosDevolucion?: MotivoDevolucionIdentidad[];
 }
 
 export interface ContratacionHitoResponse {
   id: string;
-  paso: string | null;
   tipo: string;
   descripcion: string;
   actor: string;
+  paso: string | null;
   createdAt: string;
 }
 
@@ -1033,21 +1457,118 @@ export interface ContratacionResponse {
   pasoActivo: string | null;
   contratacionCompletada: boolean;
   pasos: ContratacionPasoResponse[];
-  hitos: ContratacionHitoResponse[];
-  hitosTotal?: number;
   firmasDocumento?: ContratacionFirmaDocumentoResponse[];
   fechaFirmaContrato?: string | null;
   calendarioPago?: CalendarioCuotaResponse[] | null;
   calendarioProyectado?: CalendarioCuotaResponse[] | null;
   condicionesPagoEditables?: boolean;
+  hitos?: ContratacionHitoResponse[];
 }
 
-export interface ContratacionHitosPageResponse {
-  items: ContratacionHitoResponse[];
+export interface RequerimientosDocumentoResponse {
+  id: string;
+  nombre: string;
+  descripcion: string;
+  obligatorio: boolean;
+  tipo: string;
+  maxImagenes: number;
+  orden: number;
+  origen: string;
+  origenLabel: string;
+  estado: string;
+  estadoLabel: string;
+  entregadoAt: string | null;
+  notaRechazo?: string | null;
+  tieneArchivo: boolean;
+  archivos?: RequerimientoDocumentoArchivoResponse[];
+  requiereRevision: boolean;
+  subidoPor?: 'cliente' | 'abogado';
+  responsableActual?: 'cliente' | 'abogado';
+  parcialConArchivos?: boolean;
+  puedeSubir?: boolean;
+  puedeSubirAbogado?: boolean;
+  puedeValidarAbogado?: boolean;
+  puedeDevolverAbogado?: boolean;
+  puedeTomarAbogado?: boolean;
+  puedeDerivarCliente?: boolean;
+}
+
+export interface RequerimientosEscritoResponse {
+  id: string;
+  titulo: string;
+  createdAt: string;
+}
+
+export interface ExpedienteEscritoListItem {
+  id: string;
+  titulo: string;
+  createdAt: string;
+  pdfUrl: string;
+}
+
+export interface ExpedienteEscritoDetail extends ExpedienteEscritoListItem {
+  contenidoHtml: string;
+}
+
+export interface CobroExpedienteResponse {
+  numero: number;
+  importe: number;
+  fechaVencimiento: string;
+  estado: 'pagado' | 'vencido' | 'enlace_pendiente' | 'pendiente';
+  estadoLabel: string;
+  paymentId?: string | null;
+  paymentType?: string | null;
+  paymentStatus?: string | null;
+  holdedEstado?: PaymentHoldedEstado | null;
+  holdedEstadoLabel?: string | null;
+  holdedSyncError?: string | null;
+  pdfUrl?: string | null;
+}
+
+export interface FacturacionExpedienteResponse {
+  expedienteId: string;
+  numero: string;
+  clientName: string;
+  honorariosAcordados: number;
+  planPago: string;
+  numCuotas: number;
+  metodoPago: string;
+  contacto: { telefono: string; email: string };
+  cobros: CobroExpedienteResponse[];
+  resumen: { total: number; cobrado: number; pendiente: number; vencido: number };
+  holdedResumen: {
+    pendientes: number;
+    errores: number;
+    requiereAccion: boolean;
+  };
+  historialPagos: PaymentResponse[];
+}
+
+export interface RequerimientosProgresoResponse {
   total: number;
-  offset: number;
-  limit: number;
-  hasMore: boolean;
+  obligatorios: number;
+  validados: number;
+  pendientesEntrega: number;
+  enRevision: number;
+  rechazados: number;
+  todosObligatoriosValidados: boolean;
+  ningunoEnRevision: boolean;
+  requerimientosListo: boolean;
+}
+
+export interface RequerimientosResponse {
+  expedienteId: string;
+  numero: string;
+  faseNegocio: FaseNegocio;
+  estadoFase: string;
+  estadoFaseLabel: string;
+  accessUrl: string | null;
+  documentos: RequerimientosDocumentoResponse[];
+  escritos: RequerimientosEscritoResponse[];
+  progreso: RequerimientosProgresoResponse;
+  puedeAvanzarFase3: boolean;
+  esperandoAbogado?: boolean;
+  agenteResponsableExpediente?: 'cliente' | 'abogado' | null;
 }
 
 export interface DocumentacionExpedienteItemResponse {
@@ -1066,6 +1587,12 @@ export interface DocumentacionExpedienteItemResponse {
   entregadoAt: string | null;
   descargaUrl: string | null;
   mediaTipo?: 'pdf' | 'imagen';
+}
+
+export interface EmailEstadoResponse {
+  configurado: boolean;
+  capturaLocal?: boolean;
+  bandejaUrl?: string | null;
 }
 
 export interface TwilioEstadoResponse {
@@ -1143,6 +1670,8 @@ export interface DocumentoIdentidadExtraido {
   nombrePadre?: string;
   nombreMadre?: string;
   extraccionAutomatica?: boolean;
+  /** Campos leídos de la MRZ que el cliente no puede modificar. */
+  camposMrz?: string[];
 }
 
 export interface ExtraerDocumentoIdentidadResponse {
@@ -1245,16 +1774,27 @@ export interface ContratacionDocumentoResponse {
   archivoPath?: string | null;
 }
 
+export interface NotificacionesRecientesResponse {
+  items: NotificacionResponse[];
+  total: number;
+}
+
 export interface NotificacionResponse {
   id: string;
   tipo: string;
   descripcion: string;
   actor: string;
   paso?: string | null;
+  referenciaId?: string | null;
   expedienteId: string;
   expedienteNumero: string;
   clienteNombre: string;
   createdAt: string;
+  destinoTab: string;
+  destinoHitoId: string;
+  destinoPaso?: string | null;
+  destinoReferenciaId?: string | null;
+  abrirRevision: boolean;
 }
 
 export interface ExpedienteAuditoriaEntryResponse {
@@ -1271,6 +1811,7 @@ export interface ExpedienteAuditoriaEntryResponse {
   canal: string | null;
   canalLabel: string | null;
   paso: string | null;
+  referenciaId?: string | null;
   createdAt: string;
 }
 

@@ -1,7 +1,10 @@
 import { useNavigate } from '@tanstack/react-router';
+import { useQuery } from '@tanstack/react-query';
 import { FileText, FolderOpen, Shield, UserCheck } from 'lucide-react';
+import { api } from '@/api/client';
 import { ConfigBreadcrumb } from '@/components/config/ConfigBreadcrumb';
 import { DocumentosRequeridosPanel } from '@/components/config/tramite/DocumentosRequeridosPanel';
+import { DocumentosServicioHeredadosPanel } from '@/components/config/tramite/DocumentosServicioHeredadosPanel';
 import { TramiteContratacionOtpPanel } from '@/components/config/tramite/TramiteContratacionOtpPanel';
 import { EscritoDesigner } from '@/components/hoja-encargo/HojaEncargoDesigner';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -32,6 +35,11 @@ interface TramiteConfiguracionPageProps {
 
 export function TramiteConfiguracionPage({ tramiteId, tab }: TramiteConfiguracionPageProps) {
   const navigate = useNavigate();
+
+  const { data: tramite } = useQuery({
+    queryKey: ['tramite', tramiteId],
+    queryFn: () => api.getTramite(tramiteId),
+  });
 
   const handleTabChange = (value: string) => {
     navigate({
@@ -70,7 +78,10 @@ export function TramiteConfiguracionPage({ tramiteId, tab }: TramiteConfiguracio
               <EscritoDesigner key={escritoTab.value} tramiteId={tramiteId} tipo={escritoTab.tipo} />
             )}
             {tab === 'documentacion' && (
-              <div className="h-full overflow-y-auto overscroll-contain">
+              <div className="h-full overflow-y-auto overscroll-contain space-y-6">
+                {tramite?.servicioId && (
+                  <DocumentosServicioHeredadosPanel servicioId={tramite.servicioId} />
+                )}
                 <DocumentosRequeridosPanel tramiteId={tramiteId} />
               </div>
             )}

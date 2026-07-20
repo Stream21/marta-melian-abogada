@@ -13,7 +13,7 @@ enum TipoDocumentoRequerido: string
     {
         return match ($this) {
             self::Individual => 'Documento individual',
-            self::Conjunto => 'Conjunto de imágenes',
+            self::Conjunto => 'Conjunto de archivos',
         };
     }
 

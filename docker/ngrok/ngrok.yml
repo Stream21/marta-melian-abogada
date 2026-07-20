@@ -1,0 +1,7 @@
+version: "2"
+# Plan gratuito: un solo dominio público. Vite (5173) hace proxy de /api → nginx y
+# /.well-known/mercure → mercure, así que basta un túnel al frontend.
+tunnels:
+  front:
+    addr: node:5173
+    proto: http

@@ -20,7 +20,8 @@ interface DocumentoIdentidadExtractorPort
      *   provincia: string,
      *   nombrePadre: string,
      *   nombreMadre: string,
-     *   extraccionAutomatica: bool
+     *   extraccionAutomatica: bool,
+     *   camposMrz?: list<string>
      * }
      */
     public function extract(string $tipoEscaneo, string $anversoPath, ?string $reversoPath): array;

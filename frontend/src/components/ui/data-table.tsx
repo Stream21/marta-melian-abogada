@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   type ColumnDef,
   type ColumnFiltersState,
@@ -34,6 +34,9 @@ interface DataTableProps<TData, TValue> {
   filterableColumns?: FilterableColumn[];
   searchPlaceholder?: string;
   pageSize?: number;
+  initialPageIndex?: number;
+  getRowDomId?: (row: TData) => string | undefined;
+  highlightedRowDomId?: string;
 }
 
 function SortIcon({ sorted }: { sorted: false | 'asc' | 'desc' }) {
@@ -48,21 +51,35 @@ export function DataTable<TData, TValue>({
   filterableColumns = [],
   searchPlaceholder = 'Buscar...',
   pageSize = 10,
+  initialPageIndex,
+  getRowDomId,
+  highlightedRowDomId,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [globalFilter, setGlobalFilter] = useState('');
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
+  const [pagination, setPagination] = useState({
+    pageIndex: initialPageIndex ?? 0,
+    pageSize,
+  });
+
+  useEffect(() => {
+    if (initialPageIndex != null) {
+      setPagination((current) => ({ ...current, pageIndex: initialPageIndex }));
+    }
+  }, [initialPageIndex]);
 
   const table = useReactTable({
     data,
     columns,
-    state: { sorting, columnFilters, globalFilter, columnVisibility },
+    state: { sorting, columnFilters, globalFilter, columnVisibility, pagination },
     initialState: { pagination: { pageSize } },
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     onGlobalFilterChange: setGlobalFilter,
     onColumnVisibilityChange: setColumnVisibility,
+    onPaginationChange: setPagination,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
@@ -154,10 +171,16 @@ export function DataTable<TData, TValue>({
           </TableHeader>
           <TableBody>
             {table.getRowModel().rows.length ? (
-              table.getRowModel().rows.map((row) => (
+              table.getRowModel().rows.map((row) => {
+                const rowDomId = getRowDomId?.(row.original);
+                return (
                 <TableRow
                   key={row.id}
-                  className="hover:bg-primary/5 transition-colors border-b group"
+                  id={rowDomId}
+                  className={cn(
+                    'hover:bg-primary/5 transition-colors border-b group',
+                    rowDomId && highlightedRowDomId === rowDomId && 'ring-2 ring-primary ring-offset-2 bg-primary/5',
+                  )}
                 >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id} className="px-6 py-4">
@@ -165,7 +188,8 @@ export function DataTable<TData, TValue>({
                     </TableCell>
                   ))}
                 </TableRow>
-              ))
+              );
+              })
             ) : (
               <TableRow>
                 <TableCell colSpan={columns.length} className="h-32 text-center text-muted-foreground text-sm">

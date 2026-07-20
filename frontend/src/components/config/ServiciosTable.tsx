@@ -50,6 +50,7 @@ import { Badge } from '@/components/ui/badge';
 
 import { getTipoServicioOption, TIPOS_SERVICIO } from '@/lib/servicio-tipos';
 
+import { matchesMultiFilter } from '@/lib/filter-utils';
 import { cn } from '@/lib/utils';
 
 import {
@@ -165,7 +166,7 @@ export function ServiciosTable({
 
         header: 'Área',
 
-        filterFn: (row, _id, value) => !value || row.original.tipo === value,
+        filterFn: (row, _id, value) => matchesMultiFilter(row.original.tipo, value),
 
         cell: ({ row }) => {
 
@@ -375,15 +376,8 @@ export function ServiciosTable({
 
 
 
-  const areaFilter = (table.getColumn('tipo')?.getFilterValue() as string) ?? '';
-  const hasActiveFilters = Boolean(globalFilter || areaFilter);
-
-  const clearFilters = () => {
-    setGlobalFilter('');
-    setColumnFilters([]);
-  };
-
-
+  const areaFilter = (table.getColumn('tipo')?.getFilterValue() as string[] | undefined) ?? [];
+  const hasActiveFilters = Boolean(globalFilter || areaFilter.length > 0);
 
   const confirmToggle = () => {
 
@@ -442,16 +436,14 @@ export function ServiciosTable({
               label: 'Área jurídica',
 
               emptyLabel: 'Todas las áreas',
-              value: areaFilter,
-              onChange: (value) => table.getColumn('tipo')?.setFilterValue(value || undefined),
+              values: areaFilter,
+              onChange: (values) => table.getColumn('tipo')?.setFilterValue(values.length ? values : undefined),
 
               options: TIPOS_SERVICIO.map((t) => ({ value: t.value, label: t.shortLabel })),
 
             },
 
           ]}
-
-          onClear={clearFilters}
 
         />
 

@@ -36,7 +36,11 @@ final class ListarDocumentosContratacionUseCase
 
         $entregados = [];
         foreach ($this->documentoEntregadoRepository->findByExpediente($expediente->id()) as $doc) {
-            $entregados[$doc->documentoRequeridoId()->value()] = $doc;
+            $tramiteDocId = $doc->documentoRequeridoId();
+            if (null === $tramiteDocId) {
+                continue;
+            }
+            $entregados[$tramiteDocId->value()] = $doc;
         }
 
         $items = [];

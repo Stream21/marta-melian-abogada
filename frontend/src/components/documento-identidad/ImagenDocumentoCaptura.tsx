@@ -1,25 +1,34 @@
-import { useEffect, useState } from 'react';
-import { Camera, RotateCcw, RotateCw, Upload } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Camera, ImageIcon, RotateCcw, RotateCw, Upload } from 'lucide-react';
 import {
   esDocumentoVertical,
   renderDocumentoImage,
   rotacionInicialSugerida,
 } from '@/lib/documento-imagen';
+import { esDispositivoMovil } from '@/lib/device';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { CapturaCamaraDocumento, type LadoCapturaCamara } from './CapturaCamaraDocumento';
 import { EncuadreHorizontal } from './EncuadreHorizontal';
+import { InstruccionesCapturaDocumentoDialog } from './InstruccionesCapturaDocumentoDialog';
 
 interface ImagenDocumentoCapturaProps {
   label: string;
   modo: 'cliente' | 'abogado';
+  /** Solo en modo cliente: activa cámara avanzada con marco guía en móvil. */
+  varianteCaptura?: 'identidad' | 'general';
+  ladoCamara?: LadoCapturaCamara;
+  /** Etiqueta del tipo de documento (p. ej. NIE, DNI / NIE) para el diálogo de instrucciones. */
+  etiquetaDocumento?: string;
   preview: string | null;
   inputId: string;
   inputRef: React.RefObject<HTMLInputElement | null>;
+  galeriaInputRef?: React.RefObject<HTMLInputElement | null>;
   isDragging?: boolean;
   rotation: number;
   onRotationChange: (deg: number) => void;
   onFileReady: (file: File, previewUrl: string) => void;
-  onActivar: () => void;
+  onActivar?: () => void;
   onDragEnter?: () => void;
   onDragLeave?: () => void;
   onDrop?: (file: File) => void;
@@ -28,9 +37,13 @@ interface ImagenDocumentoCapturaProps {
 export function ImagenDocumentoCaptura({
   label,
   modo,
+  varianteCaptura = 'general',
+  ladoCamara = 'anverso',
+  etiquetaDocumento,
   preview,
   inputId,
   inputRef,
+  galeriaInputRef,
   isDragging,
   rotation,
   onRotationChange,
@@ -40,10 +53,22 @@ export function ImagenDocumentoCaptura({
   onDragLeave,
   onDrop,
 }: ImagenDocumentoCapturaProps) {
+  const galeriaRefLocal = useRef<HTMLInputElement>(null);
+  const galeriaRef = galeriaInputRef ?? galeriaRefLocal;
   const [procesando, setProcesando] = useState(false);
   const [avisoVertical, setAvisoVertical] = useState(false);
   const [rawFile, setRawFile] = useState<File | null>(null);
+  const [camaraAbierta, setCamaraAbierta] = useState(false);
+  const [instruccionesAbiertas, setInstruccionesAbiertas] = useState(false);
+  const [esMovil, setEsMovil] = useState(false);
+
   const esCliente = modo === 'cliente';
+  const capturaAvanzada = esCliente && varianteCaptura === 'identidad';
+  const soloCamaraOcr = capturaAvanzada;
+
+  useEffect(() => {
+    setEsMovil(esDispositivoMovil());
+  }, []);
 
   useEffect(() => {
     if (!rawFile) return;
@@ -81,66 +106,117 @@ export function ImagenDocumentoCaptura({
     onRotationChange((rotation + delta + 360) % 360);
   };
 
+  const abrirGaleria = () => {
+    galeriaRef.current?.click();
+  };
+
+  const abrirFichero = () => {
+    if (onActivar) {
+      onActivar();
+    } else {
+      inputRef.current?.click();
+    }
+  };
+
+  const abrirCamara = () => {
+    if (soloCamaraOcr) {
+      setInstruccionesAbiertas(true);
+      return;
+    }
+    inputRef.current?.click();
+  };
+
   const zonaProps = esCliente
     ? {}
     : {
-        onDragEnter: (e: React.DragEvent) => {
-          e.preventDefault();
-          onDragEnter?.();
-        },
-        onDragOver: (e: React.DragEvent) => e.preventDefault(),
-        onDragLeave: (e: React.DragEvent) => {
-          e.preventDefault();
-          onDragLeave?.();
-        },
-        onDrop: (e: React.DragEvent) => {
-          e.preventDefault();
-          const file = e.dataTransfer.files?.[0];
-          if (file?.type.startsWith('image/')) {
-            void handleRawFile(file);
-            onDrop?.(file);
-          }
-        },
-      };
+          onDragEnter: (e: React.DragEvent) => {
+            e.preventDefault();
+            onDragEnter?.();
+          },
+          onDragOver: (e: React.DragEvent) => e.preventDefault(),
+          onDragLeave: (e: React.DragEvent) => {
+            e.preventDefault();
+            onDragLeave?.();
+          },
+          onDrop: (e: React.DragEvent) => {
+            e.preventDefault();
+            const file = e.dataTransfer.files?.[0];
+            if (file?.type.startsWith('image/')) {
+              void handleRawFile(file);
+              onDrop?.(file);
+            }
+          },
+        };
+
+  const textoAyuda = (() => {
+    if (!esCliente) return 'Suba una foto o pantallazo con el documento en horizontal.';
+    if (soloCamaraOcr) return 'Abra la cámara, encaje el documento en el marco y espere la lectura OCR.';
+    if (esMovil) return 'Use la cámara con marco guía o elija una imagen de la galería.';
+    return 'Seleccione una imagen clara del documento en horizontal desde su equipo.';
+  })();
 
   return (
     <div className="space-y-3">
-      <div
+      <section
         className={cn(
-          'relative flex min-h-[240px] flex-col items-center justify-center gap-4 rounded-lg border border-dashed p-6 transition-colors',
+          'overflow-hidden rounded-xl border border-dashed transition-colors',
           esCliente ? 'border-primary/30 bg-primary/5' : 'border-border bg-muted/30',
           isDragging && 'border-primary bg-primary/10',
         )}
         {...zonaProps}
       >
-        {!preview && <EncuadreHorizontal />}
-
-        {preview ? (
-          <img
-            src={preview}
-            alt={label}
-            className="relative z-10 max-h-48 max-w-full rounded object-contain shadow-sm"
-          />
-        ) : esCliente ? (
-          <Camera className="relative z-10 h-12 w-12 text-primary" />
-        ) : (
-          <Upload className="relative z-10 h-12 w-12 text-muted-foreground" />
-        )}
-
-        <div className="relative z-10 text-center">
-          <p className="font-medium">{label}</p>
-          <p className="mt-1 max-w-sm text-xs text-muted-foreground">
-            {esCliente
-              ? 'Documento en horizontal, bien iluminado y sin reflejos.'
-              : 'Suba una foto o pantallazo con el documento en horizontal.'}
-          </p>
+        <div className="flex flex-col items-center gap-4 px-4 py-5">
+          {preview ? (
+            <img
+              src={preview}
+              alt={label}
+              className="max-h-48 max-w-full rounded-lg object-contain shadow-sm"
+            />
+          ) : (
+            <>
+              {!esMovil && <EncuadreHorizontal />}
+              <div className="flex flex-col items-center gap-2 text-center">
+                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
+                  {esCliente && esMovil ? (
+                    <Camera className="h-7 w-7 text-primary" />
+                  ) : (
+                    <Upload className="h-7 w-7 text-muted-foreground" />
+                  )}
+                </div>
+                <p className="text-sm font-semibold text-foreground">{label}</p>
+                {!esMovil && (
+                  <p className="max-w-xs text-xs text-muted-foreground">{textoAyuda}</p>
+                )}
+              </div>
+              {esMovil && <EncuadreHorizontal compacto className="max-w-xs" />}
+            </>
+          )}
         </div>
 
-        <div className="relative z-10 flex flex-wrap items-center justify-center gap-2">
-          <Button type="button" onClick={onActivar} disabled={procesando}>
-            {esCliente ? <Camera className="mr-2 h-4 w-4" /> : <Upload className="mr-2 h-4 w-4" />}
-            {preview ? 'Cambiar imagen' : esCliente ? 'Activar cámara' : 'Subir imagen'}
-          </Button>
+        <div className="flex flex-wrap items-center justify-center gap-2 border-t border-primary/10 bg-card/60 px-4 py-3">
+          {soloCamaraOcr || (esCliente && esMovil) ? (
+            <Button
+              type="button"
+              onClick={abrirCamara}
+              disabled={procesando}
+              className={soloCamaraOcr ? 'min-w-[10rem]' : 'min-w-[8.5rem]'}
+              size={soloCamaraOcr ? 'lg' : 'default'}
+            >
+              <Camera className="mr-2 h-4 w-4" />
+              {preview ? 'Nueva foto' : soloCamaraOcr ? 'Abrir cámara' : 'Hacer foto'}
+            </Button>
+          ) : (
+            <Button type="button" onClick={abrirFichero} disabled={procesando}>
+              <Upload className="mr-2 h-4 w-4" />
+              {preview ? 'Cambiar imagen' : esCliente ? 'Seleccionar archivo' : 'Subir imagen'}
+            </Button>
+          )}
+          {esCliente && esMovil && !soloCamaraOcr && (
+            <Button type="button" variant="outline" onClick={abrirGaleria} disabled={procesando}>
+              <ImageIcon className="mr-2 h-4 w-4" />
+              Galería
+            </Button>
+          )}
           {preview && (
             <>
               <Button type="button" variant="outline" size="icon" onClick={() => girar(-90)} title="Girar a la izquierda">
@@ -153,20 +229,64 @@ export function ImagenDocumentoCaptura({
           )}
         </div>
 
-        <input
-          id={inputId}
-          ref={inputRef}
-          type="file"
-          accept="image/*"
-          capture={esCliente ? 'environment' : undefined}
-          className="sr-only"
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (file) void handleRawFile(file);
-            e.target.value = '';
-          }}
-        />
-      </div>
+        {!soloCamaraOcr && (
+          <>
+            <input
+              id={inputId}
+              ref={inputRef}
+              type="file"
+              accept="image/*"
+              capture={esCliente && esMovil ? 'environment' : undefined}
+              className="sr-only"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) void handleRawFile(file);
+                e.target.value = '';
+              }}
+            />
+            <input
+              ref={galeriaRef}
+              type="file"
+              accept="image/*"
+              className="sr-only"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) void handleRawFile(file);
+                e.target.value = '';
+              }}
+            />
+          </>
+        )}
+      </section>
+
+      {(soloCamaraOcr || esMovil) && !preview && (
+        <p className="px-1 text-center text-xs text-muted-foreground">{textoAyuda}</p>
+      )}
+
+      {capturaAvanzada && (
+        <>
+          <InstruccionesCapturaDocumentoDialog
+            abierto={instruccionesAbiertas}
+            lado={ladoCamara}
+            etiquetaDocumento={etiquetaDocumento}
+            onContinuar={() => {
+              setInstruccionesAbiertas(false);
+              setCamaraAbierta(true);
+            }}
+            onCancelar={() => setInstruccionesAbiertas(false)}
+          />
+          <CapturaCamaraDocumento
+            abierto={camaraAbierta}
+            lado={ladoCamara}
+            etiquetaDocumento={etiquetaDocumento}
+            onCerrar={() => setCamaraAbierta(false)}
+            onCaptura={(file) => {
+              setCamaraAbierta(false);
+              void handleRawFile(file);
+            }}
+          />
+        </>
+      )}
 
       {avisoVertical && preview && (
         <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">

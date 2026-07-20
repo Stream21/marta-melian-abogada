@@ -23,8 +23,13 @@ final class StripeService implements StripePort
      * Crea una sesión de Stripe Checkout para un pago único.
      * El cliente es redirigido a la URL de Stripe para pagar; al completar se dispara el webhook.
      */
-    public function createCheckoutSession(string $amountCents, string $expedienteId, string $successUrl, string $cancelUrl): array
-    {
+    public function createCheckoutSession(
+        string $amountCents,
+        string $expedienteId,
+        string $successUrl,
+        string $cancelUrl,
+        array $metadata = [],
+    ): array {
         $stripe = new StripeClient($this->stripeSecretKey);
 
         $session = $stripe->checkout->sessions->create([
@@ -44,14 +49,33 @@ final class StripeService implements StripePort
             'mode' => 'payment',
             'success_url' => $successUrl . '?session_id={CHECKOUT_SESSION_ID}',
             'cancel_url' => $cancelUrl,
-            'metadata' => [
-                'expediente_id' => $expedienteId,
-            ],
+            'metadata' => array_merge(['expediente_id' => $expedienteId], $metadata),
         ]);
 
         return [
             'url' => $session->url ?? '',
             'sessionId' => $session->id ?? '',
+        ];
+    }
+
+    /**
+     * @return array{paymentStatus: string, metadata: array<string, string>}
+     */
+    public function retrieveCheckoutSession(string $sessionId): array
+    {
+        $stripe = new StripeClient($this->stripeSecretKey);
+        $session = $stripe->checkout->sessions->retrieve($sessionId);
+
+        $metadata = [];
+        if (null !== $session->metadata) {
+            foreach ($session->metadata as $key => $value) {
+                $metadata[(string) $key] = (string) $value;
+            }
+        }
+
+        return [
+            'paymentStatus' => (string) ($session->payment_status ?? ''),
+            'metadata' => $metadata,
         ];
     }
 

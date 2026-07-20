@@ -13,4 +13,13 @@ interface DocumentToPdfConverterPort
      * @return string Ruta relativa al PDF generado
      */
     public function convertToPdf(string $sourceAbsolutePath, string $mimeType): string;
+
+    /**
+     * Convierte cada archivo a PDF y los combina en un único documento.
+     *
+     * @param list<array{path: string, mime: string}> $sources Rutas absolutas y MIME de cada archivo
+     *
+     * @return string Ruta relativa al PDF generado
+     */
+    public function mergeSourcesToPdf(array $sources): string;
 }

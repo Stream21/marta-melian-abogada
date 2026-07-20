@@ -54,6 +54,7 @@ final class ListarAuditoriaExpedienteUseCase
                 'canal' => $canal,
                 'canalLabel' => $this->catalog->canalLabel($canal),
                 'paso' => $hito->paso()?->value,
+                'referenciaId' => $hito->referenciaId(),
                 'createdAt' => $hito->createdAt()->format(\DateTimeInterface::ATOM),
             ];
         }

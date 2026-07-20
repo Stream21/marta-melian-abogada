@@ -37,7 +37,11 @@ final class ContratacionCompletitudValidator
         $entregadosPorDoc = [];
         foreach ($entregados as $entregado) {
             if ($entregado->estado() !== EstadoDocumentoEntregado::Pendiente) {
-                $entregadosPorDoc[$entregado->documentoRequeridoId()->value()] = true;
+                $tramiteDocId = $entregado->documentoRequeridoId();
+                if (null === $tramiteDocId) {
+                    continue;
+                }
+                $entregadosPorDoc[$tramiteDocId->value()] = true;
             }
         }
 

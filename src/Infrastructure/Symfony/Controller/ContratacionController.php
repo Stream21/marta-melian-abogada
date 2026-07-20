@@ -7,9 +7,9 @@ namespace App\Infrastructure\Symfony\Controller;
 use App\Application\Port\ExpedienteFileStoragePort;
 use App\Application\Service\DocumentoIntegridadService;
 use App\Application\UseCase\ActualizarCondicionesPagoContratacionUseCase;
+use App\Application\UseCase\ActualizarDocumentoIdentidadContratacionUseCase;
 use App\Application\UseCase\DevolverPasoContratacionUseCase;
 use App\Application\UseCase\ListarDocumentosContratacionUseCase;
-use App\Application\UseCase\ListarHitosContratacionUseCase;
 use App\Application\UseCase\ObtenerContratacionExpedienteUseCase;
 use App\Application\UseCase\ValidarPasoContratacionUseCase;
 use App\Domain\Entity\TipoEscrito;
@@ -31,12 +31,12 @@ final class ContratacionController extends AbstractController
         private ValidarPasoContratacionUseCase $validarPaso,
         private DevolverPasoContratacionUseCase $devolverPaso,
         private ListarDocumentosContratacionUseCase $listarDocumentos,
-        private ListarHitosContratacionUseCase $listarHitos,
         private ExpedienteDocumentoRepositoryInterface $documentoEntregadoRepository,
         private ExpedienteFirmaRepositoryInterface $firmaRepository,
         private ExpedienteFileStoragePort $fileStorage,
         private DocumentoIntegridadService $integridadService,
         private ActualizarCondicionesPagoContratacionUseCase $actualizarCondicionesPago,
+        private ActualizarDocumentoIdentidadContratacionUseCase $actualizarDocumentoIdentidad,
     ) {
     }
 
@@ -75,19 +75,6 @@ final class ContratacionController extends AbstractController
     {
         try {
             return new JsonResponse(($this->listarDocumentos)($id));
-        } catch (\InvalidArgumentException $e) {
-            return new JsonResponse(['message' => $e->getMessage()], Response::HTTP_NOT_FOUND);
-        }
-    }
-
-    #[Route(path: '/hitos', name: 'hitos', methods: ['GET'])]
-    public function hitos(string $id, Request $request): JsonResponse
-    {
-        $offset = max(0, (int) $request->query->get('offset', 0));
-        $limit = min(50, max(1, (int) $request->query->get('limit', 20)));
-
-        try {
-            return new JsonResponse(($this->listarHitos)($id, $offset, $limit));
         } catch (\InvalidArgumentException $e) {
             return new JsonResponse(['message' => $e->getMessage()], Response::HTTP_NOT_FOUND);
         }
@@ -150,6 +137,24 @@ final class ContratacionController extends AbstractController
         return new Response($content, Response::HTTP_OK, $headers);
     }
 
+    #[Route(path: '/documento-identidad', name: 'documento_identidad', methods: ['POST'])]
+    public function documentoIdentidad(string $id, Request $request): JsonResponse
+    {
+        try {
+            [$tipo, $anverso, $reverso] = $this->parseDocumentoUpload($request);
+            $datos = $request->request->all('datos');
+            if (!is_array($datos)) {
+                $datos = [];
+            }
+
+            ($this->actualizarDocumentoIdentidad)($id, $tipo, $anverso, $reverso, $this->inputFromArray($datos));
+
+            return new JsonResponse(($this->obtenerContratacion)($id));
+        } catch (\InvalidArgumentException $e) {
+            return new JsonResponse(['message' => $e->getMessage()], Response::HTTP_BAD_REQUEST);
+        }
+    }
+
     #[Route(path: '/validar/{paso}', name: 'validar', methods: ['POST'])]
     public function validar(string $id, string $paso): JsonResponse
     {
@@ -167,13 +172,62 @@ final class ContratacionController extends AbstractController
     {
         $data = json_decode($request->getContent(), true) ?? [];
         $nota = isset($data['nota']) ? (string) $data['nota'] : '';
+        $motivos = isset($data['motivos']) && is_array($data['motivos'])
+            ? array_values(array_filter(array_map('strval', $data['motivos'])))
+            : [];
 
         try {
-            ($this->devolverPaso)($id, $paso, $nota);
+            ($this->devolverPaso)($id, $paso, $nota, $motivos);
 
             return new JsonResponse(($this->obtenerContratacion)($id));
         } catch (\InvalidArgumentException $e) {
             return new JsonResponse(['message' => $e->getMessage()], Response::HTTP_BAD_REQUEST);
         }
+    }
+
+    /**
+     * @return array{0: string, 1: string, 2: string|null}
+     */
+    private function parseDocumentoUpload(Request $request): array
+    {
+        $tipo = (string) ($request->request->get('tipoEscaneo') ?? '');
+        $anversoFile = $request->files->get('anverso');
+        $reversoFile = $request->files->get('reverso');
+
+        if (!is_object($anversoFile) || !method_exists($anversoFile, 'getContent')) {
+            throw new \InvalidArgumentException('Debe adjuntar la imagen del anverso del documento.');
+        }
+
+        $anverso = (string) $anversoFile->getContent();
+        $reverso = null;
+        if (is_object($reversoFile) && method_exists($reversoFile, 'getContent')) {
+            $reverso = (string) $reversoFile->getContent();
+        }
+
+        return [$tipo, $anverso, $reverso];
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    private function inputFromArray(array $data): \App\Application\DTO\ClienteInput
+    {
+        return new \App\Application\DTO\ClienteInput(
+            (string) ($data['nombre'] ?? ''),
+            (string) ($data['nacionalidad'] ?? ''),
+            (string) ($data['tipoDocumento'] ?? ''),
+            (string) ($data['numDocumento'] ?? ''),
+            isset($data['fechaNacimiento']) ? (string) $data['fechaNacimiento'] : null,
+            (string) ($data['lugarNacimiento'] ?? ''),
+            (string) ($data['estadoCivil'] ?? ''),
+            (string) ($data['domicilio'] ?? ''),
+            (string) ($data['codigoPostal'] ?? ''),
+            (string) ($data['ciudad'] ?? ''),
+            (string) ($data['provincia'] ?? ''),
+            (string) ($data['nombrePadre'] ?? ''),
+            (string) ($data['nombreMadre'] ?? ''),
+            (string) ($data['telefono'] ?? ''),
+            (string) ($data['email'] ?? ''),
+        );
     }
 }

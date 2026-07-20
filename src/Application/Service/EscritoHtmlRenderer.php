@@ -31,7 +31,7 @@ final class EscritoHtmlRenderer
 
         $pageMarginTop = $incluirMembrete ? '118px' : '48px';
         $pageMarginBottom = $incluirMembrete ? '128px' : '48px';
-        $pageMarginSides = '52px';
+        $pageMarginSides = '104px';
         $headerBlock = $incluirMembrete ? '<header>' . $cabecera . '</header>' : '';
         $footerBlock = $incluirMembrete ? '<footer>' . $pie . '</footer>' : '';
 
@@ -241,6 +241,7 @@ HTML;
         return match ($type) {
             'title' => $this->renderTitle($bloque, $variables, $styleAttr),
             'text' => '<div class="block">' . $this->renderContent((string) ($bloque['content'] ?? ''), $variables, $styleAttr) . '</div>',
+            'html' => '<div class="block">' . (string) ($bloque['html'] ?? '') . '</div>',
             'section' => $this->renderSection($bloque, $variables, $styleAttr),
             'table' => $this->renderTable($bloque, $variables),
             default => '',

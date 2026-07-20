@@ -1,19 +1,24 @@
+import { useEffect, useState } from 'react';
+import { useNavigate } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/api/client';
+import type { ExpedienteNotificacionSearch } from '@/lib/notificacion-destino';
 import { ContratacionGestionPanel } from '@/components/expedientes/contratacion/ContratacionGestionPanel';
-import { RequerimientosEnConstruccionPanel } from '@/components/expedientes/contratacion/RequerimientosEnConstruccionPanel';
-import { EscritoGeneradorPanel } from '@/components/expedientes/EscritoGeneradorPanel';
+import { RequerimientosGestionPanel } from '@/components/expedientes/requerimientos/RequerimientosGestionPanel';
+import { TramitacionEnConstruccionPanel } from '@/components/expedientes/tramitacion/TramitacionEnConstruccionPanel';
+import { ExpedienteEscritosPanel } from '@/components/expedientes/escritos/ExpedienteEscritosPanel';
+import { ExpedienteFacturacionPanel } from '@/components/expedientes/ExpedienteFacturacionPanel';
 import { ExpedienteDocumentacionPanel } from '@/components/expedientes/ExpedienteDocumentacionPanel';
 import { ExpedienteAuditoriaPanel } from '@/components/expedientes/ExpedienteAuditoriaPanel';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { MetricCards } from '@/components/expedientes/MetricCards';
-import { ModoHolded } from '@/components/expedientes/ModoHolded';
-import { ModoStripe } from '@/components/expedientes/ModoStripe';
+import { ExpedienteGestionToolbarActions } from '@/components/expedientes/ExpedienteGestionToolbarActions';
+import { consumirNotificacionAlta } from '@/lib/email-notificacion';
+import { cn } from '@/lib/utils';
 
 interface ExpedienteDetailPageProps {
   expedienteId: string;
+  notificacionSearch?: ExpedienteNotificacionSearch;
 }
 
 const FASE_LABELS: Record<string, string> = {
@@ -23,13 +28,46 @@ const FASE_LABELS: Record<string, string> = {
   resolucion: 'Resolución',
 };
 
-export function ExpedienteDetailPage({ expedienteId }: ExpedienteDetailPageProps) {
+export function ExpedienteDetailPage({ expedienteId, notificacionSearch }: ExpedienteDetailPageProps) {
+  const navigate = useNavigate();
+  const [notificacionAlta, setNotificacionAlta] = useState<{ mensaje: string; esError: boolean } | null>(
+    null,
+  );
+
+  useEffect(() => {
+    setNotificacionAlta(consumirNotificacionAlta());
+  }, []);
+
   const { data: expediente } = useQuery({
     queryKey: ['expediente', expedienteId],
     queryFn: () => api.getExpediente(expedienteId),
   });
 
-  const defaultTab = expediente?.faseNegocio === 'contratacion' ? 'gestion' : 'gestion';
+  const tabFromNotificacion = notificacionSearch?.tab;
+  const [activeTab, setActiveTab] = useState(tabFromNotificacion ?? 'gestion');
+
+  useEffect(() => {
+    if (tabFromNotificacion) {
+      setActiveTab(tabFromNotificacion);
+    }
+  }, [tabFromNotificacion]);
+
+  const limpiarNotificacionSearch = () => {
+    if (
+      !notificacionSearch?.tab &&
+      !notificacionSearch?.hito &&
+      !notificacionSearch?.paso &&
+      !notificacionSearch?.documento
+    ) {
+      return;
+    }
+    void navigate({
+      to: '/expedientes/$expedienteId',
+      params: { expedienteId },
+      search: {},
+      replace: true,
+    });
+  };
 
   return (
     <div className="p-6">
@@ -56,25 +94,61 @@ export function ExpedienteDetailPage({ expedienteId }: ExpedienteDetailPageProps
         )}
       </div>
 
-      <Tabs defaultValue={defaultTab} className="w-full">
-        <TabsList className="mb-6 h-10 rounded-lg bg-muted p-1">
-          <TabsTrigger value="gestion">Gestión de Fases</TabsTrigger>
-          <TabsTrigger value="escritos" disabled={expediente?.faseNegocio === 'contratacion'}>
-            Escritos
-          </TabsTrigger>
-          <TabsTrigger value="documentacion">Documentación</TabsTrigger>
-          <TabsTrigger value="auditoria">Auditoría</TabsTrigger>
-          <TabsTrigger value="facturacion">Facturación</TabsTrigger>
-        </TabsList>
+      {notificacionAlta && (
+        <div
+          className={cn(
+            'mb-6 rounded-lg border p-4 text-sm',
+            notificacionAlta.esError
+              ? 'border-destructive/30 bg-destructive/5 text-destructive'
+              : 'border-emerald-200 bg-emerald-50 text-emerald-800',
+          )}
+          role="status"
+        >
+          {notificacionAlta.mensaje}
+        </div>
+      )}
+
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+          <TabsList className="h-10 rounded-lg bg-muted p-1">
+            <TabsTrigger value="gestion">Gestión de Fases</TabsTrigger>
+            <TabsTrigger value="escritos" disabled={expediente?.faseNegocio === 'contratacion'}>
+              Escritos
+            </TabsTrigger>
+            <TabsTrigger value="documentacion">Documentación</TabsTrigger>
+            <TabsTrigger value="auditoria">Auditoría</TabsTrigger>
+            <TabsTrigger value="facturacion">Facturación</TabsTrigger>
+          </TabsList>
+          {activeTab === 'gestion' && expediente?.faseNegocio && (
+            <ExpedienteGestionToolbarActions
+              expedienteId={expedienteId}
+              faseNegocio={expediente.faseNegocio}
+            />
+          )}
+        </div>
 
         <TabsContent value="gestion">
           {expediente?.faseNegocio === 'contratacion' ? (
-            <ContratacionGestionPanel expedienteId={expedienteId} />
-          ) : expediente ? (
-            <RequerimientosEnConstruccionPanel
+            <ContratacionGestionPanel
+              expedienteId={expedienteId}
+              focusPaso={notificacionSearch?.paso}
+              abrirRevision={notificacionSearch?.revision === '1'}
+              onFocusConsumed={limpiarNotificacionSearch}
+            />
+          ) : expediente?.faseNegocio === 'requerimientos' ? (
+            <RequerimientosGestionPanel
+              expedienteId={expedienteId}
+              focusDocumentoId={notificacionSearch?.documento}
+              abrirRevision={notificacionSearch?.revision === '1'}
+              onFocusConsumed={limpiarNotificacionSearch}
+            />
+          ) : expediente?.faseNegocio === 'tramitacion' ? (
+            <TramitacionEnConstruccionPanel
               expedienteId={expedienteId}
               numero={expediente.numero}
             />
+          ) : expediente ? (
+            <StubTab label="Gestión de Fases" />
           ) : (
             <StubTab label="Gestión de Fases" />
           )}
@@ -83,7 +157,7 @@ export function ExpedienteDetailPage({ expedienteId }: ExpedienteDetailPageProps
           {expediente?.faseNegocio === 'contratacion' ? (
             <FaseEscritosNoDisponible />
           ) : expediente ? (
-            <EscritoGeneradorPanel expediente={expediente} />
+            <ExpedienteEscritosPanel expedienteId={expedienteId} />
           ) : (
             <StubTab label="Escritos" />
           )}
@@ -92,10 +166,14 @@ export function ExpedienteDetailPage({ expedienteId }: ExpedienteDetailPageProps
           <ExpedienteDocumentacionPanel expedienteId={expedienteId} />
         </TabsContent>
         <TabsContent value="auditoria">
-          <ExpedienteAuditoriaPanel expedienteId={expedienteId} />
+          <ExpedienteAuditoriaPanel
+            expedienteId={expedienteId}
+            focusHitoId={notificacionSearch?.hito}
+            onFocusConsumed={limpiarNotificacionSearch}
+          />
         </TabsContent>
         <TabsContent value="facturacion">
-          <FacturacionTab expedienteId={expedienteId} />
+          <ExpedienteFacturacionPanel expedienteId={expedienteId} />
         </TabsContent>
       </Tabs>
     </div>
@@ -118,41 +196,6 @@ function StubTab({ label }: { label: string }) {
   return (
     <div className="flex items-center justify-center py-16 text-muted-foreground">
       <p className="text-sm">{label} — próximamente</p>
-    </div>
-  );
-}
-
-function FacturacionTab({ expedienteId }: { expedienteId: string }) {
-  const { data: payments } = useQuery({
-    queryKey: ['payments', expedienteId],
-    queryFn: () => api.getExpedientePayments(expedienteId),
-  });
-
-  const { data: invoices } = useQuery({
-    queryKey: ['invoices', expedienteId],
-    queryFn: () => api.getInvoices(expedienteId),
-  });
-
-  const totalCobrado = payments
-    ? payments.reduce((sum, p) => sum + parseFloat(p.amount || '0'), 0)
-    : 0;
-
-  const totalExpediente = invoices
-    ? invoices.reduce((sum, inv) => sum + parseFloat(inv.importe || '0'), 0)
-    : 0;
-
-  return (
-    <div className="space-y-6">
-      <MetricCards
-        totalExpediente={totalExpediente}
-        totalCobrado={totalCobrado}
-        pendiente={Math.max(0, totalExpediente - totalCobrado)}
-      />
-      <Separator />
-      <div className="grid gap-6 lg:grid-cols-2">
-        <ModoHolded expedienteId={expedienteId} invoices={invoices ?? []} />
-        <ModoStripe expedienteId={expedienteId} />
-      </div>
     </div>
   );
 }

@@ -40,7 +40,7 @@ export function ConfigBreadcrumb({ section, variant }: ConfigBreadcrumbProps) {
   const isListVariant = variant === 'list';
 
   return (
-    <div className="shrink-0 border-b bg-card px-6 py-2 md:px-8">
+    <div className="shrink-0 border-b bg-card px-6 py-2 lg:px-12">
       <Breadcrumb>
         <BreadcrumbList className="flex-wrap items-center gap-2 text-[12px] sm:gap-2">
           <BreadcrumbItem>

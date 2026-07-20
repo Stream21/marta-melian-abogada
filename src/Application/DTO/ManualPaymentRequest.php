@@ -11,6 +11,7 @@ final readonly class ManualPaymentRequest
         public string $amount,
         public string $clientName = '',
         public string $caseReference = '',
+        public ?int $cuotaNumero = null,
     ) {
     }
 }

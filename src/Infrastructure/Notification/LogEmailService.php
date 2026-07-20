@@ -14,6 +14,11 @@ final class LogEmailService implements EmailPort
     ) {
     }
 
+    public function isConfigured(): bool
+    {
+        return true;
+    }
+
     public function send(string $to, string $subject, string $body): void
     {
         $this->logger->info('[EMAIL-SIM] Correo enviado', [

@@ -26,10 +26,10 @@ final class ExtranjeriaCatalogSeedData
                 'id' => 'b1000001-0001-4000-8000-000000000001',
                 'nombre' => 'Residencias por Circunstancias Excepcionales (Arraigos)',
                 'tramites' => [
-                    self::tramite('c1000001-0001-4000-8000-000000000001', 'Solicitud Inicial de Arraigo Social'),
                     self::tramite('c1000001-0001-4000-8000-000000000002', 'Solicitud Inicial de Arraigo Familiar'),
-                    self::tramite('c1000001-0001-4000-8000-000000000003', 'Solicitud Inicial de Arraigo Sociolaboral'),
+                    self::tramite('c1000001-0001-4000-8000-000000000001', 'Solicitud Inicial de Arraigo Social'),
                     self::tramite('c1000001-0001-4000-8000-000000000004', 'Solicitud Inicial de Arraigo Socioformativo'),
+                    self::tramite('c1000001-0001-4000-8000-000000000003', 'Solicitud Inicial de Arraigo Sociolaboral'),
                     self::tramite('c1000001-0001-4000-8000-000000000005', 'Solicitud Inicial de Arraigo de Segunda Oportunidad'),
                     self::tramite('c1000001-0001-4000-8000-000000000006', 'Solicitud de Residencia por Razones Humanitarias o Protección Internacional'),
                 ],

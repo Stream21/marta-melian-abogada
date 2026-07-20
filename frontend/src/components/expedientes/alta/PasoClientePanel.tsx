@@ -4,6 +4,7 @@ import { api, type ClienteBusquedaItem } from '@/api/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { TelefonoInput } from '@/components/ui/TelefonoInput';
 import { isValidEmail, isValidTelefono } from '@/lib/validators';
 import { cn } from '@/lib/utils';
 import type { ExpedienteAltaState } from './types';
@@ -159,18 +160,16 @@ export function PasoClientePanel({ state, onChange }: PasoClientePanelProps) {
         <div className="grid gap-4 max-w-md">
           <div>
             <Label htmlFor="telefono">Teléfono *</Label>
-            <Input
+            <TelefonoInput
               id="telefono"
-              type="tel"
-              placeholder="+34600111222"
               value={state.telefono}
-              onChange={(e) => {
-                onChange({ telefono: e.target.value, telefonoDuplicado: null });
+              onChange={(value) => {
+                onChange({ telefono: value, telefonoDuplicado: null });
                 setTelefonoError(null);
               }}
               onBlur={() => void verificarTelefonoDuplicado(state.telefono)}
+              required
               className="mt-1"
-              aria-invalid={!!telefonoError}
             />
             {buscando && <p className="mt-1 text-xs text-muted-foreground">Verificando teléfono…</p>}
             {telefonoError && (
@@ -293,6 +292,9 @@ export function PasoClientePanel({ state, onChange }: PasoClientePanelProps) {
               <p className="text-sm text-emerald-700">{state.clienteNombre}</p>
               {state.telefono && (
                 <p className="text-xs text-emerald-600 mt-1">{state.telefono}</p>
+              )}
+              {state.email && (
+                <p className="text-xs text-emerald-600">{state.email}</p>
               )}
             </div>
           )}

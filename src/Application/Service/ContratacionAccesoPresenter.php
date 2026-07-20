@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace App\Application\Service;
 
 use App\Domain\Entity\EstadoDocumentoEntregado;
+use App\Application\DTO\ClienteInputMapper;
 use App\Domain\Entity\EstadoPasoContratacion;
 use App\Domain\Entity\Expediente;
 use App\Domain\Entity\FaseDocumentoTramite;
+use App\Domain\Entity\FaseNegocioExpediente;
 use App\Domain\Entity\PasoContratacionCliente;
 use App\Domain\Entity\TipoEscrito;
 use App\Domain\Repository\ClienteRepositoryInterface;
@@ -43,7 +45,10 @@ final class ContratacionAccesoPresenter
         $pasoActivo = null;
         $pasos = [];
 
-        if (null !== $expediente->tramiteId()) {
+        if (
+            FaseNegocioExpediente::Contratacion === $expediente->faseNegocio()
+            && null !== $expediente->tramiteId()
+        ) {
             $pasosDb = $this->contratacionRepository->findPasosByExpediente($expediente->id());
             usort($pasosDb, fn ($a, $b) => $a->paso()->orden() <=> $b->paso()->orden());
             $pasoActivo = $this->resolverPasoActivoCliente($pasosDb);
@@ -54,12 +59,17 @@ final class ContratacionAccesoPresenter
                 'estadoLabel' => $p->estado()->label(),
                 'esActivo' => $pasoActivo === $p->paso(),
                 'notaDevolucion' => $p->notaDevolucion(),
+                'motivosDevolucion' => $p->motivosDevolucion(),
             ], $pasosDb);
         }
 
         $entregados = [];
         foreach ($this->documentoEntregadoRepository->findByExpediente($expediente->id()) as $doc) {
-            $entregados[$doc->documentoRequeridoId()->value()] = $doc;
+            $tramiteDocId = $doc->documentoRequeridoId();
+            if (null === $tramiteDocId) {
+                continue;
+            }
+            $entregados[$tramiteDocId->value()] = $doc;
         }
 
         $documentosRequeridos = [];
@@ -135,6 +145,8 @@ final class ContratacionAccesoPresenter
         ];
 
         $clienteDatos = null;
+        $datosClienteEditables = null;
+        $identidadEdicion = null;
         $nombreCliente = '' !== trim($expediente->clientName()) ? trim($expediente->clientName()) : null;
         if (null !== $expediente->clienteId()) {
             $cliente = $this->clienteRepository->findById(new ClienteId($expediente->clienteId()));
@@ -149,6 +161,29 @@ final class ContratacionAccesoPresenter
                     'domicilio' => $cliente->domicilio(),
                     'ciudad' => $cliente->ciudad(),
                 ];
+
+                $pasoDatos = $this->contratacionRepository->findPaso($expediente->id(), PasoContratacionCliente::DatosCliente);
+                $pasoDatosPendiente = null !== $pasoDatos
+                    && EstadoPasoContratacion::Pendiente === $pasoDatos->estado();
+                $tieneDocumento = $cliente->tieneDocumentoIdentidad();
+                $esCorreccion = $pasoDatosPendiente
+                    && null !== $pasoDatos->notaDevolucion()
+                    && $tieneDocumento;
+
+                if ($pasoDatosPendiente && $tieneDocumento) {
+                    $datosClienteEditables = ClienteInputMapper::toArray(ClienteInputMapper::fromCliente($cliente));
+                    $tipoDoc = $cliente->documentoIdentidadTipo();
+                    $identidadEdicion = [
+                        'modoCorreccion' => $esCorreccion,
+                        'tieneDocumentoPrevio' => true,
+                        'tipoEscaneo' => $tipoDoc?->value,
+                        'anversoUrl' => sprintf('/api/acceso/%s/identidad/anverso', rawurlencode($accessToken)),
+                        'reversoUrl' => null !== $cliente->documentoIdentidadReversoPath()
+                            ? sprintf('/api/acceso/%s/identidad/reverso', rawurlencode($accessToken))
+                            : null,
+                        'motivosDevolucion' => $esCorreccion ? $pasoDatos->motivosDevolucion() : [],
+                    ];
+                }
             }
         }
 
@@ -159,10 +194,18 @@ final class ContratacionAccesoPresenter
             'documentosFirma' => $documentosFirma,
             'resumenPago' => $resumenPago,
             'clienteDatos' => $clienteDatos,
+            'datosClienteEditables' => $datosClienteEditables,
+            'identidadEdicion' => $identidadEdicion,
             'clienteNombre' => $nombreCliente,
             'despachoLogoUrl' => null !== $despacho?->logoPath()
                 ? sprintf('/api/acceso/%s/despacho/logo', rawurlencode($accessToken))
                 : null,
+            'despachoNombreFirma' => null !== $despacho && '' !== trim($despacho->nombreFirma())
+                ? trim($despacho->nombreFirma())
+                : 'Bufete Melián',
+            'despachoSubtitulo' => null !== $despacho && '' !== trim($despacho->subtituloProfesional())
+                ? trim($despacho->subtituloProfesional())
+                : 'Servicios Jurídicos Profesionales',
             'firmas' => $this->serializarConfigFirmas($expediente),
         ];
     }

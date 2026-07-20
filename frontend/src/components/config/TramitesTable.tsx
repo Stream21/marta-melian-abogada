@@ -51,6 +51,7 @@ import { ConfigListToolbar } from '@/components/config/ConfigListToolbar';
 import { Badge } from '@/components/ui/badge';
 
 import { PLATAFORMAS_TRAMITACION } from '@/lib/tramite-plataformas';
+import { matchesMultiFilter } from '@/lib/filter-utils';
 import { cn } from '@/lib/utils';
 
 import {
@@ -173,7 +174,7 @@ export function TramitesTable({
 
         accessorKey: 'servicioNombre',
 
-        filterFn: (row, _id, value) => !value || row.original.servicioId === value,
+        filterFn: (row, _id, value) => matchesMultiFilter(row.original.servicioId, value),
 
         header: 'Servicio',
 
@@ -233,7 +234,7 @@ export function TramitesTable({
 
         accessorKey: 'plataforma',
 
-        filterFn: (row, _id, value) => !value || row.original.plataforma === value,
+        filterFn: (row, _id, value) => matchesMultiFilter(row.original.plataforma, value),
 
         header: 'Plataforma',
 
@@ -255,7 +256,7 @@ export function TramitesTable({
 
         accessorKey: 'requiereProcurador',
 
-        filterFn: (row, _id, value) => !value || String(row.original.requiereProcurador) === value,
+        filterFn: (row, _id, value) => matchesMultiFilter(String(row.original.requiereProcurador), value),
 
         header: 'Procurador',
 
@@ -444,17 +445,12 @@ export function TramitesTable({
 
 
 
-  const servicioFilter = (table.getColumn('servicioNombre')?.getFilterValue() as string) ?? '';
-  const plataformaFilter = (table.getColumn('plataforma')?.getFilterValue() as string) ?? '';
-  const procuradorFilter = (table.getColumn('requiereProcurador')?.getFilterValue() as string) ?? '';
-  const hasActiveFilters = Boolean(globalFilter || servicioFilter || plataformaFilter || procuradorFilter);
-
-  const clearFilters = () => {
-    setGlobalFilter('');
-    setColumnFilters([]);
-  };
-
-
+  const servicioFilter = (table.getColumn('servicioNombre')?.getFilterValue() as string[] | undefined) ?? [];
+  const plataformaFilter = (table.getColumn('plataforma')?.getFilterValue() as string[] | undefined) ?? [];
+  const procuradorFilter = (table.getColumn('requiereProcurador')?.getFilterValue() as string[] | undefined) ?? [];
+  const hasActiveFilters = Boolean(
+    globalFilter || servicioFilter.length || plataformaFilter.length || procuradorFilter.length,
+  );
 
   const confirmToggle = () => {
 
@@ -509,32 +505,33 @@ export function TramitesTable({
               id: 'servicio',
               label: 'Servicio',
               emptyLabel: 'Todos los servicios',
-              value: servicioFilter,
-              onChange: (value) => table.getColumn('servicioNombre')?.setFilterValue(value || undefined),
+              values: servicioFilter,
+              onChange: (values) =>
+                table.getColumn('servicioNombre')?.setFilterValue(values.length ? values : undefined),
               options: servicioOptions,
             },
             {
               id: 'plataforma',
               label: 'Plataforma',
               emptyLabel: 'Todas las plataformas',
-              value: plataformaFilter,
-              onChange: (value) => table.getColumn('plataforma')?.setFilterValue(value || undefined),
+              values: plataformaFilter,
+              onChange: (values) =>
+                table.getColumn('plataforma')?.setFilterValue(values.length ? values : undefined),
               options: PLATAFORMAS_TRAMITACION.map((p) => ({ value: p.value, label: p.label })),
             },
             {
               id: 'procurador',
               label: 'Procurador',
               emptyLabel: 'Procurador: todos',
-              value: procuradorFilter,
-              onChange: (value) => table.getColumn('requiereProcurador')?.setFilterValue(value || undefined),
+              values: procuradorFilter,
+              onChange: (values) =>
+                table.getColumn('requiereProcurador')?.setFilterValue(values.length ? values : undefined),
               options: [
                 { value: 'true', label: 'Requiere procurador' },
                 { value: 'false', label: 'Sin procurador' },
               ],
             },
           ]}
-
-          onClear={clearFilters}
 
         />
 

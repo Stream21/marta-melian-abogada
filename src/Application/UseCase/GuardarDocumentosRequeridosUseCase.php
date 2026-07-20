@@ -113,21 +113,21 @@ final class GuardarDocumentosRequeridosUseCase
 
         if (!is_numeric($raw)) {
             throw new \InvalidArgumentException(
-                sprintf('Indique cuántas imágenes puede anexar el cliente en el documento %d.', $index),
+                sprintf('Indique cuántos archivos puede anexar el cliente en el documento %d.', $index),
             );
         }
 
         $maxImagenes = (int) $raw;
         if ($maxImagenes < 2) {
             throw new \InvalidArgumentException(
-                sprintf('El conjunto del documento %d debe permitir al menos 2 imágenes.', $index),
+                sprintf('El conjunto del documento %d debe permitir al menos 2 archivos.', $index),
             );
         }
 
         if ($maxImagenes > self::MAX_IMAGENES_CONJUNTO) {
             throw new \InvalidArgumentException(
                 sprintf(
-                    'El documento %d no puede superar %d imágenes.',
+                    'El documento %d no puede superar %d archivos.',
                     $index,
                     self::MAX_IMAGENES_CONJUNTO,
                 ),

@@ -5,7 +5,7 @@ import { isSessionActive } from '@/contexts/AuthContext';
 export const Route = createFileRoute('/login')({
   beforeLoad: () => {
     if (isSessionActive()) {
-      throw redirect({ to: '/dashboard' });
+      throw redirect({ to: '/expedientes' });
     }
   },
   component: LoginPage,

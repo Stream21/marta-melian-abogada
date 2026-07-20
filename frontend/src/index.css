@@ -110,7 +110,7 @@ body {
     @apply text-[11px] font-bold uppercase tracking-widest text-muted-foreground;
   }
   .escrito-document {
-    @apply font-sans text-[10.5pt] leading-[1.65] text-foreground;
+    @apply px-[104px] font-sans text-[10.5pt] leading-[1.65] text-foreground;
   }
   .escrito-document-title {
     @apply text-center text-[16pt] font-bold uppercase tracking-wide text-[#2c3e6b];
@@ -175,7 +175,7 @@ body {
       focus:outline-none focus:ring-1 focus:ring-ring focus:border-primary transition-all;
   }
   .table-toolbar {
-    @apply flex flex-wrap items-center gap-3 p-5 border-b;
+    @apply flex flex-nowrap items-center gap-3 p-5 border-b;
   }
   .membrete-html-preview {
     @apply w-full text-left;
@@ -198,5 +198,53 @@ body {
   }
   .membrete-html-preview img[alt=''] {
     max-width: none;
+  }
+
+  .escrito-tiptap .escrito-tiptap-editor {
+    @apply min-h-[180px];
+  }
+
+  .escrito-tiptap .escrito-tiptap-editor p.is-editor-empty:first-child::before {
+    @apply text-muted-foreground pointer-events-none float-left h-0;
+    content: attr(data-placeholder);
+  }
+
+  .escrito-tiptap .escrito-tiptap-editor h2 {
+    @apply text-lg font-semibold mt-4 mb-2;
+  }
+
+  .escrito-tiptap .escrito-tiptap-editor h3 {
+    @apply text-base font-semibold mt-3 mb-1;
+  }
+
+  .escrito-tiptap .escrito-tiptap-editor ul {
+    @apply list-disc pl-6 my-2;
+  }
+
+  .escrito-tiptap .escrito-tiptap-editor ol {
+    @apply list-decimal pl-6 my-2;
+  }
+
+  .escrito-tiptap .escrito-tiptap-editor p {
+    @apply my-1;
+  }
+
+  .upload-progress-indeterminate {
+    @apply relative h-1.5 overflow-hidden rounded-full bg-primary/10;
+  }
+
+  .upload-progress-indeterminate::after {
+    content: '';
+    @apply absolute inset-y-0 w-2/5 rounded-full bg-primary;
+    animation: upload-progress-slide 1.4s ease-in-out infinite;
+  }
+}
+
+@keyframes upload-progress-slide {
+  0% {
+    transform: translateX(-120%);
+  }
+  100% {
+    transform: translateX(320%);
   }
 }

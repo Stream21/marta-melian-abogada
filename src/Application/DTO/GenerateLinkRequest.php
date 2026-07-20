@@ -9,7 +9,9 @@ final readonly class GenerateLinkRequest
     public function __construct(
         public string $expedienteId,
         public string $amount,
-        public string $phone,
+        public string $phone = '',
+        public string $email = '',
+        public ?int $cuotaNumero = null,
     ) {
     }
 }

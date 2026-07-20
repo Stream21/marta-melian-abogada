@@ -1,11 +1,9 @@
 import { useState } from 'react';
 import { Link, useRouter } from '@tanstack/react-router';
 import {
-  LayoutDashboard,
   FolderOpen,
-  Calendar,
-  CalendarCheck,
   Users,
+  Receipt,
   Settings,
   LogOut,
   PanelLeftClose,
@@ -24,11 +22,9 @@ export interface SidebarProps {
 }
 
 const navItems = [
-  { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { label: 'Listado de Expedientes', href: '/expedientes', icon: FolderOpen },
-  { label: 'Calendario de Vencimientos', href: '/agenda', icon: Calendar },
-  // { label: 'Agenda (Citas)', href: '/agenda', icon: CalendarCheck },
+  { label: 'Expedientes', href: '/expedientes', icon: FolderOpen },
   { label: 'Clientes', href: '/clientes', icon: Users },
+  { label: 'Facturación', href: '/facturacion', icon: Receipt },
 ];
 
 const configSubItems = [

@@ -1,24 +1,31 @@
 import { useState } from 'react';
 import { CheckCircle, ExternalLink, MessageSquare, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { api, type QuickInvoiceResponse } from '../../api/client';
+import { api, openAuthenticatedDocument, type QuickInvoiceResponse } from '../../api/client';
 
 interface InvoiceViewerProps {
   invoice: QuickInvoiceResponse;
 }
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
-
 export function InvoiceViewer({ invoice }: InvoiceViewerProps) {
   const [sending, setSending] = useState(false);
+  const [abriendoPdf, setAbriendoPdf] = useState(false);
   const [whatsappLog, setWhatsappLog] = useState<string | null>(null);
   const [whatsappError, setWhatsappError] = useState<string | null>(null);
 
-  const pdfUrl = invoice.pdfUrl
-    ? invoice.pdfUrl.startsWith('http')
-      ? invoice.pdfUrl
-      : API_BASE + invoice.pdfUrl
-    : null;
+  const pdfPath = invoice.pdfUrl ?? null;
+
+  const handleAbrirPdf = async () => {
+    if (!pdfPath) return;
+    setAbriendoPdf(true);
+    try {
+      await openAuthenticatedDocument(pdfPath);
+    } catch (err) {
+      window.alert(err instanceof Error ? err.message : 'No se pudo abrir el PDF.');
+    } finally {
+      setAbriendoPdf(false);
+    }
+  };
 
   const handleWhatsapp = async () => {
     if (!invoice.invoiceId) return;
@@ -73,12 +80,15 @@ export function InvoiceViewer({ invoice }: InvoiceViewerProps) {
       </dl>
 
       <div className="flex flex-col gap-2">
-        {pdfUrl && (
-          <Button variant="outline" className="w-full" asChild>
-            <a href={pdfUrl} target="_blank" rel="noopener noreferrer">
-              <ExternalLink className="mr-2 h-4 w-4" />
-              Ver Factura PDF
-            </a>
+        {pdfPath && (
+          <Button
+            variant="outline"
+            className="w-full"
+            disabled={abriendoPdf}
+            onClick={() => void handleAbrirPdf()}
+          >
+            <ExternalLink className="mr-2 h-4 w-4" />
+            {abriendoPdf ? 'Abriendo…' : 'Ver Factura PDF'}
           </Button>
         )}
 

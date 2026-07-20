@@ -8,6 +8,8 @@ use App\Application\DTO\ClienteInput;
 use App\Application\Port\ClienteFileStoragePort;
 use App\Application\Port\ContratacionRealtimePort;
 use App\Application\Port\DocumentoIdentidadExtractorPort;
+use App\Application\Service\ClienteUnicidadValidator;
+use App\Application\Service\DocumentoIdentidadNormalizer;
 use App\Application\Service\EmailValidator;
 use App\Application\Service\TelefonoNormalizer;
 use App\Domain\Entity\ActorHitoExpediente;
@@ -24,6 +26,9 @@ use App\Domain\ValueObject\ClienteId;
 
 final class ActualizarClienteIdentidadAccesoUseCase
 {
+    /** Campos que provienen de la MRZ y no pueden ser alterados por el cliente. */
+    private const CAMPOS_MRZ = ['nombre', 'nacionalidad', 'tipoDocumento', 'numDocumento', 'fechaNacimiento'];
+
     public function __construct(
         private ExpedienteRepositoryInterface $expedienteRepository,
         private ClienteRepositoryInterface $clienteRepository,
@@ -33,15 +38,18 @@ final class ActualizarClienteIdentidadAccesoUseCase
         private ContratacionRealtimePort $realtime,
         private EmailValidator $emailValidator,
         private TelefonoNormalizer $telefonoNormalizer,
+        private DocumentoIdentidadNormalizer $documentoNormalizer,
+        private ClienteUnicidadValidator $unicidadValidator,
     ) {
     }
 
     public function __invoke(
         string $token,
-        string $tipoEscaneo,
-        string $anversoBinary,
+        ?string $tipoEscaneo,
+        ?string $anversoBinary,
         ?string $reversoBinary,
         ClienteInput $input,
+        bool $soloDatos = false,
     ): void {
         $expediente = $this->expedienteRepository->findByAccessToken($token);
         if (null === $expediente) {
@@ -70,38 +78,48 @@ final class ActualizarClienteIdentidadAccesoUseCase
             throw new \InvalidArgumentException('Debe completar los pasos anteriores antes de registrar sus datos.');
         }
 
-        $tipo = TipoEscaneoDocumentoIdentidad::tryFrom($tipoEscaneo)
-            ?? throw new \InvalidArgumentException('Tipo de escaneo no válido.');
-
-        if ('' === $anversoBinary) {
-            throw new \InvalidArgumentException('El documento de identidad es obligatorio.');
-        }
-
-        if ($tipo->requiereReverso() && (null === $reversoBinary || '' === $reversoBinary)) {
-            throw new \InvalidArgumentException('El reverso del documento es obligatorio para DNI/NIE.');
-        }
-
         $cliente = $this->clienteRepository->findById(new ClienteId($clienteId));
         if (null === $cliente) {
             throw new \InvalidArgumentException('Cliente no encontrado.');
         }
 
-        $anversoTemp = $this->writeTemp($anversoBinary, 'anverso');
-        $reversoTemp = null !== $reversoBinary && '' !== $reversoBinary
-            ? $this->writeTemp($reversoBinary, 'reverso')
-            : null;
+        $tieneDocumentoPrevio = $cliente->tieneDocumentoIdentidad();
+        $tipo = $this->resolverTipoEscaneo($tipoEscaneo, $cliente, $soloDatos, $tieneDocumentoPrevio);
 
-        try {
-            $extraidos = $this->extractor->extract($tipo->value, $anversoTemp, $reversoTemp);
-        } finally {
-            @unlink($anversoTemp);
+        if ($soloDatos) {
+            if (!$tieneDocumentoPrevio) {
+                throw new \InvalidArgumentException('Debe aportar el documento de identidad antes de continuar.');
+            }
+        } else {
+            $this->validarArchivosObligatorios($tipo, $anversoBinary, $reversoBinary, $cliente);
+        }
+
+        $extraidos = ['nombre' => '', 'numDocumento' => '', 'nacionalidad' => '', 'tipoDocumento' => '', 'fechaNacimiento' => null, 'lugarNacimiento' => '', 'domicilio' => '', 'codigoPostal' => '', 'ciudad' => '', 'provincia' => '', 'nombrePadre' => '', 'nombreMadre' => ''];
+
+        if (!$soloDatos) {
+            $temporales = [];
+            $anversoTemp = $this->resolverBinarioDocumento($anversoBinary, $cliente->documentoIdentidadAnversoPath());
+            $temporales[] = $anversoTemp;
+            $reversoTemp = $tipo->requiereReverso()
+                ? $this->resolverBinarioDocumento($reversoBinary, $cliente->documentoIdentidadReversoPath())
+                : null;
             if (null !== $reversoTemp) {
-                @unlink($reversoTemp);
+                $temporales[] = $reversoTemp;
+            }
+
+            try {
+                $extraidos = $this->extractor->extract($tipo->value, $anversoTemp, $reversoTemp);
+            } finally {
+                foreach ($temporales as $temp) {
+                    @unlink($temp);
+                }
             }
         }
 
-        $nombre = '' !== trim($input->nombre) ? trim($input->nombre) : trim((string) $extraidos['nombre']);
-        $numDocumento = '' !== trim($input->numDocumento) ? trim($input->numDocumento) : trim((string) $extraidos['numDocumento']);
+        $nombre = $this->resolverCampoMrz('nombre', $input, $extraidos, $soloDatos, $cliente);
+        $numDocumento = $this->documentoNormalizer->normalize(
+            $this->resolverCampoMrz('numDocumento', $input, $extraidos, $soloDatos, $cliente),
+        );
 
         if ('' === $nombre) {
             throw new \InvalidArgumentException('Indique su nombre completo.');
@@ -113,23 +131,20 @@ final class ActualizarClienteIdentidadAccesoUseCase
 
         $this->emailValidator->assertValid($input->email);
 
-        $fechaNacimiento = null;
-        if (null !== $input->fechaNacimiento && '' !== trim($input->fechaNacimiento)) {
-            $fechaNacimiento = \DateTimeImmutable::createFromFormat('Y-m-d', $input->fechaNacimiento)
-                ?: throw new \InvalidArgumentException('Fecha de nacimiento no válida.');
-        } elseif (null !== $extraidos['fechaNacimiento'] && '' !== $extraidos['fechaNacimiento']) {
-            $fechaNacimiento = \DateTimeImmutable::createFromFormat('Y-m-d', (string) $extraidos['fechaNacimiento']) ?: null;
-        }
+        $fechaNacimiento = $this->resolverFechaNacimientoMrz($input, $extraidos, $soloDatos, $cliente);
 
         $telefono = $this->telefonoNormalizer->normalize($input->telefono);
         if (null === $telefono || !$this->telefonoNormalizer->isValid($telefono)) {
             throw new \InvalidArgumentException('El teléfono móvil es obligatorio y debe ser válido.');
         }
 
+        $this->unicidadValidator->assertTelefonoUnico($telefono, $clienteId);
+        $this->unicidadValidator->assertDocumentoUnico($numDocumento, $clienteId);
+
         $clienteActualizado = $cliente->withDatos(
             $nombre,
-            $this->priorizar($input->nacionalidad, (string) $extraidos['nacionalidad']),
-            $this->priorizar($input->tipoDocumento, (string) $extraidos['tipoDocumento']),
+            $this->resolverCampoMrz('nacionalidad', $input, $extraidos, $soloDatos, $cliente),
+            $this->resolverCampoMrz('tipoDocumento', $input, $extraidos, $soloDatos, $cliente),
             $numDocumento,
             $fechaNacimiento,
             $this->priorizar($input->lugarNacimiento, (string) $extraidos['lugarNacimiento']),
@@ -144,13 +159,19 @@ final class ActualizarClienteIdentidadAccesoUseCase
             trim($input->email),
         );
 
-        $anversoPath = $this->fileStorage->saveDocumentoIdentidad($cliente->id(), 'anverso.jpg', $anversoBinary);
-        $reversoPath = null;
-        if (null !== $reversoBinary && '' !== $reversoBinary) {
-            $reversoPath = $this->fileStorage->saveDocumentoIdentidad($cliente->id(), 'reverso.jpg', $reversoBinary);
+        $anversoPath = $cliente->documentoIdentidadAnversoPath();
+        $reversoPath = $cliente->documentoIdentidadReversoPath();
+
+        if (!$soloDatos) {
+            if (null !== $anversoBinary && '' !== $anversoBinary) {
+                $anversoPath = $this->fileStorage->saveDocumentoIdentidad($cliente->id(), 'anverso.jpg', $anversoBinary);
+            }
+            if (null !== $reversoBinary && '' !== $reversoBinary) {
+                $reversoPath = $this->fileStorage->saveDocumentoIdentidad($cliente->id(), 'reverso.jpg', $reversoBinary);
+            }
         }
 
-        $clienteConDoc = $clienteActualizado->withDocumentoIdentidad($tipo, $anversoPath, $reversoPath);
+        $clienteConDoc = $clienteActualizado->withDocumentoIdentidad($tipo, $anversoPath ?? '', $reversoPath);
         $this->clienteRepository->save($clienteConDoc);
 
         $this->expedienteRepository->save(
@@ -165,7 +186,9 @@ final class ActualizarClienteIdentidadAccesoUseCase
             bin2hex(random_bytes(16)),
             $expediente->id(),
             'datos_cliente_registrados',
-            'El cliente ha escaneado su documento y confirmado sus datos.',
+            $soloDatos
+                ? 'El cliente ha corregido sus datos personales.'
+                : 'El cliente ha escaneado su documento y confirmado sus datos.',
             ActorHitoExpediente::Cliente,
             new \DateTimeImmutable('now'),
             PasoContratacionCliente::DatosCliente,
@@ -176,6 +199,63 @@ final class ActualizarClienteIdentidadAccesoUseCase
             'paso' => PasoContratacionCliente::DatosCliente->value,
             'actor' => 'cliente',
         ]);
+    }
+
+    private function resolverTipoEscaneo(
+        ?string $tipoEscaneo,
+        \App\Domain\Entity\Cliente $cliente,
+        bool $soloDatos,
+        bool $tieneDocumentoPrevio,
+    ): TipoEscaneoDocumentoIdentidad {
+        if ($soloDatos && $tieneDocumentoPrevio && null !== $cliente->documentoIdentidadTipo()) {
+            return $cliente->documentoIdentidadTipo();
+        }
+
+        return TipoEscaneoDocumentoIdentidad::tryFrom((string) $tipoEscaneo)
+            ?? throw new \InvalidArgumentException('Tipo de escaneo no válido.');
+    }
+
+    private function validarArchivosObligatorios(
+        TipoEscaneoDocumentoIdentidad $tipo,
+        ?string $anversoBinary,
+        ?string $reversoBinary,
+        \App\Domain\Entity\Cliente $cliente,
+    ): void {
+        $tieneAnverso = (null !== $anversoBinary && '' !== $anversoBinary) || $cliente->tieneDocumentoIdentidad();
+        if (!$tieneAnverso) {
+            throw new \InvalidArgumentException('El documento de identidad es obligatorio.');
+        }
+
+        if ($tipo->requiereReverso()) {
+            $tieneReverso = (null !== $reversoBinary && '' !== $reversoBinary)
+                || (null !== $cliente->documentoIdentidadReversoPath() && '' !== $cliente->documentoIdentidadReversoPath());
+            if (!$tieneReverso) {
+                throw new \InvalidArgumentException('El reverso del documento es obligatorio para DNI/NIE.');
+            }
+        }
+    }
+
+    private function resolverBinarioDocumento(?string $binary, ?string $existingRelativePath): string
+    {
+        if (null !== $binary && '' !== $binary) {
+            return $this->writeTemp($binary, 'upload');
+        }
+
+        if (null === $existingRelativePath || '' === $existingRelativePath) {
+            throw new \InvalidArgumentException('Falta la imagen del documento.');
+        }
+
+        $absolute = $this->fileStorage->resolveAbsolutePath($existingRelativePath);
+        if (!is_readable($absolute)) {
+            throw new \InvalidArgumentException('No se pudo leer el documento de identidad guardado.');
+        }
+
+        $content = file_get_contents($absolute);
+        if (false === $content || '' === $content) {
+            throw new \InvalidArgumentException('No se pudo leer el documento de identidad guardado.');
+        }
+
+        return $this->writeTemp($content, 'stored');
     }
 
     private function resolverPasoActivoCliente(\App\Domain\ValueObject\ExpedienteId $expedienteId): ?PasoContratacionCliente
@@ -219,5 +299,68 @@ final class ActualizarClienteIdentidadAccesoUseCase
         $manual = trim($manual);
 
         return '' !== $manual ? $manual : trim($extraido);
+    }
+
+    /**
+     * @param array<string, mixed> $extraidos
+     */
+    private function resolverCampoMrz(
+        string $campo,
+        ClienteInput $input,
+        array $extraidos,
+        bool $soloDatos,
+        \App\Domain\Entity\Cliente $cliente,
+    ): string {
+        if (!in_array($campo, self::CAMPOS_MRZ, true) || 'fechaNacimiento' === $campo) {
+            return '';
+        }
+
+        if ($soloDatos) {
+            return match ($campo) {
+                'nombre' => $cliente->nombre(),
+                'nacionalidad' => $cliente->nacionalidad(),
+                'tipoDocumento' => $cliente->tipoDocumento(),
+                'numDocumento' => $cliente->numDocumento(),
+                default => '',
+            };
+        }
+
+        $extraido = trim((string) ($extraidos[$campo] ?? ''));
+        if ('' !== $extraido) {
+            return $extraido;
+        }
+
+        return match ($campo) {
+            'nombre' => trim($input->nombre),
+            'nacionalidad' => trim($input->nacionalidad),
+            'tipoDocumento' => trim($input->tipoDocumento),
+            'numDocumento' => trim($input->numDocumento),
+            default => '',
+        };
+    }
+
+    /**
+     * @param array<string, mixed> $extraidos
+     */
+    private function resolverFechaNacimientoMrz(
+        ClienteInput $input,
+        array $extraidos,
+        bool $soloDatos,
+        \App\Domain\Entity\Cliente $cliente,
+    ): ?\DateTimeImmutable {
+        if ($soloDatos) {
+            return $cliente->fechaNacimiento();
+        }
+
+        if (null !== $extraidos['fechaNacimiento'] && '' !== $extraidos['fechaNacimiento']) {
+            return \DateTimeImmutable::createFromFormat('Y-m-d', (string) $extraidos['fechaNacimiento']) ?: null;
+        }
+
+        if (null !== $input->fechaNacimiento && '' !== trim($input->fechaNacimiento)) {
+            return \DateTimeImmutable::createFromFormat('Y-m-d', $input->fechaNacimiento)
+                ?: throw new \InvalidArgumentException('Fecha de nacimiento no válida.');
+        }
+
+        return null;
     }
 }

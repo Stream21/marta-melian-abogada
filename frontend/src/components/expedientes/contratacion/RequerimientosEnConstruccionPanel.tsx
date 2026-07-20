@@ -39,10 +39,10 @@ export function RequerimientosEnConstruccionPanel({
         </Badge>
       </div>
 
-      {mostrarResumenContratacion && data && data.hitos.length > 0 && (
+      {mostrarResumenContratacion && data?.contratacionCompletada && (
         <div className="panel p-6">
           <h3 className="section-label mb-4">Resumen de contratación completada</h3>
-          <TimelineReadonly pasos={data.pasos} hitos={data.hitos} />
+          <TimelineReadonly pasos={data.pasos ?? []} hitos={data.hitos ?? []} />
         </div>
       )}
     </div>
@@ -66,11 +66,15 @@ function TimelineReadonly({
         ))}
       </div>
       <ul className="space-y-2">
-        {hitos.slice(0, 8).map((h) => (
-          <li key={h.id} className="text-sm text-muted-foreground">
-            {new Date(h.createdAt).toLocaleString('es-ES')} — {h.descripcion}
-          </li>
-        ))}
+        {hitos.length > 0 ? (
+          hitos.slice(0, 8).map((h) => (
+            <li key={h.id} className="text-sm text-muted-foreground">
+              {new Date(h.createdAt).toLocaleString('es-ES')} — {h.descripcion}
+            </li>
+          ))
+        ) : (
+          <li className="text-sm text-muted-foreground">Sin actividad registrada.</li>
+        )}
       </ul>
     </div>
   );

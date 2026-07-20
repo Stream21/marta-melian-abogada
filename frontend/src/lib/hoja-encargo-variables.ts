@@ -141,6 +141,8 @@ export interface VariablePreviewContext {
   };
 }
 
+import { eurosEnLetras } from './euros-en-letras';
+
 const VARIABLE_REGEX = /\[\[([A-Z_]+)\]\]/g;
 
 export function createBlockId(): string {
@@ -209,7 +211,7 @@ export function buildPreviewValues(context: VariablePreviewContext): Record<stri
     CUANTIA_TOTAL: honorariosFormatted,
     HONORARIOS_TRAMITE: honorariosFormatted,
     HONORARIOS_NUMERO: honorarios.toFixed(2).replace('.', ',') + ' €',
-    HONORARIOS_LETRA: 'CUATROCIENTOS CINCUENTA EUROS',
+    HONORARIOS_LETRA: eurosEnLetras(honorarios),
     FORMA_PAGO: 'Según calendario de pagos acordado',
     FORMA_PAGO_DETALLE: 'Según calendario de pagos acordado',
     PAGOS_PROGRAMADOS: '- Primer pago: 200€\n- Segundo pago: 250€',

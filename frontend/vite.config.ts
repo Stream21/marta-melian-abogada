@@ -4,6 +4,7 @@ import { TanStackRouterVite } from '@tanstack/router-vite-plugin'
 import path from 'path'
 
 const proxyTarget = process.env.PROXY_TARGET || 'http://localhost:8080'
+const ngrokFrontUrl = process.env.NGROK_FRONT_URL || ''
 
 export default defineConfig({
   plugins: [TanStackRouterVite(), react()],
@@ -20,19 +21,47 @@ export default defineConfig({
       usePolling: true,
       interval: 1000,
     },
-    hmr: {
-      host: 'localhost',
-      port: 5173,
-      clientPort: 5173,
-    },
+    hmr: ngrokFrontUrl
+      ? {
+          protocol: 'wss',
+          host: new URL(ngrokFrontUrl).hostname,
+          clientPort: 443,
+        }
+      : {
+          host: 'localhost',
+          port: 5173,
+          clientPort: 5173,
+        },
+    allowedHosts: ngrokFrontUrl
+      ? [new URL(ngrokFrontUrl).hostname, '.ngrok-free.dev', '.ngrok-free.app']
+      : true,
     proxy: {
       '/api': {
         target: proxyTarget,
         changeOrigin: true,
+        timeout: 300_000,
+        proxyTimeout: 300_000,
       },
       '/.well-known/mercure': {
         target: process.env.MERCURE_PROXY_TARGET || 'http://localhost:3000',
         changeOrigin: true,
+        configure: (proxy) => {
+          proxy.on('proxyReq', (proxyReq, req) => {
+            if (!req.url) return;
+            try {
+              const url = new URL(req.url, 'http://vite.local');
+              const auth = url.searchParams.get('authorization');
+              if (auth && !proxyReq.getHeader('authorization')) {
+                proxyReq.setHeader(
+                  'Authorization',
+                  auth.startsWith('Bearer ') ? auth : `Bearer ${auth}`,
+                );
+              }
+            } catch {
+              // ignore malformed URLs
+            }
+          });
+        },
       },
     },
   },

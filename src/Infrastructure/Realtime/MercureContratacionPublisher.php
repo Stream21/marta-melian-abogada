@@ -27,32 +27,35 @@ final class MercureContratacionPublisher implements ContratacionRealtimePort
         $topic = sprintf('/expedientes/%s/contratacion', $expedienteId);
 
         try {
-            $this->httpClient->request('POST', rtrim($this->mercureHubUrl, '/') . '/.well-known/mercure', [
-                'headers' => [
-                    'Authorization' => 'Bearer ' . $this->jwtFactory->create(['*']),
-                    'Content-Type' => 'application/x-www-form-urlencoded',
-                ],
-                'body' => [
-                    'topic' => $topic,
-                    'data' => json_encode($payload, \JSON_THROW_ON_ERROR),
-                ],
-            ]);
-
-            $this->httpClient->request('POST', rtrim($this->mercureHubUrl, '/') . '/.well-known/mercure', [
-                'headers' => [
-                    'Authorization' => 'Bearer ' . $this->jwtFactory->create(['*']),
-                    'Content-Type' => 'application/x-www-form-urlencoded',
-                ],
-                'body' => [
-                    'topic' => '/abogado/notificaciones',
-                    'data' => json_encode(array_merge($payload, ['expedienteId' => $expedienteId]), \JSON_THROW_ON_ERROR),
-                ],
-            ]);
+            $this->publicarConTimeout($topic, $payload);
+            $this->publicarConTimeout('/abogado/notificaciones', array_merge($payload, ['expedienteId' => $expedienteId]));
         } catch (\Throwable $e) {
             $this->logger->warning('No se pudo publicar evento Mercure: {message}', [
                 'message' => $e->getMessage(),
                 'expedienteId' => $expedienteId,
             ]);
         }
+    }
+
+    /**
+     * @param array<string, mixed> $payload
+     */
+    private function publicarConTimeout(string $topic, array $payload): void
+    {
+        $response = $this->httpClient->request('POST', rtrim($this->mercureHubUrl, '/') . '/.well-known/mercure', [
+            'headers' => [
+                'Authorization' => 'Bearer ' . $this->jwtFactory->create(['*']),
+                'Content-Type' => 'application/x-www-form-urlencoded',
+            ],
+            'body' => [
+                'topic' => $topic,
+                'data' => json_encode($payload, \JSON_THROW_ON_ERROR),
+            ],
+            'timeout' => 3,
+            'max_duration' => 3,
+        ]);
+
+        // Consumir la respuesta para no bloquear el cierre de la petición HTTP principal.
+        $response->getStatusCode();
     }
 }

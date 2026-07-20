@@ -4,9 +4,10 @@ import type { ClienteInput, ClienteResponse } from '@/api/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { TelefonoInput } from '@/components/ui/TelefonoInput';
 import { ESTADOS_CIVILES } from '@/lib/cliente-datos';
 
-const TIPOS_DOCUMENTO = ['DNI', 'NIE', 'PASAPORTE', 'OTRO'];
+const TIPOS_DOCUMENTO_DEFAULT = ['DNI', 'NIE', 'PASAPORTE', 'OTRO'];
 
 interface ClienteDatosFormProps {
   cliente?: ClienteResponse | null;
@@ -14,7 +15,16 @@ interface ClienteDatosFormProps {
   onSubmit: (body: ClienteInput) => void;
   isSaving?: boolean;
   readOnly?: boolean;
+  /** Campos concretos en solo lectura (p. ej. datos MRZ del documento). */
+  camposSoloLectura?: (keyof ClienteInput)[];
+  /** Restringe opciones del selector de tipo de documento. */
+  tiposDocumentoPermitidos?: string[];
+  etiquetaNumDocumento?: string;
   submitLabel?: string;
+  /** Layout del portal cliente: botones a ancho completo y textos más breves. */
+  portalCliente?: boolean;
+  onVolver?: () => void;
+  volverLabel?: string;
 }
 
 export function ClienteDatosForm({
@@ -23,7 +33,13 @@ export function ClienteDatosForm({
   onSubmit,
   isSaving,
   readOnly = false,
+  camposSoloLectura = [],
+  tiposDocumentoPermitidos = TIPOS_DOCUMENTO_DEFAULT,
+  etiquetaNumDocumento = 'Número de documento',
   submitLabel = 'Guardar datos',
+  portalCliente = false,
+  onVolver,
+  volverLabel = 'Volver',
 }: ClienteDatosFormProps) {
   const [nombre, setNombre] = useState('');
   const [nacionalidad, setNacionalidad] = useState('');
@@ -83,6 +99,9 @@ export function ClienteDatosForm({
     }
   }, [cliente, initialValues]);
 
+  const bloqueado = (campo: keyof ClienteInput) =>
+    readOnly || camposSoloLectura.includes(campo);
+
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     if (readOnly) return;
@@ -113,20 +132,29 @@ export function ClienteDatosForm({
         </div>
         <div>
           <h2 className="panel-title">Datos del cliente</h2>
-          <p className="text-sm text-muted-foreground">
-            {readOnly
-              ? 'Solo lectura. Los datos no se pueden modificar hasta que cierre el proceso de contratación.'
-              : 'Complete la ficha mínima del cliente. Los campos del documento se rellenan al escanear; el resto debe indicarlo el cliente.'}
-          </p>
+          {!portalCliente && (
+            <p className="text-sm text-muted-foreground">
+              {readOnly
+                ? 'Solo lectura. Los datos no se pueden modificar hasta que cierre el proceso de contratación.'
+                : camposSoloLectura.length > 0
+                  ? 'Los datos leídos de la banda MRZ del documento no se pueden modificar. Complete el resto de campos (contacto, domicilio, etc.).'
+                  : 'Complete la ficha mínima del cliente. Los campos del documento se rellenan al escanear; el resto debe indicarlo el cliente.'}
+            </p>
+          )}
+          {portalCliente && (
+            <p className="text-sm text-muted-foreground">
+              Revise sus datos y complete contacto y domicilio.
+            </p>
+          )}
         </div>
       </div>
 
-      <div className="space-y-6 p-6">
+      <div className={portalCliente ? 'space-y-6 p-4 sm:p-6' : 'space-y-6 p-6'}>
         <section>
           <h3 className="section-label mb-3">Identificación</h3>
           <div className="grid gap-3 md:grid-cols-2">
-            <Field label="Nombre completo" id="nombre" value={nombre} onChange={setNombre} required disabled={readOnly} className="md:col-span-2" hint="NOMBRE_CLIENTE" />
-            <Field label="Nacionalidad" id="nacionalidad" value={nacionalidad} onChange={setNacionalidad} disabled={readOnly} hint="NACIONALIDAD_CLIENTE" />
+            <Field label="Nombre completo" id="nombre" value={nombre} onChange={setNombre} required disabled={bloqueado('nombre')} className="md:col-span-2" />
+            <Field label="Nacionalidad" id="nacionalidad" value={nacionalidad} onChange={setNacionalidad} disabled={bloqueado('nacionalidad')} />
             <div className="space-y-1">
               <Label htmlFor="tipoDocumento">Tipo de documento</Label>
               <select
@@ -134,24 +162,23 @@ export function ClienteDatosForm({
                 className="input-field h-9 w-full disabled:cursor-not-allowed disabled:opacity-60"
                 value={tipoDocumento}
                 onChange={(e) => setTipoDocumento(e.target.value)}
-                disabled={readOnly}
+                disabled={bloqueado('tipoDocumento')}
               >
                 <option value="">Seleccionar…</option>
-                {TIPOS_DOCUMENTO.map((t) => (
+                {tiposDocumentoPermitidos.map((t) => (
                   <option key={t} value={t}>{t}</option>
                 ))}
               </select>
-              <FieldHint>TIPO_DOCUMENTO_CLIENTE</FieldHint>
             </div>
-            <Field label="Número de documento" id="numDocumento" value={numDocumento} onChange={setNumDocumento} disabled={readOnly} hint="NUM_DOCUMENTO_CLIENTE / DNI_CLIENTE" />
+            <Field label={etiquetaNumDocumento} id="numDocumento" value={numDocumento} onChange={setNumDocumento} disabled={bloqueado('numDocumento')} />
           </div>
         </section>
 
         <section>
           <h3 className="section-label mb-3">Datos personales</h3>
           <div className="grid gap-3 md:grid-cols-2">
-            <Field label="Fecha de nacimiento" id="fechaNacimiento" type="date" value={fechaNacimiento} onChange={setFechaNacimiento} disabled={readOnly} hint="FECHA_NACIMIENTO_CLIENTE" />
-            <Field label="Lugar de nacimiento" id="lugarNacimiento" value={lugarNacimiento} onChange={setLugarNacimiento} disabled={readOnly} hint="LUGAR_NACIMIENTO_CLIENTE" />
+            <Field label="Fecha de nacimiento" id="fechaNacimiento" type="date" value={fechaNacimiento} onChange={setFechaNacimiento} disabled={bloqueado('fechaNacimiento')} />
+            <Field label="Lugar de nacimiento" id="lugarNacimiento" value={lugarNacimiento} onChange={setLugarNacimiento} disabled={bloqueado('lugarNacimiento')} />
             <div className="space-y-1 md:col-span-2">
               <Label htmlFor="estadoCivil">Estado civil</Label>
               <select
@@ -159,7 +186,7 @@ export function ClienteDatosForm({
                 className="input-field h-9 w-full disabled:cursor-not-allowed disabled:opacity-60"
                 value={estadoCivil}
                 onChange={(e) => setEstadoCivil(e.target.value)}
-                disabled={readOnly}
+                disabled={bloqueado('estadoCivil')}
               >
                 <option value="">Seleccionar…</option>
                 {ESTADOS_CIVILES.map((e) => (
@@ -181,8 +208,8 @@ export function ClienteDatosForm({
         <section>
           <h3 className="section-label mb-3">Domicilio</h3>
           <div className="grid gap-3 md:grid-cols-2">
-            <Field label="Domicilio" id="domicilio" value={domicilio} onChange={setDomicilio} disabled={readOnly} className="md:col-span-2" hint="DOMICILIO_CLIENTE" />
-            <Field label="Código postal" id="codigoPostal" value={codigoPostal} onChange={setCodigoPostal} disabled={readOnly} hint="CP_CLIENTE" />
+            <Field label="Domicilio" id="domicilio" value={domicilio} onChange={setDomicilio} disabled={readOnly} className="md:col-span-2" />
+            <Field label="Código postal" id="codigoPostal" value={codigoPostal} onChange={setCodigoPostal} disabled={readOnly} />
             <Field label="Ciudad / municipio" id="ciudad" value={ciudad} onChange={setCiudad} disabled={readOnly} />
             <Field label="Provincia" id="provincia" value={provincia} onChange={setProvincia} disabled={readOnly} className="md:col-span-2" />
           </div>
@@ -190,19 +217,50 @@ export function ClienteDatosForm({
 
         <section>
           <h3 className="section-label mb-3">Contacto</h3>
-          <div className="grid gap-3 md:grid-cols-2">
-            <Field label="Teléfono" id="telefono" value={telefono} onChange={setTelefono} disabled={readOnly} hint="TELEFONO_CLIENTE" />
-            <Field label="Email" id="email" type="email" value={email} onChange={setEmail} disabled={readOnly} hint="EMAIL_CLIENTE" />
+          <div className={portalCliente ? 'grid gap-3' : 'grid max-w-xl gap-3'}>
+            <div className="space-y-1">
+              <Label htmlFor="telefono">Teléfono</Label>
+              <TelefonoInput
+                id="telefono"
+                value={telefono}
+                onChange={setTelefono}
+                disabled={bloqueado('telefono')}
+              />
+            </div>
+            <Field label="Email" id="email" type="email" value={email} onChange={setEmail} disabled={bloqueado('email')} />
           </div>
         </section>
       </div>
 
       {!readOnly && (
-        <div className="flex justify-end border-t px-6 py-4">
-          <Button type="submit" disabled={isSaving}>
+        <div
+          className={
+            portalCliente
+              ? 'flex flex-col items-stretch gap-3 border-t px-4 py-4 sm:px-6'
+              : 'flex justify-end border-t px-6 py-4'
+          }
+        >
+          <Button
+            type="submit"
+            disabled={isSaving}
+            className={portalCliente ? 'w-full' : undefined}
+            size={portalCliente ? 'lg' : 'default'}
+          >
             <Save className="mr-2 h-4 w-4" />
             {submitLabel}
           </Button>
+          {portalCliente && onVolver && (
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              size="lg"
+              onClick={onVolver}
+              disabled={isSaving}
+            >
+              {volverLabel}
+            </Button>
+          )}
         </div>
       )}
     </form>
@@ -218,7 +276,6 @@ function Field({
   required,
   disabled,
   className,
-  hint,
 }: {
   label: string;
   id: string;
@@ -228,7 +285,6 @@ function Field({
   required?: boolean;
   disabled?: boolean;
   className?: string;
-  hint?: string;
 }) {
   return (
     <div className={`space-y-1 ${className ?? ''}`}>
@@ -241,11 +297,6 @@ function Field({
         required={required}
         disabled={disabled}
       />
-      {hint && <FieldHint>{hint}</FieldHint>}
     </div>
   );
-}
-
-function FieldHint({ children }: { children: string }) {
-  return <p className="text-[10px] text-muted-foreground font-mono">[[{children}]]</p>;
 }

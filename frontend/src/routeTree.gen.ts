@@ -12,7 +12,10 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
+import { Route as PaymentSuccessRouteImport } from './routes/payment/success'
+import { Route as PaymentCancelRouteImport } from './routes/payment/cancel'
 import { Route as AccesoTokenRouteImport } from './routes/acceso/$token'
+import { Route as AppFacturacionRouteImport } from './routes/_app/facturacion'
 import { Route as AppDashboardRouteImport } from './routes/_app/dashboard'
 import { Route as AppAgendaRouteImport } from './routes/_app/agenda'
 import { Route as AppExpedientesIndexRouteImport } from './routes/_app/expedientes/index'
@@ -48,10 +51,25 @@ const AppIndexRoute = AppIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AppRoute,
 } as any)
+const PaymentSuccessRoute = PaymentSuccessRouteImport.update({
+  id: '/payment/success',
+  path: '/payment/success',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PaymentCancelRoute = PaymentCancelRouteImport.update({
+  id: '/payment/cancel',
+  path: '/payment/cancel',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AccesoTokenRoute = AccesoTokenRouteImport.update({
   id: '/acceso/$token',
   path: '/acceso/$token',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AppFacturacionRoute = AppFacturacionRouteImport.update({
+  id: '/facturacion',
+  path: '/facturacion',
+  getParentRoute: () => AppRoute,
 } as any)
 const AppDashboardRoute = AppDashboardRouteImport.update({
   id: '/dashboard',
@@ -166,7 +184,10 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/agenda': typeof AppAgendaRoute
   '/dashboard': typeof AppDashboardRoute
+  '/facturacion': typeof AppFacturacionRoute
   '/acceso/$token': typeof AccesoTokenRoute
+  '/payment/cancel': typeof PaymentCancelRoute
+  '/payment/success': typeof PaymentSuccessRoute
   '/clientes/$clienteId': typeof AppClientesClienteIdRoute
   '/clientes/nuevo': typeof AppClientesNuevoRoute
   '/config/despacho': typeof AppConfigDespachoRoute
@@ -190,7 +211,10 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/agenda': typeof AppAgendaRoute
   '/dashboard': typeof AppDashboardRoute
+  '/facturacion': typeof AppFacturacionRoute
   '/acceso/$token': typeof AccesoTokenRoute
+  '/payment/cancel': typeof PaymentCancelRoute
+  '/payment/success': typeof PaymentSuccessRoute
   '/': typeof AppIndexRoute
   '/clientes/$clienteId': typeof AppClientesClienteIdRoute
   '/clientes/nuevo': typeof AppClientesNuevoRoute
@@ -216,7 +240,10 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/_app/agenda': typeof AppAgendaRoute
   '/_app/dashboard': typeof AppDashboardRoute
+  '/_app/facturacion': typeof AppFacturacionRoute
   '/acceso/$token': typeof AccesoTokenRoute
+  '/payment/cancel': typeof PaymentCancelRoute
+  '/payment/success': typeof PaymentSuccessRoute
   '/_app/': typeof AppIndexRoute
   '/_app/clientes/$clienteId': typeof AppClientesClienteIdRoute
   '/_app/clientes/nuevo': typeof AppClientesNuevoRoute
@@ -244,7 +271,10 @@ export interface FileRouteTypes {
     | '/login'
     | '/agenda'
     | '/dashboard'
+    | '/facturacion'
     | '/acceso/$token'
+    | '/payment/cancel'
+    | '/payment/success'
     | '/clientes/$clienteId'
     | '/clientes/nuevo'
     | '/config/despacho'
@@ -268,7 +298,10 @@ export interface FileRouteTypes {
     | '/login'
     | '/agenda'
     | '/dashboard'
+    | '/facturacion'
     | '/acceso/$token'
+    | '/payment/cancel'
+    | '/payment/success'
     | '/'
     | '/clientes/$clienteId'
     | '/clientes/nuevo'
@@ -293,7 +326,10 @@ export interface FileRouteTypes {
     | '/login'
     | '/_app/agenda'
     | '/_app/dashboard'
+    | '/_app/facturacion'
     | '/acceso/$token'
+    | '/payment/cancel'
+    | '/payment/success'
     | '/_app/'
     | '/_app/clientes/$clienteId'
     | '/_app/clientes/nuevo'
@@ -319,6 +355,8 @@ export interface RootRouteChildren {
   AppRoute: typeof AppRouteWithChildren
   LoginRoute: typeof LoginRoute
   AccesoTokenRoute: typeof AccesoTokenRoute
+  PaymentCancelRoute: typeof PaymentCancelRoute
+  PaymentSuccessRoute: typeof PaymentSuccessRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -344,12 +382,33 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppIndexRouteImport
       parentRoute: typeof AppRoute
     }
+    '/payment/success': {
+      id: '/payment/success'
+      path: '/payment/success'
+      fullPath: '/payment/success'
+      preLoaderRoute: typeof PaymentSuccessRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/payment/cancel': {
+      id: '/payment/cancel'
+      path: '/payment/cancel'
+      fullPath: '/payment/cancel'
+      preLoaderRoute: typeof PaymentCancelRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/acceso/$token': {
       id: '/acceso/$token'
       path: '/acceso/$token'
       fullPath: '/acceso/$token'
       preLoaderRoute: typeof AccesoTokenRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_app/facturacion': {
+      id: '/_app/facturacion'
+      path: '/facturacion'
+      fullPath: '/facturacion'
+      preLoaderRoute: typeof AppFacturacionRouteImport
+      parentRoute: typeof AppRoute
     }
     '/_app/dashboard': {
       id: '/_app/dashboard'
@@ -519,6 +578,7 @@ const AppConfigTramitesTramiteIdRouteWithChildren =
 interface AppRouteChildren {
   AppAgendaRoute: typeof AppAgendaRoute
   AppDashboardRoute: typeof AppDashboardRoute
+  AppFacturacionRoute: typeof AppFacturacionRoute
   AppIndexRoute: typeof AppIndexRoute
   AppClientesClienteIdRoute: typeof AppClientesClienteIdRoute
   AppClientesNuevoRoute: typeof AppClientesNuevoRoute
@@ -539,6 +599,7 @@ interface AppRouteChildren {
 const AppRouteChildren: AppRouteChildren = {
   AppAgendaRoute: AppAgendaRoute,
   AppDashboardRoute: AppDashboardRoute,
+  AppFacturacionRoute: AppFacturacionRoute,
   AppIndexRoute: AppIndexRoute,
   AppClientesClienteIdRoute: AppClientesClienteIdRoute,
   AppClientesNuevoRoute: AppClientesNuevoRoute,
@@ -562,6 +623,8 @@ const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
   LoginRoute: LoginRoute,
   AccesoTokenRoute: AccesoTokenRoute,
+  PaymentCancelRoute: PaymentCancelRoute,
+  PaymentSuccessRoute: PaymentSuccessRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

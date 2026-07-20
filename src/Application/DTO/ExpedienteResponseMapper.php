@@ -8,12 +8,22 @@ use App\Domain\Entity\Expediente;
 
 final class ExpedienteResponseMapper
 {
-    public static function fromDomain(Expediente $expediente, ?string $frontendBaseUrl = null): ExpedienteResponse
-    {
+    /**
+     * @param array{contratacion: int, requerimientos: int, total: int}|null $avisos
+     */
+    public static function fromDomain(
+        Expediente $expediente,
+        ?string $frontendBaseUrl = null,
+        ?array $avisos = null,
+    ): ExpedienteResponse {
         $accessUrl = null;
         if (null !== $expediente->accessToken() && null !== $frontendBaseUrl) {
             $accessUrl = rtrim($frontendBaseUrl, '/') . '/acceso/' . $expediente->accessToken();
         }
+
+        $contratacion = null !== $avisos ? ($avisos['contratacion'] ?? 0) : 0;
+        $requerimientos = null !== $avisos ? ($avisos['requerimientos'] ?? 0) : 0;
+        $total = null !== $avisos ? ($avisos['total'] ?? 0) : 0;
 
         return new ExpedienteResponse(
             id: $expediente->id()->value(),
@@ -35,6 +45,11 @@ final class ExpedienteResponseMapper
             planPago: $expediente->planPago()->value,
             numCuotas: $expediente->numCuotas(),
             accessUrl: $accessUrl,
+            avisosPendientes: $total,
+            avisosDetalle: [
+                'contratacion' => $contratacion,
+                'requerimientos' => $requerimientos,
+            ],
         );
     }
 }

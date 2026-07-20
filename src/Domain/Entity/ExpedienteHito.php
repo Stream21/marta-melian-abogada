@@ -16,6 +16,7 @@ final readonly class ExpedienteHito
         private ActorHitoExpediente $actor,
         private \DateTimeImmutable $createdAt,
         private ?PasoContratacionCliente $paso = null,
+        private ?string $referenciaId = null,
     ) {
     }
 
@@ -52,5 +53,10 @@ final readonly class ExpedienteHito
     public function createdAt(): \DateTimeImmutable
     {
         return $this->createdAt;
+    }
+
+    public function referenciaId(): ?string
+    {
+        return $this->referenciaId;
     }
 }

@@ -1,9 +1,8 @@
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   AlertTriangle,
   Clock,
-  Construction,
   CreditCard,
   Loader2,
   PenLine,
@@ -11,10 +10,11 @@ import {
 } from 'lucide-react';
 import { api, type AccesoExpedienteResponse, type AccesoPasoResponse } from '@/api/client';
 import { DocumentoUploadPanel } from '@/components/cliente-portal/DocumentoUploadPanel';
+import { RequerimientosClientePortal } from '@/components/cliente-portal/RequerimientosClientePortal';
 import { FirmaDocumentoWizard } from '@/components/cliente-portal/FirmaDocumentoWizard';
 import { PortalClienteShell } from '@/components/cliente-portal/PortalClienteShell';
+import { PortalClienteBrandingHero } from '@/components/cliente-portal/PortalClienteBrandingHero';
 import { ClienteIdentidadOnboarding } from '@/components/documento-identidad/ClienteIdentidadOnboarding';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useMercureAcceso } from '@/hooks/useMercureAcceso';
 import { CalendarioCuotasTable } from '@/components/expedientes/contratacion/CondicionesPagoPanel';
@@ -39,8 +39,10 @@ export function ClienteContratacionPortalPage({ token }: ClienteContratacionPort
     queryKey: ['acceso', token],
     queryFn: () => api.getAccesoExpediente(token),
     retry: false,
-    refetchInterval: (query) =>
-      query.state.data?.faseNegocio === 'contratacion' ? 8000 : false,
+    refetchInterval: (query) => {
+      const fase = query.state.data?.faseNegocio;
+      return fase === 'contratacion' || fase === 'requerimientos' ? 8000 : false;
+    },
   });
 
   const completarMutation = useMutation({
@@ -67,20 +69,26 @@ export function ClienteContratacionPortalPage({ token }: ClienteContratacionPort
 
   if (isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-muted/30 px-4">
-        <p className="text-muted-foreground">Cargando su expediente…</p>
+      <div className="min-h-screen bg-muted/30">
+        <PortalClienteBrandingHero compact />
+        <div className="flex items-center justify-center px-4 py-16">
+          <p className="text-muted-foreground">Cargando su expediente…</p>
+        </div>
       </div>
     );
   }
 
   if (error || !data) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-muted/30 px-4">
-        <div className="panel max-w-md p-8 text-center">
-          <p className="font-medium text-destructive">Enlace no válido</p>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Este enlace de acceso no es válido o ha expirado. Contacte con su abogado.
-          </p>
+      <div className="min-h-screen bg-muted/30">
+        <PortalClienteBrandingHero compact />
+        <div className="mx-auto max-w-md px-4 py-10">
+          <div className="panel p-8 text-center">
+            <p className="font-medium text-destructive">Enlace no válido</p>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Este enlace de acceso no es válido o ha expirado. Contacte con su abogado.
+            </p>
+          </div>
         </div>
       </div>
     );
@@ -89,7 +97,7 @@ export function ClienteContratacionPortalPage({ token }: ClienteContratacionPort
   if (data.faseNegocio === 'requerimientos') {
     return (
       <PortalClienteShell data={data}>
-        <Fase2Completada data={data} />
+        <RequerimientosClientePortal token={token} data={data} />
       </PortalClienteShell>
     );
   }
@@ -98,7 +106,7 @@ export function ClienteContratacionPortalPage({ token }: ClienteContratacionPort
     return (
       <PortalClienteShell data={data}>
         <p className="text-center text-sm text-muted-foreground py-8">
-          Este expediente no está disponible en el portal en este momento.
+          Este expediente no est? disponible en el portal en este momento.
         </p>
       </PortalClienteShell>
     );
@@ -123,7 +131,7 @@ export function ClienteContratacionPortalPage({ token }: ClienteContratacionPort
         />
       ) : (
         <div className="py-8 text-center text-sm text-muted-foreground">
-          Todos los pasos han sido completados. Su abogado finalizará la contratación.
+          Todos los pasos han sido completados. Su abogado finalizar? la contrataci?n.
         </div>
       )}
     </PortalClienteShell>
@@ -136,27 +144,10 @@ function WaitingScreen() {
       <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-amber-100">
         <Clock className="h-7 w-7 text-amber-600 animate-pulse" />
       </div>
-      <h2 className="text-lg font-semibold">Esperando revisión del abogado</h2>
+      <h2 className="text-lg font-semibold">Esperando revisi?n del abogado</h2>
       <p className="mt-2 max-w-sm text-sm text-muted-foreground">
-        Su abogado está revisando la información enviada. Podrá continuar cuando le avisemos.
+        Su abogado est? revisando la informaci?n enviada. Podr? continuar cuando le avisemos.
       </p>
-    </div>
-  );
-}
-
-function Fase2Completada({ data }: { data: AccesoExpedienteResponse }) {
-  return (
-    <div className="py-8 text-center">
-      <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100">
-        <Construction className="h-7 w-7 text-emerald-700" />
-      </div>
-      <h2 className="text-lg font-bold">Contratación completada</h2>
-      <p className="mx-auto mt-4 max-w-md text-sm leading-relaxed text-muted-foreground">
-        Nos encontramos en la fase 2, requerimientos, que se encuentra en desarrollo.
-      </p>
-      <Badge variant="info" className="mt-4">
-        En desarrollo
-      </Badge>
     </div>
   );
 }
@@ -166,7 +157,7 @@ function NotaDevolucionBanner({ nota }: { nota: string }) {
     <div className="mb-5 flex gap-3 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm">
       <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-700" />
       <div>
-        <p className="font-semibold text-amber-900">Su abogado ha solicitado revisar este paso</p>
+        <p className="font-semibold text-amber-900">Su abogado le ha enviado un mensaje sobre este paso</p>
         <p className="mt-1 whitespace-pre-wrap text-amber-800">{nota}</p>
       </div>
     </div>
@@ -192,7 +183,6 @@ function PasoActivoContent({
   completando: boolean;
   iniciandoPago: boolean;
 }) {
-  const [confirmado, setConfirmado] = useState(false);
   const Icon = PASO_ICONS[paso.paso] ?? User;
 
   const docsObligatoriosOk =
@@ -204,8 +194,7 @@ function PasoActivoContent({
   const firmasOk =
     paso.paso !== 'firmas' || (data.documentosFirma ?? []).every((d) => d.firmado);
 
-  const puedeConfirmar =
-    confirmado && docsObligatoriosOk && firmasOk && paso.paso !== 'datos_cliente';
+  const puedeConfirmar = docsObligatoriosOk && firmasOk && paso.paso !== 'datos_cliente';
 
   const docsAdicionales = (data.documentosRequeridos ?? []).filter((d) => d.obligatorio);
 
@@ -214,10 +203,17 @@ function PasoActivoContent({
       <div>
         {paso.notaDevolucion && <NotaDevolucionBanner nota={paso.notaDevolucion} />}
         <PasoTitulo icon={Icon} label={paso.label} />
-        <ClienteIdentidadOnboarding token={token} onCompletado={onIdentidadCompletada} />
+        <ClienteIdentidadOnboarding
+          token={token}
+          tipoServicio={data.tipoServicio}
+          identidadEdicion={data.identidadEdicion}
+          datosClienteEditables={data.datosClienteEditables}
+          notaDevolucion={paso.notaDevolucion}
+          onCompletado={onIdentidadCompletada}
+        />
         {docsAdicionales.length > 0 && (
           <div className="mt-6 border-t pt-6">
-            <p className="section-label mb-3">Documentación adicional</p>
+            <p className="section-label mb-3">Documentaci?n adicional</p>
             <DocumentoUploadPanel token={token} documentos={data.documentosRequeridos ?? []} />
           </div>
         )}
@@ -244,10 +240,10 @@ function PasoActivoContent({
 
       {paso.paso === 'pago' && data.resumenPago?.metodoPago === 'manual' && (
         <div className="mt-6 rounded-lg border border-border bg-muted/20 p-4 text-sm text-muted-foreground">
-          <p className="font-medium text-foreground">¿Cómo funciona el pago manual?</p>
+          <p className="font-medium text-foreground">?C?mo funciona el pago manual?</p>
           <p className="mt-2">
-            Realice el pago inicial según las instrucciones anteriores (transferencia, Bizum o el medio acordado con su
-            abogado). <strong>No debe confirmar nada en este portal</strong>: su abogado validará el cobro cuando lo
+            Realice el pago inicial seg?n las instrucciones anteriores (transferencia, Bizum o el medio acordado con su
+            abogado). <strong>No debe confirmar nada en este portal</strong>: su abogado validar? el cobro cuando lo
             reciba.
           </p>
         </div>
@@ -257,19 +253,9 @@ function PasoActivoContent({
         <>
           {!firmasOk && paso.paso === 'firmas' && (
             <p className="mt-4 text-xs text-muted-foreground">
-              Complete la verificación SMS y firme los tres documentos para continuar.
+              Complete la verificaci?n SMS y firme los tres documentos para continuar.
             </p>
           )}
-
-          <label className="mt-6 flex cursor-pointer items-start gap-3 rounded-lg border border-border bg-muted/20 p-3 text-sm">
-            <input
-              type="checkbox"
-              className="mt-1"
-              checked={confirmado}
-              onChange={(e) => setConfirmado(e.target.checked)}
-            />
-            <span>He revisado la información y confirmo que todo es correcto.</span>
-          </label>
 
           <Button
             className="mt-4 w-full"
@@ -277,7 +263,7 @@ function PasoActivoContent({
             onClick={() => onCompletar(paso.paso)}
             disabled={!puedeConfirmar || completando}
           >
-            {completando ? 'Enviando…' : 'Confirmar y continuar'}
+            {completando ? 'Enviando?' : 'Confirmar y continuar'}
           </Button>
         </>
       )}
@@ -291,7 +277,10 @@ function PasoTitulo({ icon: Icon, label }: { icon: typeof User; label: string })
       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
         <Icon className="h-5 w-5" />
       </div>
-      <h2 className="text-lg font-semibold">{label}</h2>
+      <div className="min-w-0">
+        <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Paso actual</p>
+        <h2 className="text-lg font-semibold leading-tight">{label}</h2>
+      </div>
     </div>
   );
 }
@@ -311,14 +300,14 @@ function PagoResumen({
   const planLabel =
     resumen.planPago === 'fraccionado'
       ? `Fraccionado (${resumen.numCuotas} cuotas)`
-      : 'Pago único';
+      : 'Pago ?nico';
   const esManual = resumen.metodoPago === 'manual';
 
   return (
     <div className="space-y-4">
       <div className="space-y-3 rounded-lg border bg-card p-4 text-sm">
         <DatoFila
-          label={resumen.planPago === 'fraccionado' ? 'Pago inicial (1.ª cuota)' : 'Importe a pagar'}
+          label={resumen.planPago === 'fraccionado' ? 'Pago inicial (1.? cuota)' : 'Importe a pagar'}
           value={formatEuros(importePagoInicial)}
           destacado
         />
@@ -328,7 +317,7 @@ function PagoResumen({
             value={formatEuros(resumen.honorariosAcordados)}
           />
         )}
-        <DatoFila label="Método" value={resumen.metodoPagoLabel} />
+        <DatoFila label="M?todo" value={resumen.metodoPagoLabel} />
         <DatoFila label="Plan" value={resumen.planPagoLabel ?? planLabel} />
         {esManual && resumen.iban && (
           <>
@@ -341,7 +330,7 @@ function PagoResumen({
             {iniciando ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Redirigiendo…
+                Redirigiendo?
               </>
             ) : (
               'Pagar ahora'

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Application\UseCase;
 
 use App\Application\Port\StripePort;
+use App\Application\Service\CalendarioPagoService;
 use App\Domain\Entity\FaseNegocioExpediente;
 use App\Domain\Entity\MetodoPagoExpediente;
 use App\Domain\Entity\Payment;
@@ -20,6 +21,7 @@ final class IniciarPagoAccesoUseCase
         private ExpedienteRepositoryInterface $expedienteRepository,
         private PaymentRepositoryInterface $paymentRepository,
         private StripePort $stripePort,
+        private CalendarioPagoService $calendarioPagoService,
         private string $frontendSuccessUrl,
         private string $frontendCancelUrl,
     ) {
@@ -43,7 +45,12 @@ final class IniciarPagoAccesoUseCase
             throw new \InvalidArgumentException('Este expediente no tiene pago digital configurado.');
         }
 
-        $amount = $expediente->honorariosAcordados();
+        $amount = $this->calendarioPagoService->importePagoInicial(
+            $expediente->honorariosAcordados(),
+            $expediente->planPago(),
+            $expediente->numCuotas(),
+            $expediente->calendarioPagos(),
+        );
         if ($amount <= 0) {
             throw new \InvalidArgumentException('Importe de pago no válido.');
         }
@@ -54,8 +61,10 @@ final class IniciarPagoAccesoUseCase
             $expediente->id()->value(),
             $this->frontendSuccessUrl,
             $this->frontendCancelUrl,
+            ['cuota_numero' => '1'],
         );
 
+        $now = new \DateTimeImmutable('now');
         $this->paymentRepository->save(new Payment(
             PaymentId::generate(),
             $expediente->id(),
@@ -65,8 +74,12 @@ final class IniciarPagoAccesoUseCase
             $session['sessionId'],
             (string) $amount,
             null,
-            new \DateTimeImmutable('now'),
-            new \DateTimeImmutable('now'),
+            $now,
+            $now,
+            Payment::defaultHoldedEstadoForType(PaymentType::Link),
+            null,
+            null,
+            1,
         ));
 
         return ['checkoutUrl' => $session['url']];

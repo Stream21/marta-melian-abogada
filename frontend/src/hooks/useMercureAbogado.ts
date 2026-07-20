@@ -19,6 +19,8 @@ export function useMercureAbogado(enabled = true) {
       void queryClient.refetchQueries({ queryKey: ['notificaciones'], type: 'active' });
       void queryClient.refetchQueries({ queryKey: ['expedientes'], type: 'active' });
       void queryClient.refetchQueries({ queryKey: ['contratacion'], type: 'active' });
+      void queryClient.refetchQueries({ queryKey: ['facturacion'], type: 'active' });
+      void queryClient.refetchQueries({ queryKey: ['cobros-globales'], type: 'active' });
     };
 
     pollRef.current = setInterval(refresh, POLL_MS);

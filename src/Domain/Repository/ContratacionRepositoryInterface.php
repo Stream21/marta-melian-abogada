@@ -18,9 +18,18 @@ interface ContratacionRepositoryInterface
      */
     public function findPasosByExpediente(ExpedienteId $expedienteId): array;
 
+    /**
+     * @param list<string> $expedienteIds
+     *
+     * @return array<string, list<ContratacionPaso>>
+     */
+    public function findPasosByExpedienteIds(array $expedienteIds): array;
+
     public function findPaso(ExpedienteId $expedienteId, PasoContratacionCliente $paso): ?ContratacionPaso;
 
     public function saveHito(ExpedienteHito $hito): void;
+
+    public function findHitoById(string $id): ?ExpedienteHito;
 
     /**
      * @return ExpedienteHito[]
@@ -38,4 +47,11 @@ interface ContratacionRepositoryInterface
     public function findHitosByExpedientePaginated(ExpedienteId $expedienteId, int $offset, int $limit): array;
 
     public function countHitosByExpediente(ExpedienteId $expedienteId): int;
+
+    public function marcarHitoLeido(string $hitoId): void;
+
+    /**
+     * @return list<string>
+     */
+    public function findHitosLeidosIds(): array;
 }

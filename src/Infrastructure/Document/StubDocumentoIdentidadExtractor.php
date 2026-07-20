@@ -52,6 +52,7 @@ final class StubDocumentoIdentidadExtractor implements DocumentoIdentidadExtract
             'nombrePadre' => '',
             'nombreMadre' => '',
             'extraccionAutomatica' => $automatica,
+            'camposMrz' => [],
         ];
     }
 }

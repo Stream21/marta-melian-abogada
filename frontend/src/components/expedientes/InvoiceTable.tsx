@@ -1,4 +1,5 @@
-import { api, type InvoiceResponse } from '@/api/client';
+import { useState } from 'react';
+import { api, openAuthenticatedDocument, type InvoiceResponse } from '@/api/client';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -39,6 +40,19 @@ interface InvoiceTableProps {
 }
 
 export function InvoiceTable({ invoices, expedienteId }: InvoiceTableProps) {
+  const [abriendoPdfId, setAbriendoPdfId] = useState<string | null>(null);
+
+  const abrirPdf = async (paymentId: string) => {
+    setAbriendoPdfId(paymentId);
+    try {
+      await openAuthenticatedDocument(api.getPdfUrl(expedienteId, paymentId));
+    } catch (e) {
+      window.alert(e instanceof Error ? e.message : 'No se pudo abrir el PDF.');
+    } finally {
+      setAbriendoPdfId(null);
+    }
+  };
+
   if (invoices.length === 0) {
     return (
       <div className="flex items-center justify-center rounded-lg border border-dashed py-10 text-sm text-muted-foreground">
@@ -82,16 +96,11 @@ export function InvoiceTable({ invoices, expedienteId }: InvoiceTableProps) {
                     variant="ghost"
                     size="icon"
                     className="h-7 w-7 text-muted-foreground hover:text-foreground"
-                    asChild
+                    disabled={abriendoPdfId === inv.id}
+                    onClick={() => void abrirPdf(inv.id)}
+                    title="Descargar PDF"
                   >
-                    <a
-                      href={api.getPdfUrl(expedienteId, inv.id)}
-                      target="_blank"
-                      rel="noreferrer"
-                      title="Descargar PDF"
-                    >
-                      <Download className="h-3.5 w-3.5" />
-                    </a>
+                    <Download className="h-3.5 w-3.5" />
                   </Button>
                   {inv.holdedId && (
                     <Button

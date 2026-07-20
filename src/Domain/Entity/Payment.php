@@ -20,7 +20,16 @@ final readonly class Payment
         private ?string $pdfPath,
         private \DateTimeImmutable $createdAt,
         private \DateTimeImmutable $updatedAt,
+        private PaymentHoldedEstado $holdedEstado = PaymentHoldedEstado::NoAplica,
+        private ?string $holdedSyncError = null,
+        private ?\DateTimeImmutable $holdedSyncedAt = null,
+        private ?int $cuotaNumero = null,
     ) {
+    }
+
+    public function cuotaNumero(): ?int
+    {
+        return $this->cuotaNumero;
     }
 
     public function id(): PaymentId
@@ -63,6 +72,15 @@ final readonly class Payment
         return $this->pdfPath;
     }
 
+    public function invoicePdfUrl(): ?string
+    {
+        if (PaymentHoldedEstado::Sincronizado !== $this->holdedEstado || null === $this->pdfPath || '' === $this->pdfPath) {
+            return null;
+        }
+
+        return '/api/expedientes/' . $this->expedienteId->value() . '/invoices/' . $this->id->value() . '/pdf';
+    }
+
     public function createdAt(): \DateTimeImmutable
     {
         return $this->createdAt;
@@ -71,5 +89,73 @@ final readonly class Payment
     public function updatedAt(): \DateTimeImmutable
     {
         return $this->updatedAt;
+    }
+
+    public function holdedEstado(): PaymentHoldedEstado
+    {
+        return $this->holdedEstado;
+    }
+
+    public function holdedSyncError(): ?string
+    {
+        return $this->holdedSyncError;
+    }
+
+    public function holdedSyncedAt(): ?\DateTimeImmutable
+    {
+        return $this->holdedSyncedAt;
+    }
+
+    public function withStatus(PaymentStatus $status): self
+    {
+        return new self(
+            $this->id,
+            $this->expedienteId,
+            $status,
+            $this->type,
+            $this->holdedInvoiceId,
+            $this->stripeSessionId,
+            $this->amount,
+            $this->pdfPath,
+            $this->createdAt,
+            new \DateTimeImmutable('now'),
+            $this->holdedEstado,
+            $this->holdedSyncError,
+            $this->holdedSyncedAt,
+            $this->cuotaNumero,
+        );
+    }
+
+    public function withHoldedSync(
+        PaymentHoldedEstado $estado,
+        ?string $holdedInvoiceId = null,
+        ?string $pdfPath = null,
+        ?string $syncError = null,
+        ?\DateTimeImmutable $syncedAt = null,
+    ): self {
+        return new self(
+            $this->id,
+            $this->expedienteId,
+            $this->status,
+            $this->type,
+            $holdedInvoiceId ?? $this->holdedInvoiceId,
+            $this->stripeSessionId,
+            $this->amount,
+            $pdfPath ?? $this->pdfPath,
+            $this->createdAt,
+            new \DateTimeImmutable('now'),
+            $estado,
+            $syncError,
+            $syncedAt ?? $this->holdedSyncedAt,
+            $this->cuotaNumero,
+        );
+    }
+
+    public static function defaultHoldedEstadoForType(PaymentType $type): PaymentHoldedEstado
+    {
+        return match ($type) {
+            PaymentType::Manual => PaymentHoldedEstado::NoAplica,
+            PaymentType::Link, PaymentType::Installment => PaymentHoldedEstado::PendienteSync,
+        };
     }
 }

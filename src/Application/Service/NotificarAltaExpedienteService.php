@@ -8,6 +8,7 @@ use App\Application\Port\EmailPort;
 use App\Application\Port\TwilioPort;
 use App\Domain\Entity\Cliente;
 use App\Domain\Entity\Expediente;
+use Psr\Log\LoggerInterface;
 
 /**
  * Notificaciones al cliente (alta, enlace de acceso): WhatsApp o email.
@@ -18,6 +19,7 @@ final class NotificarAltaExpedienteService
     public function __construct(
         private TwilioPort $twilioPort,
         private EmailPort $emailPort,
+        private LoggerInterface $logger,
         private string $frontendBaseUrl,
     ) {
     }
@@ -81,18 +83,32 @@ final class NotificarAltaExpedienteService
             try {
                 $this->twilioPort->sendWhatsAppMessage($telefono, $mensaje);
                 $canales[] = 'whatsapp';
-            } catch (\Throwable) {
+            } catch (\Throwable $e) {
+                $this->logger->error('Error enviando notificación por WhatsApp', [
+                    'telefono' => $telefono,
+                    'expediente' => $numeroExpediente,
+                    'error' => $e->getMessage(),
+                ]);
                 $canales[] = 'whatsapp_error';
             }
         }
 
         if (in_array('email', $canalesSolicitados, true) && '' !== $email) {
-            $this->emailPort->send(
-                $email,
-                'Expediente ' . $numeroExpediente,
-                $mensaje,
-            );
-            $canales[] = 'email';
+            try {
+                $this->emailPort->send(
+                    $email,
+                    'Expediente ' . $numeroExpediente,
+                    $mensaje,
+                );
+                $canales[] = 'email';
+            } catch (\Throwable $e) {
+                $this->logger->error('Error enviando notificación por email', [
+                    'email' => $email,
+                    'expediente' => $numeroExpediente,
+                    'error' => $e->getMessage(),
+                ]);
+                $canales[] = 'email_error';
+            }
         }
 
         return $canales;

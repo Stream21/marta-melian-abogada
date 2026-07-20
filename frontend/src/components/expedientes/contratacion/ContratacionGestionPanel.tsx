@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMercureContratacion } from '@/hooks/useMercureContratacion';
 import { ContratacionRevisionModal } from './ContratacionRevisionModal';
@@ -14,14 +14,11 @@ import {
   User,
   AlertTriangle,
 } from 'lucide-react';
-import { api, type ContratacionPasoResponse, type ContratacionResponse } from '@/api/client';
+import { api, type ContratacionPasoResponse, type ContratacionResponse, type MotivoDevolucionIdentidad } from '@/api/client';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { EnlaceClienteModal } from './EnlaceClienteModal';
 import { CondicionesPagoPanel } from './CondicionesPagoPanel';
-import { ContratacionTimelinePanel } from './ContratacionTimelinePanel';
-import { RequerimientosEnConstruccionPanel } from './RequerimientosEnConstruccionPanel';
 import {
   contarFirmasCompletadas,
   FirmasProgresoResumen,
@@ -36,6 +33,9 @@ const PASO_ICONS: Record<string, typeof User> = {
 
 interface ContratacionGestionPanelProps {
   expedienteId: string;
+  focusPaso?: string;
+  abrirRevision?: boolean;
+  onFocusConsumed?: () => void;
 }
 
 function vencimientoBadge(fecha: string | null | undefined) {
@@ -108,8 +108,9 @@ function PasoCard({
 
   return (
     <div
+      id={`paso-${paso.paso}`}
       className={cn(
-        'rounded-xl border p-5 transition-colors',
+        'rounded-xl border p-5 transition-colors scroll-mt-24',
         paso.estado === 'validado_abogado' && 'border-emerald-200 bg-emerald-50/50',
         paso.estado === 'realizado_cliente' && 'border-amber-200 bg-amber-50/30',
         paso.estado === 'pendiente' && 'border-border bg-card',
@@ -146,7 +147,9 @@ function PasoCard({
               Método acordado: <strong>{metodoPagoLabel}</strong>.
               {metodoPago === 'manual'
                 ? ' Confirme usted que ha recibido el cobro inicial (efectivo, Bizum, transferencia, etc.).'
-                : ' El abogado debe confirmar que el pago se ha efectuado correctamente.'}
+                : paso.estado === 'realizado_cliente'
+                  ? ' El cobro se confirma automáticamente al completarse el pago en Stripe.'
+                  : ' El cliente pagará con tarjeta; al confirmarse en Stripe el expediente avanzará automáticamente.'}
             </p>
           )}
 
@@ -181,7 +184,7 @@ function PasoCard({
 
           {paso.estado === 'pendiente' && paso.notaDevolucion && (
             <p className="mt-3 text-xs text-amber-700 bg-amber-50 rounded-md p-2 border border-amber-200">
-              Devuelto al cliente: «{paso.notaDevolucion}»
+              {esPago ? 'Notificado al cliente' : 'Devuelto al cliente'}: «{paso.notaDevolucion}»
             </p>
           )}
         </div>
@@ -239,7 +242,12 @@ function StepperHorizontal({
   );
 }
 
-export function ContratacionGestionPanel({ expedienteId }: ContratacionGestionPanelProps) {
+export function ContratacionGestionPanel({
+  expedienteId,
+  focusPaso,
+  abrirRevision,
+  onFocusConsumed,
+}: ContratacionGestionPanelProps) {
   const queryClient = useQueryClient();
   useMercureContratacion(expedienteId);
 
@@ -259,8 +267,15 @@ export function ContratacionGestionPanel({ expedienteId }: ContratacionGestionPa
   });
 
   const devolverMutation = useMutation({
-    mutationFn: ({ paso, nota }: { paso: string; nota: string }) =>
-      api.devolverPasoContratacion(expedienteId, paso, nota),
+    mutationFn: ({
+      paso,
+      nota,
+      motivos,
+    }: {
+      paso: string;
+      nota: string;
+      motivos?: MotivoDevolucionIdentidad[];
+    }) => api.devolverPasoContratacion(expedienteId, paso, nota, motivos),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['contratacion', expedienteId] });
       void queryClient.invalidateQueries({ queryKey: ['expedientes'] });
@@ -281,10 +296,9 @@ export function ContratacionGestionPanel({ expedienteId }: ContratacionGestionPa
 
   if (data.faseNegocio !== 'contratacion') {
     return (
-      <RequerimientosEnConstruccionPanel
-        expedienteId={expedienteId}
-        numero={data.numero}
-      />
+      <div className="panel p-8 text-center text-sm text-muted-foreground">
+        Este expediente ya no está en fase de contratación. Consulte la pestaña «Gestión de Fases».
+      </div>
     );
   }
 
@@ -292,8 +306,11 @@ export function ContratacionGestionPanel({ expedienteId }: ContratacionGestionPa
     <ContratacionContent
       expedienteId={expedienteId}
       data={data}
+      focusPaso={focusPaso}
+      abrirRevision={abrirRevision}
+      onFocusConsumed={onFocusConsumed}
       onValidar={(paso) => validarMutation.mutate(paso)}
-      onDevolver={(paso, nota) => devolverMutation.mutate({ paso, nota })}
+      onDevolver={(paso, nota, motivos) => devolverMutation.mutate({ paso, nota, motivos })}
       validando={validarMutation.isPending}
       devolviendo={devolverMutation.isPending}
       errorAccion={validarMutation.error?.message ?? devolverMutation.error?.message ?? null}
@@ -304,6 +321,9 @@ export function ContratacionGestionPanel({ expedienteId }: ContratacionGestionPa
 function ContratacionContent({
   expedienteId,
   data,
+  focusPaso,
+  abrirRevision,
+  onFocusConsumed,
   onValidar,
   onDevolver,
   validando,
@@ -312,14 +332,41 @@ function ContratacionContent({
 }: {
   expedienteId: string;
   data: ContratacionResponse;
+  focusPaso?: string;
+  abrirRevision?: boolean;
+  onFocusConsumed?: () => void;
   onValidar: (paso: string) => void;
-  onDevolver: (paso: string, nota: string) => void;
+  onDevolver: (paso: string, nota: string, motivos?: MotivoDevolucionIdentidad[]) => void;
   validando: boolean;
   devolviendo: boolean;
   errorAccion: string | null;
 }) {
   const [pasoRevision, setPasoRevision] = useState<ContratacionPasoResponse | null>(null);
+  const focusHandled = useRef<string | null>(null);
   const pendientesRevision = data.pasos.filter((p) => p.requiereValidacionAbogado).length;
+
+  useEffect(() => {
+    if (!focusPaso || focusHandled.current === focusPaso) return;
+
+    const element = document.getElementById(`paso-${focusPaso}`);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      element.classList.add('ring-2', 'ring-primary', 'ring-offset-2');
+      window.setTimeout(() => {
+        element.classList.remove('ring-2', 'ring-primary', 'ring-offset-2');
+      }, 2500);
+    }
+
+    if (abrirRevision) {
+      const paso = data.pasos.find((p) => p.paso === focusPaso);
+      if (paso?.requiereValidacionAbogado) {
+        setPasoRevision(paso);
+      }
+    }
+
+    focusHandled.current = focusPaso;
+    onFocusConsumed?.();
+  }, [focusPaso, abrirRevision, data.pasos, onFocusConsumed]);
 
   return (
     <div className="space-y-6">
@@ -332,8 +379,8 @@ function ContratacionContent({
           onValidar(paso);
           setPasoRevision(null);
         }}
-        onDevolver={(paso, nota) => {
-          onDevolver(paso, nota);
+        onDevolver={(paso, nota, motivos) => {
+          onDevolver(paso, nota, motivos);
           setPasoRevision(null);
         }}
         validando={validando}
@@ -358,7 +405,6 @@ function ContratacionContent({
               <Radio className="h-3 w-3 text-emerald-600" />
               Tiempo real
             </Badge>
-            <EnlaceClienteModal expedienteId={expedienteId} accessUrl={data.accessUrl} />
           </div>
         </div>
 
@@ -436,20 +482,6 @@ function ContratacionContent({
           </div>
         </details>
       )}
-
-      <details className="group panel overflow-hidden" open={false}>
-        <summary className="flex cursor-pointer list-none items-center justify-between gap-2 p-6 [&::-webkit-details-marker]:hidden">
-          <h3 className="section-label">Línea de tiempo</h3>
-          <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" />
-        </summary>
-        <div className="border-t border-border px-6 pb-6 pt-4">
-          <ContratacionTimelinePanel
-            expedienteId={expedienteId}
-            initialHitos={data.hitos}
-            total={data.hitosTotal ?? data.hitos.length}
-          />
-        </div>
-      </details>
     </div>
   );
 }

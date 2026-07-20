@@ -6,11 +6,15 @@ namespace App\Application\UseCase;
 
 use App\Application\DTO\ManualPaymentRequest;
 use App\Application\DTO\PaymentResult;
+use App\Application\Port\ContratacionRealtimePort;
 use App\Application\Port\ExpedienteFileStoragePort;
 use App\Application\Port\HoldedPort;
+use App\Application\Service\CalendarioCobrosService;
 use App\Domain\Entity\Payment;
+use App\Domain\Entity\PaymentHoldedEstado;
 use App\Domain\Entity\PaymentStatus;
 use App\Domain\Entity\PaymentType;
+use App\Domain\Repository\ContratacionRepositoryInterface;
 use App\Domain\Repository\ExpedienteRepositoryInterface;
 use App\Domain\Repository\PaymentRepositoryInterface;
 use App\Domain\ValueObject\ExpedienteId;
@@ -24,6 +28,9 @@ final class CreateManualPaymentUseCase
         private ExpedienteFileStoragePort $fileStorage,
         private PaymentRepositoryInterface $paymentRepository,
         private ExpedienteRepositoryInterface $expedienteRepository,
+        private ContratacionRepositoryInterface $contratacionRepository,
+        private CalendarioCobrosService $calendarioCobrosService,
+        private ContratacionRealtimePort $realtime,
         private LoggerInterface $logger,
     ) {
     }
@@ -38,19 +45,21 @@ final class CreateManualPaymentUseCase
         }
 
         try {
-            // Crear factura en Holded
             $invoiceData = [
                 'client' => $request->clientName ?: $expediente->clientName(),
                 'reference' => $request->caseReference ?: $expediente->caseReference(),
                 'amount' => $request->amount,
             ];
             $holdedInvoiceId = $this->holdedPort->createInvoice($invoiceData);
-
-            // Marcar como cobrada en Holded
+            if ('' === $holdedInvoiceId) {
+                throw new \RuntimeException('Holded no devolvió un identificador de factura.');
+            }
             $this->holdedPort->markAsPaid($holdedInvoiceId);
 
-            // Descargar PDF y guardar en carpeta del expediente
             $pdfContent = $this->holdedPort->getInvoicePdf($holdedInvoiceId);
+            if (!str_starts_with($pdfContent, '%PDF-')) {
+                throw new \RuntimeException('Holded devolvió un archivo que no es un PDF válido.');
+            }
             $filename = 'factura_' . $holdedInvoiceId . '.pdf';
             $pdfPath = $this->fileStorage->savePdf($expedienteId, $filename, $pdfContent);
 
@@ -66,11 +75,46 @@ final class CreateManualPaymentUseCase
                 $pdfPath,
                 $now,
                 $now,
+                PaymentHoldedEstado::Sincronizado,
+                null,
+                $now,
+                $request->cuotaNumero,
             );
 
             $this->paymentRepository->save($payment);
 
-            $this->expedienteRepository->save($expediente->withPaymentStatus('paid'));
+            $calendario = $expediente->calendarioPagos();
+            if (null !== $request->cuotaNumero) {
+                $calendario = $this->calendarioCobrosService->marcarCuotaPagada($calendario, $request->cuotaNumero);
+            }
+
+            $expedienteActualizado = $expediente->withPaymentStatus('paid');
+            if (null !== $calendario) {
+                $expedienteActualizado = $expedienteActualizado->withCalendarioPagos($calendario);
+            }
+            $this->expedienteRepository->save($expedienteActualizado);
+
+            $this->contratacionRepository->saveHito(new \App\Domain\Entity\ExpedienteHito(
+                bin2hex(random_bytes(16)),
+                $expedienteId,
+                'pago_manual_registrado',
+                sprintf(
+                    'Cobro manual registrado%s.',
+                    null !== $request->cuotaNumero ? ' (cuota ' . $request->cuotaNumero . ')' : '',
+                ),
+                \App\Domain\Entity\ActorHitoExpediente::Abogado,
+                $now,
+            ));
+
+            $this->realtime->publishContratacionUpdate($request->expedienteId, [
+                'type' => 'pago_recibido',
+                'paymentId' => $payment->id()->value(),
+                'cuotaNumero' => $request->cuotaNumero,
+                'amount' => $request->amount,
+                'actor' => 'abogado',
+                'expedienteNumero' => $expediente->numero(),
+                'clienteNombre' => $expediente->clientName(),
+            ]);
 
             $pdfUrl = '/api/expedientes/' . $expedienteId->value() . '/invoices/' . $payment->id()->value() . '/pdf';
 

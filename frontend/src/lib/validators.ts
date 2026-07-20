@@ -11,3 +11,7 @@ export function isValidTelefono(telefono: string): boolean {
   if ('' === trimmed) return false;
   return /^\+?[0-9]{6,20}$/.test(trimmed);
 }
+
+export function normalizeDocumento(numDocumento: string): string {
+  return numDocumento.trim().replace(/[\s.\-]/g, '').toUpperCase();
+}

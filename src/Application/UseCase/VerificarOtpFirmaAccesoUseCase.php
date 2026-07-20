@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Application\UseCase;
 
+use App\Application\Port\ContratacionRealtimePort;
 use App\Application\Service\ContratacionCompletitudValidator;
 use App\Application\Service\FirmaOtpService;
 use App\Domain\Entity\ActorHitoExpediente;
@@ -22,6 +23,7 @@ final class VerificarOtpFirmaAccesoUseCase
         private ContratacionRepositoryInterface $contratacionRepository,
         private ContratacionCompletitudValidator $completitudValidator,
         private FirmaOtpService $firmaOtpService,
+        private ContratacionRealtimePort $realtime,
     ) {
     }
 
@@ -55,5 +57,13 @@ final class VerificarOtpFirmaAccesoUseCase
             new \DateTimeImmutable('now'),
             PasoContratacionCliente::Firmas,
         ));
+
+        $this->realtime->publishContratacionUpdate($expediente->id()->value(), [
+            'type' => 'otp_firma_verificado',
+            'paso' => PasoContratacionCliente::Firmas->value,
+            'actor' => 'cliente',
+            'expedienteNumero' => $expediente->numero(),
+            'clienteNombre' => $expediente->clientName(),
+        ]);
     }
 }

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { Copy, ExternalLink, Link2, Loader2, Mail, MessageCircle } from 'lucide-react';
 import { api } from '@/api/client';
 import { Button } from '@/components/ui/button';
@@ -12,6 +12,8 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { mensajeCanalesEnviados } from '@/lib/email-notificacion';
+import { cn } from '@/lib/utils';
 
 interface EnlaceClienteModalProps {
   expedienteId: string;
@@ -21,19 +23,24 @@ interface EnlaceClienteModalProps {
 export function EnlaceClienteModal({ expedienteId, accessUrl }: EnlaceClienteModalProps) {
   const [copiado, setCopiado] = useState(false);
   const [mensajeEnvio, setMensajeEnvio] = useState<string | null>(null);
+  const [envioConError, setEnvioConError] = useState(false);
+
+  const { data: emailEstado } = useQuery({
+    queryKey: ['email-estado'],
+    queryFn: () => api.getEmailEstado(),
+  });
 
   const enviarMutation = useMutation({
     mutationFn: (canales: ('whatsapp' | 'email')[]) => api.enviarEnlaceExpediente(expedienteId, canales),
     onSuccess: (data) => {
-      const ok = data.canalesEnviados.filter((c) => !c.endsWith('_error'));
-      const err = data.canalesEnviados.filter((c) => c.endsWith('_error'));
-      if (ok.length > 0) {
-        setMensajeEnvio(`Enviado por: ${ok.join(', ')}`);
-      } else if (err.length > 0) {
-        setMensajeEnvio('No se pudo enviar. Revise la configuración Twilio o el email del cliente.');
-      }
+      const mensaje = mensajeCanalesEnviados(data.canalesEnviados, emailEstado?.bandejaUrl);
+      setMensajeEnvio(mensaje);
+      setEnvioConError(data.canalesEnviados.some((c) => c.endsWith('_error')));
     },
-    onError: (err: Error) => setMensajeEnvio(err.message),
+    onError: (err: Error) => {
+      setMensajeEnvio(err.message);
+      setEnvioConError(true);
+    },
   });
 
   if (!accessUrl) {
@@ -60,6 +67,21 @@ export function EnlaceClienteModal({ expedienteId, accessUrl }: EnlaceClienteMod
           <DialogDescription>
             Comparta el enlace por copiar/pegar o envíelo por WhatsApp o email. El SMS se reserva para
             el código OTP al firmar documentos.
+            {emailEstado?.capturaLocal && emailEstado.bandejaUrl && (
+              <>
+                {' '}
+                En desarrollo los correos no llegan al buzón real: consúltelos en{' '}
+                <a
+                  href={emailEstado.bandejaUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary underline"
+                >
+                  Mailpit
+                </a>
+                .
+              </>
+            )}
           </DialogDescription>
         </DialogHeader>
 
@@ -103,7 +125,16 @@ export function EnlaceClienteModal({ expedienteId, accessUrl }: EnlaceClienteMod
           </Button>
         </div>
 
-        {mensajeEnvio && <p className="text-sm text-muted-foreground">{mensajeEnvio}</p>}
+        {mensajeEnvio && (
+          <p
+            className={cn(
+              'text-sm',
+              envioConError ? 'text-destructive' : 'text-emerald-700',
+            )}
+          >
+            {mensajeEnvio}
+          </p>
+        )}
 
         <Button asChild className="w-full">
           <a href={accessUrl} target="_blank" rel="noopener noreferrer">

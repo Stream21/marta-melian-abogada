@@ -22,6 +22,14 @@ export function buildMercureEventSourceUrl(
 ): string {
   const url = new URL(resolveMercureHubUrl(apiHubUrl));
   topics.forEach((topic) => url.searchParams.append('topic', topic));
-  url.searchParams.set('authorization', `Bearer ${token}`);
+
+  // El hub de Mercure espera el JWT sin prefijo "Bearer " en el query param
+  // (sí lo exige en el header Authorization y en la cookie mercureAuthorization).
+  url.searchParams.set('authorization', token);
+
+  if (typeof document !== 'undefined') {
+    document.cookie = `mercureAuthorization=Bearer ${token}; path=/.well-known/mercure; SameSite=Lax`;
+  }
+
   return url.toString();
 }

@@ -135,7 +135,8 @@ export function FirmaDocumentoWizard({ token, documentos, firmasConfig }: FirmaD
 
                 {!documentosLeidos[doc.tipo] && (
                   <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                    Desplácese hasta el final del documento para poder firmarlo.
+                    Abra el documento y desplácese hasta el final, o pulse «Ir al final del documento», para
+                    poder firmarlo.
                   </p>
                 )}
 

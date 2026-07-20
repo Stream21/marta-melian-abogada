@@ -51,6 +51,17 @@ final class ClienteRepository implements ClienteRepositoryInterface
         return $orm instanceof ClienteOrm ? $this->ormToDomain($orm) : null;
     }
 
+    public function findByNumDocumento(string $numDocumento): ?Cliente
+    {
+        if ('' === $numDocumento) {
+            return null;
+        }
+
+        $orm = $this->entityManager->getRepository(ClienteOrm::class)->findOneBy(['numDocumento' => $numDocumento]);
+
+        return $orm instanceof ClienteOrm ? $this->ormToDomain($orm) : null;
+    }
+
     /**
      * @return Cliente[]
      */
@@ -100,6 +111,17 @@ final class ClienteRepository implements ClienteRepositoryInterface
         $orms = $this->entityManager->getRepository(ClienteOrm::class)->findBy([], ['nombre' => 'ASC']);
 
         return array_map($this->ormToDomain(...), $orms);
+    }
+
+    public function delete(ClienteId $id): void
+    {
+        $orm = $this->entityManager->getRepository(ClienteOrm::class)->find($id->value());
+        if (!$orm instanceof ClienteOrm) {
+            return;
+        }
+
+        $this->entityManager->remove($orm);
+        $this->entityManager->flush();
     }
 
     private function normalizeTelefono(string $telefono): ?string

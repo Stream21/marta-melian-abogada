@@ -13,4 +13,7 @@ chown -R www-data:www-data /app/var/clientes /app/var/expedientes /app/var/docum
 chmod -R ug+rwX /app/var/clientes /app/var/expedientes /app/var/documentos 2>/dev/null \
   || chmod -R 777 /app/var/clientes /app/var/expedientes /app/var/documentos 2>/dev/null || true
 
+# Evitar aviso "dubious ownership" al montar el repo desde WSL (composer usa git internamente)
+git config --global --add safe.directory /app 2>/dev/null || true
+
 exec docker-php-entrypoint php-fpm

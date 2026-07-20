@@ -6,8 +6,11 @@ alwaysApply: true
 # Docker & WSL
 
 - El proyecto corre sobre Docker en WSL Ubuntu.
-- Usar siempre `docker-compose` (con guión), NO `docker compose`. El entorno no tiene el plugin moderno.
-- **Comandos PHP**: `docker-compose exec php php bin/console ...` y `docker-compose exec php composer ...`
-- **Levantar**: `docker-compose up -d`
-- **Logs**: `docker-compose logs -f <servicio>`
+- **Preferir** `docker compose` (plugin v2). Si no está instalado: `bash scripts/install-docker-compose-plugin.sh`
+- **Alternativa unificada**: `bash scripts/docker-up.sh` o `bash scripts/compose.sh <comando>` (detecta v2/v1 automáticamente).
+- **Evitar** `docker-compose` v1 directo: provoca `KeyError: 'ContainerConfig'` al recrear contenedores.
+- **Comandos PHP**: `docker compose exec php php bin/console ...` (o `bash scripts/compose.sh exec php ...`)
+- **Levantar**: `bash scripts/docker-up.sh` o `docker compose up -d`
+- **Logs**: `docker compose logs -f <servicio>`
 - **Paths**: Dentro del contenedor las rutas son `/app/...`, distintas del host.
+- **Mailpit**: un solo servicio `mailpit` en `docker-compose.yml`. No recrear `compose.override.yaml` con servicio `mailer`.

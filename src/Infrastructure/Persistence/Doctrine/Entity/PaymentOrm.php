@@ -42,6 +42,18 @@ class PaymentOrm
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private \DateTimeImmutable $updatedAt;
 
+    #[ORM\Column(type: Types::STRING, length: 20, options: ['default' => 'no_aplica'])]
+    private string $holdedEstado = 'no_aplica';
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $holdedSyncError = null;
+
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?\DateTimeImmutable $holdedSyncedAt = null;
+
+    #[ORM\Column(type: Types::INTEGER, nullable: true)]
+    private ?int $cuotaNumero = null;
+
     public function getId(): string
     {
         return $this->id;
@@ -140,5 +152,45 @@ class PaymentOrm
     public function setUpdatedAt(\DateTimeImmutable $updatedAt): void
     {
         $this->updatedAt = $updatedAt;
+    }
+
+    public function getHoldedEstado(): string
+    {
+        return $this->holdedEstado;
+    }
+
+    public function setHoldedEstado(string $holdedEstado): void
+    {
+        $this->holdedEstado = $holdedEstado;
+    }
+
+    public function getHoldedSyncError(): ?string
+    {
+        return $this->holdedSyncError;
+    }
+
+    public function setHoldedSyncError(?string $holdedSyncError): void
+    {
+        $this->holdedSyncError = $holdedSyncError;
+    }
+
+    public function getHoldedSyncedAt(): ?\DateTimeImmutable
+    {
+        return $this->holdedSyncedAt;
+    }
+
+    public function setHoldedSyncedAt(?\DateTimeImmutable $holdedSyncedAt): void
+    {
+        $this->holdedSyncedAt = $holdedSyncedAt;
+    }
+
+    public function getCuotaNumero(): ?int
+    {
+        return $this->cuotaNumero;
+    }
+
+    public function setCuotaNumero(?int $cuotaNumero): void
+    {
+        $this->cuotaNumero = $cuotaNumero;
     }
 }

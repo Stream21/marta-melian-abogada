@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
 import { ClipboardList, Loader2 } from 'lucide-react';
@@ -10,10 +10,17 @@ import { cn } from '@/lib/utils';
 
 interface ExpedienteAuditoriaPanelProps {
   expedienteId: string;
+  focusHitoId?: string;
+  onFocusConsumed?: () => void;
+}
+
+function auditoriaRowDomId(hitoId: string): string {
+  return `auditoria-row-${hitoId}`;
 }
 
 const CATEGORIA_VARIANT: Record<string, 'info' | 'success' | 'warning' | 'secondary' | 'destructive'> = {
   contratacion: 'info',
+  requerimientos: 'info',
   comunicacion: 'warning',
   pago: 'success',
   documento: 'secondary',
@@ -37,8 +44,14 @@ function formatFecha(iso: string): string {
   });
 }
 
-export function ExpedienteAuditoriaPanel({ expedienteId }: ExpedienteAuditoriaPanelProps) {
+export function ExpedienteAuditoriaPanel({
+  expedienteId,
+  focusHitoId,
+  onFocusConsumed,
+}: ExpedienteAuditoriaPanelProps) {
   useMercureContratacion(expedienteId);
+  const focusHandled = useRef<string | null>(null);
+  const [highlightedRowDomId, setHighlightedRowDomId] = useState<string | undefined>();
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['expediente-auditoria', expedienteId],
@@ -153,6 +166,35 @@ export function ExpedienteAuditoriaPanel({ expedienteId }: ExpedienteAuditoriaPa
     ];
   }, [data?.items]);
 
+  const focusPageIndex = useMemo(() => {
+    if (!focusHitoId || !data?.items.length) return undefined;
+    const index = data.items.findIndex((item) => item.id === focusHitoId);
+    if (index < 0) return undefined;
+    return Math.floor(index / 15);
+  }, [focusHitoId, data?.items]);
+
+  useEffect(() => {
+    if (!focusHitoId || !data?.items.length || focusHandled.current === focusHitoId) {
+      return;
+    }
+
+    const rowDomId = auditoriaRowDomId(focusHitoId);
+    const scrollToRow = () => {
+      const element = document.getElementById(rowDomId);
+      if (!element) return;
+
+      element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setHighlightedRowDomId(rowDomId);
+      window.setTimeout(() => setHighlightedRowDomId(undefined), 2500);
+      focusHandled.current = focusHitoId;
+      onFocusConsumed?.();
+    };
+
+    window.requestAnimationFrame(() => {
+      window.setTimeout(scrollToRow, 80);
+    });
+  }, [data?.items, focusHitoId, focusPageIndex, onFocusConsumed]);
+
   if (isLoading) {
     return (
       <div className="panel flex items-center justify-center gap-2 p-12 text-muted-foreground">
@@ -195,6 +237,9 @@ export function ExpedienteAuditoriaPanel({ expedienteId }: ExpedienteAuditoriaPa
         filterableColumns={filterableColumns}
         searchPlaceholder="Buscar en descripción, tipo o actor…"
         pageSize={15}
+        initialPageIndex={focusPageIndex}
+        getRowDomId={(row) => (row.source === 'hito' ? auditoriaRowDomId(row.id) : undefined)}
+        highlightedRowDomId={highlightedRowDomId}
       />
     </div>
   );

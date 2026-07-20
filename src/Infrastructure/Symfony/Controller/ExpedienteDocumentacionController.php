@@ -11,6 +11,7 @@ use App\Domain\Repository\ClienteRepositoryInterface;
 use App\Domain\Repository\ExpedienteDocumentoRepositoryInterface;
 use App\Domain\Repository\ExpedienteRepositoryInterface;
 use App\Domain\ValueObject\ClienteId;
+use App\Domain\ValueObject\ExpedienteDocumentoRequeridoId;
 use App\Domain\ValueObject\ExpedienteId;
 use App\Domain\ValueObject\TramiteDocumentoRequeridoId;
 use App\Infrastructure\Http\UploadedFileMimeDetector;
@@ -92,6 +93,13 @@ final class ExpedienteDocumentacionController extends AbstractController
             $expedienteId,
             new TramiteDocumentoRequeridoId($docId),
         );
+
+        if (null === $entregado) {
+            $entregado = $this->documentoEntregadoRepository->findByExpedienteAndExpedienteDocumento(
+                $expedienteId,
+                new ExpedienteDocumentoRequeridoId($docId),
+            );
+        }
 
         if (null === $entregado) {
             return new JsonResponse(['message' => 'Documento no encontrado.'], Response::HTTP_NOT_FOUND);

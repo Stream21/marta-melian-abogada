@@ -16,6 +16,8 @@ final readonly class ContratacionPaso
         private ?\DateTimeImmutable $realizadoAt = null,
         private ?\DateTimeImmutable $validadoAt = null,
         private ?string $notaDevolucion = null,
+        /** @var list<string> */
+        private array $motivosDevolucion = [],
     ) {
     }
 
@@ -54,6 +56,14 @@ final readonly class ContratacionPaso
         return $this->notaDevolucion;
     }
 
+    /**
+     * @return list<string>
+     */
+    public function motivosDevolucion(): array
+    {
+        return $this->motivosDevolucion;
+    }
+
     public function marcarRealizadoCliente(): self
     {
         return new self(
@@ -64,6 +74,7 @@ final readonly class ContratacionPaso
             new \DateTimeImmutable('now'),
             $this->validadoAt,
             null,
+            [],
         );
     }
 
@@ -77,10 +88,14 @@ final readonly class ContratacionPaso
             $this->realizadoAt,
             new \DateTimeImmutable('now'),
             null,
+            [],
         );
     }
 
-    public function devolverConNota(string $nota): self
+    /**
+     * @param list<string> $motivos
+     */
+    public function devolverConNota(string $nota, array $motivos = []): self
     {
         $nota = trim($nota);
         if ('' === $nota) {
@@ -95,6 +110,26 @@ final readonly class ContratacionPaso
             null,
             null,
             $nota,
+            array_values(array_unique($motivos)),
+        );
+    }
+
+    public function notificarConNota(string $nota): self
+    {
+        $nota = trim($nota);
+        if ('' === $nota) {
+            throw new \InvalidArgumentException('La nota es obligatoria.');
+        }
+
+        return new self(
+            $this->id,
+            $this->expedienteId,
+            $this->paso,
+            $this->estado,
+            $this->realizadoAt,
+            $this->validadoAt,
+            $nota,
+            $this->motivosDevolucion,
         );
     }
 }

@@ -33,6 +33,9 @@ class ExpedienteHitoOrm
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private \DateTimeImmutable $createdAt;
 
+    #[ORM\Column(type: Types::STRING, length: 36, nullable: true)]
+    private ?string $referenciaId = null;
+
     public function getId(): string
     {
         return $this->id;
@@ -101,5 +104,15 @@ class ExpedienteHitoOrm
     public function setCreatedAt(\DateTimeImmutable $createdAt): void
     {
         $this->createdAt = $createdAt;
+    }
+
+    public function getReferenciaId(): ?string
+    {
+        return $this->referenciaId;
+    }
+
+    public function setReferenciaId(?string $referenciaId): void
+    {
+        $this->referenciaId = $referenciaId;
     }
 }

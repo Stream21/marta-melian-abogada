@@ -5,12 +5,11 @@ declare(strict_types=1);
 namespace App\Application\UseCase;
 
 use App\Application\Service\CalendarioPagoService;
+use App\Application\Service\ContratacionPasoValidacionService;
 use App\Application\Service\DocumentoIntegridadService;
 use App\Application\Port\ExpedienteFileStoragePort;
-use App\Domain\Entity\EstadoPasoContratacion;
 use App\Domain\Entity\Expediente;
 use App\Domain\Entity\FaseNegocioExpediente;
-use App\Domain\Entity\MetodoPagoExpediente;
 use App\Domain\Entity\PasoContratacionCliente;
 use App\Domain\Entity\TipoEscrito;
 use App\Domain\Repository\ContratacionRepositoryInterface;
@@ -29,6 +28,7 @@ final class ObtenerContratacionExpedienteUseCase
         private CalendarioPagoService $calendarioPagoService,
         private ActualizarCondicionesPagoContratacionUseCase $condicionesPagoEditable,
         private InicializarContratacionUseCase $inicializarContratacion,
+        private ContratacionPasoValidacionService $pasoValidacionService,
         private string $frontendBaseUrl,
     ) {
     }
@@ -50,9 +50,6 @@ final class ObtenerContratacionExpedienteUseCase
 
         $pasos = $this->contratacionRepository->findPasosByExpediente($id);
         usort($pasos, fn ($a, $b) => $a->paso()->orden() <=> $b->paso()->orden());
-
-        $hitosTotal = $this->contratacionRepository->countHitosByExpediente($id);
-        $hitos = $this->contratacionRepository->findHitosByExpedientePaginated($id, 0, 15);
 
         $pasoActivo = $this->resolverPasoActivo($pasos);
         $todosValidados = $this->todosValidados($pasos);
@@ -78,6 +75,8 @@ final class ObtenerContratacionExpedienteUseCase
             $expediente->numCuotas(),
             $calendario,
         );
+
+        $hitos = $this->contratacionRepository->findHitosByExpediente($id);
 
         return [
             'expedienteId' => $expediente->id()->value(),
@@ -107,25 +106,28 @@ final class ObtenerContratacionExpedienteUseCase
                     'estadoLabel' => $p->estado()->label(),
                     'realizadoAt' => $p->realizadoAt()?->format(\DateTimeInterface::ATOM),
                     'validadoAt' => $p->validadoAt()?->format(\DateTimeInterface::ATOM),
-                    'requiereValidacionAbogado' => $this->requiereValidacionAbogado($p, $expediente, $pasos),
+                    'requiereValidacionAbogado' => $this->pasoValidacionService->requiereValidacionAbogado($p, $expediente, $pasos),
                     'notaDevolucion' => $p->notaDevolucion(),
+                    'motivosDevolucion' => $p->motivosDevolucion(),
                 ],
                 $pasos,
             ),
-            'hitos' => array_map(fn ($h) => [
-                'id' => $h->id(),
-                'paso' => $h->paso()?->value,
-                'tipo' => $h->tipo(),
-                'descripcion' => $h->descripcion(),
-                'actor' => $h->actor()->value,
-                'createdAt' => $h->createdAt()->format(\DateTimeInterface::ATOM),
-            ], $hitos),
-            'hitosTotal' => $hitosTotal,
             'firmasDocumento' => $this->serializarFirmas($id),
             'fechaFirmaContrato' => $expediente->fechaFirmaContrato()?->format(\DateTimeInterface::ATOM),
             'calendarioPago' => $calendario,
             'calendarioProyectado' => $calendarioProyectado,
             'condicionesPagoEditables' => $this->condicionesPagoEditable->puedeEditarCondicionesPago($id),
+            'hitos' => array_map(
+                static fn ($h) => [
+                    'id' => $h->id(),
+                    'tipo' => $h->tipo(),
+                    'descripcion' => $h->descripcion(),
+                    'actor' => $h->actor()->value,
+                    'paso' => $h->paso()?->value,
+                    'createdAt' => $h->createdAt()->format(\DateTimeInterface::ATOM),
+                ],
+                $hitos,
+            ),
         ];
     }
 
@@ -165,33 +167,6 @@ final class ObtenerContratacionExpedienteUseCase
         }
 
         return $resultado;
-    }
-
-    /**
-     * @param \App\Domain\Entity\ContratacionPaso[] $pasos
-     */
-    private function requiereValidacionAbogado(
-        \App\Domain\Entity\ContratacionPaso $paso,
-        Expediente $expediente,
-        array $pasos,
-    ): bool {
-        if (EstadoPasoContratacion::RealizadoCliente === $paso->estado()) {
-            return true;
-        }
-
-        if (PasoContratacionCliente::Pago !== $paso->paso()
-            || MetodoPagoExpediente::Manual !== $expediente->metodoPago()
-            || EstadoPasoContratacion::Pendiente !== $paso->estado()) {
-            return false;
-        }
-
-        foreach ($pasos as $otroPaso) {
-            if (PasoContratacionCliente::Firmas === $otroPaso->paso()) {
-                return EstadoPasoContratacion::ValidadoAbogado === $otroPaso->estado();
-            }
-        }
-
-        return false;
     }
 
     /**

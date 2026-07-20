@@ -26,6 +26,9 @@ final readonly class ExpedienteResponse
         public string $planPago = 'unico',
         public int $numCuotas = 1,
         public ?string $accessUrl = null,
+        public int $avisosPendientes = 0,
+        /** @var array{contratacion: int, requerimientos: int} */
+        public array $avisosDetalle = ['contratacion' => 0, 'requerimientos' => 0],
     ) {
     }
 }

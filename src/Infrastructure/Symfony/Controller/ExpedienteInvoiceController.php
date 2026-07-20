@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Symfony\Controller;
 
+use App\Domain\Entity\PaymentHoldedEstado;
 use App\Domain\Repository\ExpedienteRepositoryInterface;
 use App\Domain\Repository\PaymentRepositoryInterface;
 use App\Domain\ValueObject\ExpedienteId;
@@ -29,7 +30,11 @@ final class ExpedienteInvoiceController extends AbstractController
         $expediente = $this->expedienteRepository->findById(new ExpedienteId($expedienteId));
         $payment = $this->paymentRepository->findById(new PaymentId($paymentId));
 
-        if ($expediente === null || $payment === null || $payment->pdfPath() === null) {
+        if ($expediente === null || $payment === null || null === $payment->invoicePdfUrl()) {
+            return new Response('', Response::HTTP_NOT_FOUND);
+        }
+
+        if ($payment->holdedEstado() !== PaymentHoldedEstado::Sincronizado) {
             return new Response('', Response::HTTP_NOT_FOUND);
         }
 
@@ -39,6 +44,11 @@ final class ExpedienteInvoiceController extends AbstractController
 
         $fullPath = $this->projectDir . '/' . $payment->pdfPath();
         if (!is_file($fullPath)) {
+            return new Response('', Response::HTTP_NOT_FOUND);
+        }
+
+        $header = (string) file_get_contents($fullPath, false, null, 0, 5);
+        if (!str_starts_with($header, '%PDF-')) {
             return new Response('', Response::HTTP_NOT_FOUND);
         }
 

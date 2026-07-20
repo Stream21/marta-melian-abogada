@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Symfony\Controller;
 
+use App\Infrastructure\Mock\HoldedMockPdfGenerator;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -15,8 +16,11 @@ final class HoldedMockController extends AbstractController
     private string $dbPath;
     private string $mockKey;
 
-    public function __construct(string $projectDir, string $holdedMockKey)
-    {
+    public function __construct(
+        string $projectDir,
+        string $holdedMockKey,
+        private HoldedMockPdfGenerator $pdfGenerator,
+    ) {
         $this->dbPath  = $projectDir . '/var/holded_mock_db.json';
         $this->mockKey = $holdedMockKey;
     }
@@ -144,7 +148,7 @@ final class HoldedMockController extends AbstractController
         $contact = $this->findContact($db, $invoice['contactId']);
         $clientName = $contact['name'] ?? 'Unknown';
 
-        $pdfBinary = $this->generatePdf(
+        $pdfBinary = $this->pdfGenerator->generate(
             number: $invoice['number'],
             clientName: $clientName,
             total: (float) $invoice['total'],
@@ -170,17 +174,24 @@ final class HoldedMockController extends AbstractController
     private function readDb(): array
     {
         if (!file_exists($this->dbPath)) {
-            return ['contacts' => [], 'invoices' => []];
+            return ['contacts' => [], 'invoices' => [], 'paymentInvoices' => []];
         }
 
         $raw = file_get_contents($this->dbPath);
         if ($raw === false || $raw === '') {
-            return ['contacts' => [], 'invoices' => []];
+            return ['contacts' => [], 'invoices' => [], 'paymentInvoices' => []];
         }
 
         $decoded = json_decode($raw, true);
+        if (!is_array($decoded)) {
+            return ['contacts' => [], 'invoices' => [], 'paymentInvoices' => []];
+        }
 
-        return is_array($decoded) ? $decoded : ['contacts' => [], 'invoices' => []];
+        return [
+            'contacts' => $decoded['contacts'] ?? [],
+            'invoices' => $decoded['invoices'] ?? [],
+            'paymentInvoices' => $decoded['paymentInvoices'] ?? [],
+        ];
     }
 
     private function writeDb(array $db): void
@@ -225,74 +236,4 @@ final class HoldedMockController extends AbstractController
         return null;
     }
 
-    /**
-     * Generates a minimal but valid PDF 1.4 document in pure PHP.
-     * Tracks byte offsets manually to build a correct cross-reference table.
-     */
-    private function generatePdf(string $number, string $clientName, float $total): string
-    {
-        $line1 = 'FACTURA: ' . $number;
-        $line2 = 'CLIENTE: ' . $clientName;
-        $line3 = 'IMPORTE: ' . number_format($total, 2, '.', '') . ' EUR';
-
-        // Build content stream
-        $stream  = "BT\n";
-        $stream .= "/F1 14 Tf\n";
-        $stream .= "50 750 Td\n";
-        $stream .= '(' . $this->escapePdfString($line1) . ") Tj\n";
-        $stream .= "0 -25 Td\n";
-        $stream .= '(' . $this->escapePdfString($line2) . ") Tj\n";
-        $stream .= "0 -25 Td\n";
-        $stream .= '(' . $this->escapePdfString($line3) . ") Tj\n";
-        $stream .= "ET\n";
-
-        $streamLen = strlen($stream);
-
-        // Build PDF objects
-        $objects = [];
-
-        // Object 1: Catalog
-        $objects[1] = "1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n";
-
-        // Object 2: Pages
-        $objects[2] = "2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n";
-
-        // Object 3: Page
-        $objects[3] = "3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>\nendobj\n";
-
-        // Object 4: Content stream
-        $objects[4] = "4 0 obj\n<< /Length {$streamLen} >>\nstream\n{$stream}endstream\nendobj\n";
-
-        // Object 5: Font
-        $objects[5] = "5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>\nendobj\n";
-
-        // Assemble PDF body and track offsets
-        $header  = "%PDF-1.4\n";
-        $body    = '';
-        $offsets = [];
-
-        foreach ($objects as $num => $obj) {
-            $offsets[$num] = strlen($header) + strlen($body);
-            $body .= $obj;
-        }
-
-        $xrefOffset = strlen($header) + strlen($body);
-
-        // Cross-reference table
-        $xref  = "xref\n";
-        $xref .= '0 ' . (count($objects) + 1) . "\n";
-        $xref .= "0000000000 65535 f \n";
-        foreach ($offsets as $offset) {
-            $xref .= str_pad((string) $offset, 10, '0', \STR_PAD_LEFT) . " 00000 n \n";
-        }
-
-        $trailer = "trailer\n<< /Size " . (count($objects) + 1) . " /Root 1 0 R >>\nstartxref\n{$xrefOffset}\n%%EOF\n";
-
-        return $header . $body . $xref . $trailer;
-    }
-
-    private function escapePdfString(string $value): string
-    {
-        return str_replace(['\\', '(', ')'], ['\\\\', '\\(', '\\)'], $value);
-    }
 }

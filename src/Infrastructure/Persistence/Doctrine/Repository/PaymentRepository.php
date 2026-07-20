@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Infrastructure\Persistence\Doctrine\Repository;
 
 use App\Domain\Entity\Payment;
+use App\Domain\Entity\PaymentHoldedEstado;
 use App\Domain\Entity\PaymentStatus;
 use App\Domain\Entity\PaymentType;
 use App\Domain\Repository\PaymentRepositoryInterface;
@@ -28,7 +29,11 @@ final class PaymentRepository implements PaymentRepositoryInterface
             $existing->setStatus($payment->status()->value);
             $existing->setHoldedInvoiceId($payment->holdedInvoiceId());
             $existing->setPdfPath($payment->pdfPath());
+            $existing->setHoldedEstado($payment->holdedEstado()->value);
+            $existing->setHoldedSyncError($payment->holdedSyncError());
+            $existing->setHoldedSyncedAt($payment->holdedSyncedAt());
             $existing->setUpdatedAt($payment->updatedAt());
+            $existing->setCuotaNumero($payment->cuotaNumero());
         } else {
             $this->entityManager->persist($this->domainToOrm($payment));
         }
@@ -86,6 +91,10 @@ final class PaymentRepository implements PaymentRepositoryInterface
             $orm->getPdfPath(),
             $orm->getCreatedAt(),
             $orm->getUpdatedAt(),
+            PaymentHoldedEstado::from($orm->getHoldedEstado()),
+            $orm->getHoldedSyncError(),
+            $orm->getHoldedSyncedAt(),
+            $orm->getCuotaNumero(),
         );
     }
 
@@ -102,6 +111,10 @@ final class PaymentRepository implements PaymentRepositoryInterface
         $orm->setPdfPath($payment->pdfPath());
         $orm->setCreatedAt($payment->createdAt());
         $orm->setUpdatedAt($payment->updatedAt());
+        $orm->setHoldedEstado($payment->holdedEstado()->value);
+        $orm->setHoldedSyncError($payment->holdedSyncError());
+        $orm->setHoldedSyncedAt($payment->holdedSyncedAt());
+        $orm->setCuotaNumero($payment->cuotaNumero());
 
         return $orm;
     }

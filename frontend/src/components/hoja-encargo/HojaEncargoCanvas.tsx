@@ -108,7 +108,7 @@ export function EscritoCanvas({
       <div
         className={cn(
           'relative min-h-[840px] bg-card shadow-lg ring-1 ring-border',
-          preview ? 'escrito-document flex flex-col overflow-hidden px-12 py-10' : 'p-8',
+          preview ? 'escrito-document flex flex-col overflow-hidden py-10' : 'p-8',
         )}
       >
         <MembretePreview

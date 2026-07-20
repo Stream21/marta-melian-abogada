@@ -6,7 +6,10 @@ namespace App\Application\UseCase;
 
 use App\Application\Service\NotificarAltaExpedienteService;
 use App\Application\Service\TelefonoNormalizer;
+use App\Domain\Entity\ActorHitoExpediente;
+use App\Domain\Entity\ExpedienteHito;
 use App\Domain\Repository\ClienteRepositoryInterface;
+use App\Domain\Repository\ContratacionRepositoryInterface;
 use App\Domain\Repository\ExpedienteRepositoryInterface;
 use App\Domain\Repository\TramiteRepositoryInterface;
 use App\Domain\ValueObject\ClienteId;
@@ -20,6 +23,7 @@ final class EnviarEnlaceExpedienteUseCase
         private ClienteRepositoryInterface $clienteRepository,
         private TramiteRepositoryInterface $tramiteRepository,
         private NotificarAltaExpedienteService $notificarService,
+        private ContratacionRepositoryInterface $contratacionRepository,
         private TelefonoNormalizer $telefonoNormalizer,
     ) {
     }
@@ -78,6 +82,29 @@ final class EnviarEnlaceExpedienteUseCase
             $tramiteNombre = $tramite?->nombre() ?? $tramiteNombre;
         }
 
-        return $this->notificarService->enviarEnlace($expediente, $cliente, $tramiteNombre, $canales);
+        $canalesEnviados = $this->notificarService->enviarEnlace($expediente, $cliente, $tramiteNombre, $canales);
+
+        if ([] !== $canalesEnviados) {
+            $this->contratacionRepository->saveHito(new ExpedienteHito(
+                bin2hex(random_bytes(16)),
+                new ExpedienteId($expedienteId),
+                'notificacion_enlace_enviado',
+                sprintf(
+                    'Se ha enviado el enlace de acceso al cliente por %s.',
+                    implode(', ', array_map(
+                        fn (string $c) => match ($c) {
+                            'whatsapp' => 'WhatsApp',
+                            'email' => 'email',
+                            default => $c,
+                        },
+                        array_filter($canalesEnviados, fn (string $c) => !str_ends_with($c, '_error')),
+                    )),
+                ),
+                ActorHitoExpediente::Abogado,
+                new \DateTimeImmutable('now'),
+            ));
+        }
+
+        return $canalesEnviados;
     }
 }

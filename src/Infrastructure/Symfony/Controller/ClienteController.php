@@ -9,14 +9,16 @@ use App\Application\DTO\ClienteResponseMapper;
 use App\Application\Port\ClienteFileStoragePort;
 use App\Application\UseCase\BuscarClientesUseCase;
 use App\Application\UseCase\CrearClienteConDocumentoUseCase;
+use App\Application\UseCase\EliminarClienteUseCase;
 use App\Application\UseCase\ExtraerDocumentoIdentidadUseCase;
 use App\Application\UseCase\GuardarClienteUseCase;
 use App\Application\UseCase\ListarClientesUseCase;
 use App\Application\UseCase\ObtenerClienteDetalleUseCase;
 use App\Application\UseCase\SincronizarClienteHoldedUseCase;
-use App\Domain\Exception\TelefonoClienteDuplicadoException;
+use App\Domain\Exception\ClienteDuplicadoExceptionInterface;
 use App\Domain\Repository\ClienteRepositoryInterface;
 use App\Domain\ValueObject\ClienteId;
+use App\Infrastructure\Http\ClienteDuplicadoJsonResponse;
 use App\Infrastructure\Http\UploadedFileMimeDetector;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
@@ -36,6 +38,7 @@ final class ClienteController extends AbstractController
         private ExtraerDocumentoIdentidadUseCase $extraerDocumento,
         private BuscarClientesUseCase $buscarClientes,
         private SincronizarClienteHoldedUseCase $sincronizarHolded,
+        private EliminarClienteUseCase $eliminarCliente,
         private ClienteRepositoryInterface $clienteRepository,
         private ClienteFileStoragePort $fileStorage,
         private UploadedFileMimeDetector $mimeDetector,
@@ -136,12 +139,8 @@ final class ClienteController extends AbstractController
                 $reverso,
                 $this->inputFromArray($datos),
             );
-        } catch (TelefonoClienteDuplicadoException $e) {
-            return new JsonResponse([
-                'message' => $e->getMessage(),
-                'clienteExistenteId' => $e->clienteExistenteId,
-                'clienteExistenteNombre' => $e->clienteExistenteNombre,
-            ], Response::HTTP_CONFLICT);
+        } catch (ClienteDuplicadoExceptionInterface $e) {
+            return ClienteDuplicadoJsonResponse::create($e);
         } catch (\InvalidArgumentException $e) {
             return new JsonResponse(['message' => $e->getMessage()], Response::HTTP_BAD_REQUEST);
         }
@@ -156,12 +155,8 @@ final class ClienteController extends AbstractController
 
         try {
             $cliente = ($this->guardar)($id, $this->inputFromArray($data));
-        } catch (TelefonoClienteDuplicadoException $e) {
-            return new JsonResponse([
-                'message' => $e->getMessage(),
-                'clienteExistenteId' => $e->clienteExistenteId,
-                'clienteExistenteNombre' => $e->clienteExistenteNombre,
-            ], Response::HTTP_CONFLICT);
+        } catch (ClienteDuplicadoExceptionInterface $e) {
+            return ClienteDuplicadoJsonResponse::create($e);
         } catch (\InvalidArgumentException $e) {
             $status = str_contains($e->getMessage(), 'no se pueden modificar') || str_contains($e->getMessage(), 'no se puede modificar')
                 ? Response::HTTP_CONFLICT
@@ -171,6 +166,20 @@ final class ClienteController extends AbstractController
         }
 
         return new JsonResponse(ClienteResponseMapper::fromDomain($cliente));
+    }
+
+    #[Route(path: '/{id}', name: 'delete', methods: ['DELETE'], requirements: ['id' => '[0-9a-f-]{36}'])]
+    public function delete(string $id): JsonResponse
+    {
+        try {
+            ($this->eliminarCliente)($id);
+
+            return new JsonResponse(null, Response::HTTP_NO_CONTENT);
+        } catch (\InvalidArgumentException $e) {
+            return new JsonResponse(['message' => $e->getMessage()], Response::HTTP_NOT_FOUND);
+        } catch (\DomainException $e) {
+            return new JsonResponse(['message' => $e->getMessage()], Response::HTTP_CONFLICT);
+        }
     }
 
     /**

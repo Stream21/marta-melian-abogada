@@ -9,7 +9,7 @@
 |------|-----------|
 | Backend | Symfony 7 · PHP 8.2+ · Doctrine ORM |
 | Frontend | React 18 · TypeScript · Tailwind CSS · TanStack Router & Query · shadcn/ui |
-| Infra | Docker · WSL Ubuntu · `docker-compose` (con guión) |
+| Infra | Docker · WSL Ubuntu · `docker compose` (plugin v2) |
 
 ## Estructura del proyecto
 

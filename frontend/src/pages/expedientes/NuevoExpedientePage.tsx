@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from '@tanstack/react-router';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
 import { api } from '@/api/client';
 import { Button } from '@/components/ui/button';
@@ -15,6 +15,7 @@ import {
   initialAltaState,
   type ExpedienteAltaState,
 } from '@/components/expedientes/alta/types';
+import { guardarNotificacionAlta } from '@/lib/email-notificacion';
 import { isValidEmail, isValidTelefono } from '@/lib/validators';
 
 export function NuevoExpedientePage() {
@@ -24,6 +25,11 @@ export function NuevoExpedientePage() {
   const [error, setError] = useState<string | null>(null);
 
   const patch = (p: Partial<ExpedienteAltaState>) => setState((s) => ({ ...s, ...p }));
+
+  const { data: emailEstado } = useQuery({
+    queryKey: ['email-estado'],
+    queryFn: () => api.getEmailEstado(),
+  });
 
   const altaMutation = useMutation({
     mutationFn: () =>
@@ -44,6 +50,7 @@ export function NuevoExpedientePage() {
         fechaVencimientoFase: state.fechaVencimientoFase.trim() || null,
       }),
     onSuccess: (result) => {
+      guardarNotificacionAlta(result.canalesNotificados, emailEstado?.bandejaUrl);
       void queryClient.invalidateQueries({ queryKey: ['expedientes'] });
       void navigate({ to: '/expedientes/$expedienteId', params: { expedienteId: result.expediente.id } });
     },
@@ -125,8 +132,8 @@ export function NuevoExpedientePage() {
     <div className="p-6 max-w-4xl">
       <div className="mb-6">
         <p className="section-label">
-          <Link to="/dashboard" className="hover:text-primary">
-            Dashboard
+          <Link to="/expedientes" className="hover:text-primary">
+            Expedientes
           </Link>
           {' / '}
           <Link to="/expedientes" className="hover:text-primary">

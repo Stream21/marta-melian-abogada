@@ -34,5 +34,6 @@ security:
         - { path: ^/health, roles: PUBLIC_ACCESS }
         - { path: ^/api/mock, roles: PUBLIC_ACCESS }
         - { path: ^/api/webhooks, roles: PUBLIC_ACCESS }
+        - { path: ^/api/payments/confirm-session, roles: PUBLIC_ACCESS }
         - { path: ^/api/acceso, roles: PUBLIC_ACCESS }
         - { path: ^/api, roles: IS_AUTHENTICATED_FULLY }

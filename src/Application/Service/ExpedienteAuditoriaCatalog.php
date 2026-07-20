@@ -8,6 +8,10 @@ final class ExpedienteAuditoriaCatalog
 {
     public function categoriaForTipo(string $tipo): string
     {
+        if (str_starts_with($tipo, 'documento_requerimientos') || 'documento_requerido_anadido' === $tipo || 'fase_requerimientos_iniciada' === $tipo) {
+            return 'requerimientos';
+        }
+
         if (str_starts_with($tipo, 'paso_') || in_array($tipo, [
             'contratacion_iniciada',
             'condiciones_pago_actualizadas',
@@ -19,7 +23,7 @@ final class ExpedienteAuditoriaCatalog
             return 'documento';
         }
 
-        if (str_contains($tipo, 'pago') || 'pago_registrado' === $tipo) {
+        if (str_contains($tipo, 'pago') || 'pago_registrado' === $tipo || 'holded_sync_fallido' === $tipo) {
             return 'pago';
         }
 
@@ -44,6 +48,7 @@ final class ExpedienteAuditoriaCatalog
     {
         return match ($categoria) {
             'contratacion' => 'Contratación',
+            'requerimientos' => 'Requerimientos',
             'comunicacion' => 'Comunicación',
             'pago' => 'Pago',
             'documento' => 'Documento',
@@ -74,8 +79,16 @@ final class ExpedienteAuditoriaCatalog
             'fase_completada' => 'Cambio de fase',
             'pago_registrado' => 'Cobro registrado',
             'pago_stripe_completado' => 'Pago Stripe',
+            'holded_sync_fallido' => 'Fallo sincronización Holded',
             'otp_firma_verificado' => 'OTP verificado',
             'notificacion_enviada' => 'Notificación enviada',
+            'notificacion_alta_expediente' => 'Alta expediente notificada',
+            'notificacion_enlace_enviado' => 'Enlace enviado al cliente',
+            'fase_requerimientos_iniciada' => 'Inicio requerimientos',
+            'documento_requerimientos_subido' => 'Documento subido (requerimientos)',
+            'documento_requerimientos_validado' => 'Documento validado (requerimientos)',
+            'documento_requerimientos_devuelto' => 'Documento devuelto (requerimientos)',
+            'documento_requerido_anadido' => 'Documento requerido añadido',
             default => ucfirst(str_replace('_', ' ', $tipo)),
         };
     }

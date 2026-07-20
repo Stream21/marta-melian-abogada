@@ -10,6 +10,8 @@ enum EstadoFaseExpediente: string
     case PendienteFirma = 'pendiente_firma';
     case PendientePago = 'pendiente_pago';
     case Completada = 'completada';
+    case RequerimientosEnProgreso = 'requerimientos_en_progreso';
+    case RequerimientosListo = 'requerimientos_listo';
 
     public function label(): string
     {
@@ -18,6 +20,8 @@ enum EstadoFaseExpediente: string
             self::PendienteFirma => 'Pendiente de firma',
             self::PendientePago => 'Pendiente de pago',
             self::Completada => 'Completada',
+            self::RequerimientosEnProgreso => 'En progreso',
+            self::RequerimientosListo => 'Listo para presentación',
         };
     }
 }

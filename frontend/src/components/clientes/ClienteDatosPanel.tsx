@@ -226,6 +226,9 @@ export function ClienteDatosPanel() {
           </div>
         </div>
         <div className="flex justify-end gap-2 px-4 pb-4">
+          {saveMutation.isError && (
+            <p className="mr-auto text-sm text-destructive">{(saveMutation.error as Error).message}</p>
+          )}
           {selectedId && (
             <Button type="button" variant="outline" onClick={resetForm}>
               Cancelar

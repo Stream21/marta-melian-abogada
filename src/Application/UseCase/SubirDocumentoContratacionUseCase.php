@@ -5,13 +5,16 @@ declare(strict_types=1);
 namespace App\Application\UseCase;
 
 use App\Application\Port\ContratacionRealtimePort;
-use App\Application\Port\DocumentToPdfConverterPort;
 use App\Application\Port\ExpedienteFileStoragePort;
 use App\Application\Service\ContratacionCompletitudValidator;
+use App\Application\Service\DocumentoUploadNormalizer;
+use App\Domain\Entity\ActorHitoExpediente;
 use App\Domain\Entity\EstadoDocumentoEntregado;
 use App\Domain\Entity\ExpedienteDocumentoEntregado;
+use App\Domain\Entity\ExpedienteHito;
 use App\Domain\Entity\FaseNegocioExpediente;
 use App\Domain\Entity\PasoContratacionCliente;
+use App\Domain\Repository\ContratacionRepositoryInterface;
 use App\Domain\Repository\ExpedienteDocumentoRepositoryInterface;
 use App\Domain\Repository\ExpedienteRepositoryInterface;
 use App\Domain\Repository\TramiteDocumentoRequeridoRepositoryInterface;
@@ -25,14 +28,17 @@ final class SubirDocumentoContratacionUseCase
         private TramiteDocumentoRequeridoRepositoryInterface $documentoRepository,
         private ExpedienteDocumentoRepositoryInterface $documentoEntregadoRepository,
         private ExpedienteFileStoragePort $fileStorage,
-        private DocumentToPdfConverterPort $pdfConverter,
+        private DocumentoUploadNormalizer $uploadNormalizer,
         private ContratacionCompletitudValidator $completitudValidator,
+        private ContratacionRepositoryInterface $contratacionRepository,
         private ContratacionRealtimePort $realtime,
-        private string $projectDir,
     ) {
     }
 
-    public function __invoke(string $token, string $documentoRequeridoId, string $fileBinary, string $mimeType): void
+    /**
+     * @param list<array{content: string, mime: string}> $archivos
+     */
+    public function __invoke(string $token, string $documentoRequeridoId, array $archivos): void
     {
         $expediente = $this->expedienteRepository->findByAccessToken($token);
         if (null === $expediente) {
@@ -54,7 +60,7 @@ final class SubirDocumentoContratacionUseCase
             throw new \InvalidArgumentException('Documento requerido no encontrado.');
         }
 
-        $content = $this->normalizeToPdf($fileBinary, $mimeType);
+        $content = $this->uploadNormalizer->normalizar($archivos, $doc->tipo(), $doc->maxImagenes());
         $filename = sprintf('docs/doc_%s_%s.pdf', $documentoRequeridoId, date('YmdHis'));
         $path = $this->fileStorage->savePdf($expediente->id(), $filename, $content);
 
@@ -62,15 +68,29 @@ final class SubirDocumentoContratacionUseCase
             bin2hex(random_bytes(16)),
             $expediente->id(),
             $docId,
+            null,
             $path,
             EstadoDocumentoEntregado::Entregado,
             new \DateTimeImmutable('now'),
         ));
 
+        $this->contratacionRepository->saveHito(new ExpedienteHito(
+            bin2hex(random_bytes(16)),
+            $expediente->id(),
+            'documento_subido',
+            sprintf('El cliente ha subido el documento "%s".', $doc->nombre()),
+            ActorHitoExpediente::Cliente,
+            new \DateTimeImmutable('now'),
+            PasoContratacionCliente::DatosCliente,
+        ));
+
         $this->realtime->publishContratacionUpdate($expediente->id()->value(), [
             'type' => 'documento_subido',
             'documentoId' => $documentoRequeridoId,
+            'documentoNombre' => $doc->nombre(),
             'actor' => 'cliente',
+            'expedienteNumero' => $expediente->numero(),
+            'clienteNombre' => $expediente->clientName(),
         ]);
     }
 
@@ -87,22 +107,5 @@ final class SubirDocumentoContratacionUseCase
         }
 
         return null;
-    }
-
-    private function normalizeToPdf(string $binary, string $mimeType): string
-    {
-        if (str_contains(strtolower($mimeType), 'pdf') || str_starts_with($binary, '%PDF')) {
-            return $binary;
-        }
-
-        $temp = sys_get_temp_dir() . '/doc-upload-' . bin2hex(random_bytes(8));
-        file_put_contents($temp, $binary);
-        try {
-            $relative = $this->pdfConverter->convertToPdf($temp, $mimeType);
-
-            return (string) file_get_contents($this->projectDir . '/' . ltrim($relative, '/'));
-        } finally {
-            @unlink($temp);
-        }
     }
 }

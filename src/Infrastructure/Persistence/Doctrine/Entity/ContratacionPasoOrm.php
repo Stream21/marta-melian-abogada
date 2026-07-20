@@ -34,6 +34,10 @@ class ContratacionPasoOrm
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $notaDevolucion = null;
 
+    /** @var list<string>|null */
+    #[ORM\Column(type: Types::JSON, nullable: true)]
+    private ?array $motivosDevolucion = null;
+
     public function getId(): string
     {
         return $this->id;
@@ -102,5 +106,21 @@ class ContratacionPasoOrm
     public function setNotaDevolucion(?string $notaDevolucion): void
     {
         $this->notaDevolucion = $notaDevolucion;
+    }
+
+    /**
+     * @return list<string>|null
+     */
+    public function getMotivosDevolucion(): ?array
+    {
+        return $this->motivosDevolucion;
+    }
+
+    /**
+     * @param list<string>|null $motivosDevolucion
+     */
+    public function setMotivosDevolucion(?array $motivosDevolucion): void
+    {
+        $this->motivosDevolucion = $motivosDevolucion;
     }
 }

@@ -1,9 +1,10 @@
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { CheckCircle2, Upload } from 'lucide-react';
+import { CheckCircle2 } from 'lucide-react';
 import { api, type DocumentoRequerido } from '@/api/client';
+import { DocumentoArchivoUploadControl } from '@/components/cliente-portal/DocumentoArchivoUploadControl';
+import { DocumentoLimiteBadge } from '@/components/cliente-portal/DocumentoLimiteBadge';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 interface DocumentoUploadPanelProps {
@@ -13,13 +14,24 @@ interface DocumentoUploadPanelProps {
 
 export function DocumentoUploadPanel({ token, documentos }: DocumentoUploadPanelProps) {
   const queryClient = useQueryClient();
-  const inputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const [uploadingId, setUploadingId] = useState<string | null>(null);
+  const [errorDocId, setErrorDocId] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [uploadVersion, setUploadVersion] = useState(0);
 
   const uploadMutation = useMutation({
-    mutationFn: ({ docId, file }: { docId: string; file: File }) =>
-      api.subirDocumentoContratacion(token, docId, file),
-    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['acceso', token] }),
+    mutationFn: ({ docId, files }: { docId: string; files: File[] }) =>
+      api.subirDocumentoContratacion(token, docId, files),
+    onSuccess: () => {
+      setErrorDocId(null);
+      setErrorMessage(null);
+      setUploadVersion((v) => v + 1);
+      void queryClient.invalidateQueries({ queryKey: ['acceso', token] });
+    },
+    onError: (error, variables) => {
+      setErrorDocId(variables.docId);
+      setErrorMessage(error instanceof Error ? error.message : 'No se pudo subir el documento.');
+    },
     onSettled: () => setUploadingId(null),
   });
 
@@ -49,6 +61,7 @@ export function DocumentoUploadPanel({ token, documentos }: DocumentoUploadPanel
                 <div className="flex items-center gap-2">
                   <span className="font-medium">{doc.nombre}</span>
                   {doc.obligatorio && <Badge variant="secondary">Obligatorio</Badge>}
+                  <DocumentoLimiteBadge tipo={doc.tipo} maxImagenes={doc.maxImagenes} />
                   {entregado && (
                     <Badge variant="success" className="gap-1">
                       <CheckCircle2 className="h-3 w-3" />
@@ -61,34 +74,22 @@ export function DocumentoUploadPanel({ token, documentos }: DocumentoUploadPanel
             </div>
 
             {!entregado && (
-              <>
-                <input
-                  ref={(el) => {
-                    inputRefs.current[doc.id] = el;
-                  }}
-                  type="file"
-                  accept="image/*,application/pdf"
-                  className="hidden"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (!file) return;
-                    setUploadingId(doc.id);
-                    uploadMutation.mutate({ docId: doc.id, file });
-                    e.target.value = '';
-                  }}
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="mt-3"
-                  disabled={uploadingId === doc.id}
-                  onClick={() => inputRefs.current[doc.id]?.click()}
-                >
-                  <Upload className="mr-2 h-4 w-4" />
-                  {uploadingId === doc.id ? 'Subiendo…' : 'Subir documento'}
-                </Button>
-              </>
+              <DocumentoArchivoUploadControl
+                tipo={doc.tipo}
+                maxImagenes={doc.maxImagenes}
+                uploading={uploadingId === doc.id}
+                uploadingTitle="Subiendo documentación…"
+                uploadingDescription="Convirtiendo el archivo a PDF para su expediente."
+                uploadSuccessKey={`${uploadVersion}-${doc.id}`}
+                error={errorDocId === doc.id ? errorMessage : null}
+                readyLabel="Listo — enviar documento"
+                onUpload={(files) => {
+                  setUploadingId(doc.id);
+                  setErrorDocId(null);
+                  setErrorMessage(null);
+                  uploadMutation.mutate({ docId: doc.id, files });
+                }}
+              />
             )}
           </li>
         );

@@ -1,6 +1,8 @@
-import { createFileRoute } from '@tanstack/react-router';
-import { DashboardPage } from '@/pages/DashboardPage';
+import { createFileRoute, redirect } from '@tanstack/react-router';
 
 export const Route = createFileRoute('/_app/dashboard')({
-  component: DashboardPage,
+  beforeLoad: () => {
+    throw redirect({ to: '/expedientes' });
+  },
+  component: () => null,
 });

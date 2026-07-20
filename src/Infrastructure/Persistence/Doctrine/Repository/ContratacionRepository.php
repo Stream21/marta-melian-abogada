@@ -34,6 +34,7 @@ final class ContratacionRepository implements ContratacionRepositoryInterface
             $existing->setRealizadoAt($paso->realizadoAt());
             $existing->setValidadoAt($paso->validadoAt());
             $existing->setNotaDevolucion($paso->notaDevolucion());
+            $existing->setMotivosDevolucion($paso->motivosDevolucion() ?: null);
         } else {
             $orm = new ContratacionPasoOrm();
             $orm->setId($paso->id());
@@ -43,6 +44,7 @@ final class ContratacionRepository implements ContratacionRepositoryInterface
             $orm->setRealizadoAt($paso->realizadoAt());
             $orm->setValidadoAt($paso->validadoAt());
             $orm->setNotaDevolucion($paso->notaDevolucion());
+            $orm->setMotivosDevolucion($paso->motivosDevolucion() ?: null);
             $this->entityManager->persist($orm);
         }
 
@@ -66,6 +68,34 @@ final class ContratacionRepository implements ContratacionRepositoryInterface
         return $pasos;
     }
 
+    public function findPasosByExpedienteIds(array $expedienteIds): array
+    {
+        if ([] === $expedienteIds) {
+            return [];
+        }
+
+        $orms = $this->entityManager->getRepository(ContratacionPasoOrm::class)
+            ->createQueryBuilder('p')
+            ->where('p.expedienteId IN (:ids)')
+            ->setParameter('ids', $expedienteIds)
+            ->getQuery()
+            ->getResult();
+
+        $result = [];
+        foreach ($orms as $orm) {
+            $paso = $this->pasoOrmToDomain($orm);
+            if (null === $paso) {
+                continue;
+            }
+
+            $expedienteId = $paso->expedienteId()->value();
+            $result[$expedienteId] ??= [];
+            $result[$expedienteId][] = $paso;
+        }
+
+        return $result;
+    }
+
     public function findPaso(ExpedienteId $expedienteId, PasoContratacionCliente $paso): ?ContratacionPaso
     {
         $orm = $this->entityManager->getRepository(ContratacionPasoOrm::class)->findOneBy([
@@ -86,8 +116,16 @@ final class ContratacionRepository implements ContratacionRepositoryInterface
         $orm->setDescripcion($hito->descripcion());
         $orm->setActor($hito->actor()->value);
         $orm->setCreatedAt($hito->createdAt());
+        $orm->setReferenciaId($hito->referenciaId());
         $this->entityManager->persist($orm);
         $this->entityManager->flush();
+    }
+
+    public function findHitoById(string $id): ?ExpedienteHito
+    {
+        $orm = $this->entityManager->getRepository(ExpedienteHitoOrm::class)->find($id);
+
+        return $orm instanceof ExpedienteHitoOrm ? $this->hitoOrmToDomain($orm) : null;
     }
 
     public function findHitosByExpediente(ExpedienteId $expedienteId): array
@@ -137,6 +175,27 @@ final class ContratacionRepository implements ContratacionRepositoryInterface
         return array_map($this->hitoOrmToDomain(...), $orms);
     }
 
+    public function marcarHitoLeido(string $hitoId): void
+    {
+        $conn = $this->entityManager->getConnection();
+        $conn->executeStatement(
+            'INSERT INTO notificacion_hito_leida (hito_id, leida_at) VALUES (:hitoId, :leidaAt) ON CONFLICT (hito_id) DO NOTHING',
+            [
+                'hitoId' => $hitoId,
+                'leidaAt' => (new \DateTimeImmutable('now'))->format('Y-m-d H:i:s'),
+            ],
+        );
+    }
+
+    public function findHitosLeidosIds(): array
+    {
+        $rows = $this->entityManager->getConnection()->fetchFirstColumn(
+            'SELECT hito_id FROM notificacion_hito_leida',
+        );
+
+        return array_map(strval(...), $rows);
+    }
+
     private function pasoOrmToDomain(ContratacionPasoOrm $orm): ?ContratacionPaso
     {
         $paso = PasoContratacionCliente::tryFrom($orm->getPaso());
@@ -152,6 +211,7 @@ final class ContratacionRepository implements ContratacionRepositoryInterface
             $orm->getRealizadoAt(),
             $orm->getValidadoAt(),
             $orm->getNotaDevolucion(),
+            $orm->getMotivosDevolucion() ?? [],
         );
     }
 
@@ -165,6 +225,7 @@ final class ContratacionRepository implements ContratacionRepositoryInterface
             ActorHitoExpediente::from($orm->getActor()),
             $orm->getCreatedAt(),
             null !== $orm->getPaso() ? PasoContratacionCliente::tryFrom($orm->getPaso()) : null,
+            $orm->getReferenciaId(),
         );
     }
 }

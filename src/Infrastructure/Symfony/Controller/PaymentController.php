@@ -7,6 +7,7 @@ namespace App\Infrastructure\Symfony\Controller;
 use App\Application\DTO\GenerateLinkRequest;
 use App\Application\DTO\ManualPaymentRequest;
 use App\Application\DTO\Subscription3Request;
+use App\Application\UseCase\ConfirmarPagoStripeSesionUseCase;
 use App\Application\UseCase\CreateManualPaymentUseCase;
 use App\Application\UseCase\CreateSubscription3MonthsUseCase;
 use App\Application\UseCase\GeneratePaymentLinkUseCase;
@@ -22,6 +23,7 @@ final class PaymentController extends AbstractController
         private CreateManualPaymentUseCase $createManualPayment,
         private GeneratePaymentLinkUseCase $generatePaymentLink,
         private CreateSubscription3MonthsUseCase $createSubscription3Months,
+        private ConfirmarPagoStripeSesionUseCase $confirmarPagoStripeSesion,
     ) {
     }
 
@@ -34,6 +36,7 @@ final class PaymentController extends AbstractController
             amount: (string) ($data['amount'] ?? '0'),
             clientName: $data['clientName'] ?? '',
             caseReference: $data['caseReference'] ?? '',
+            cuotaNumero: isset($data['cuotaNumero']) ? (int) $data['cuotaNumero'] : null,
         );
 
         $result = ($this->createManualPayment)($input);
@@ -62,6 +65,8 @@ final class PaymentController extends AbstractController
             expedienteId: $data['expedienteId'] ?? '',
             amount: (string) ($data['amount'] ?? '0'),
             phone: $data['phone'] ?? '',
+            email: $data['email'] ?? '',
+            cuotaNumero: isset($data['cuotaNumero']) ? (int) $data['cuotaNumero'] : null,
         );
 
         $result = ($this->generatePaymentLink)($input);
@@ -103,5 +108,20 @@ final class PaymentController extends AbstractController
             'url' => $result['url'],
             'sessionId' => $result['sessionId'],
         ]);
+    }
+
+    #[Route(path: '/confirm-session', name: 'confirm_session', methods: ['POST'])]
+    public function confirmSession(Request $request): JsonResponse
+    {
+        $data = json_decode($request->getContent(), true) ?? [];
+        $sessionId = (string) ($data['sessionId'] ?? '');
+
+        try {
+            ($this->confirmarPagoStripeSesion)($sessionId);
+
+            return new JsonResponse(['success' => true]);
+        } catch (\InvalidArgumentException $e) {
+            return new JsonResponse(['success' => false, 'message' => $e->getMessage()], JsonResponse::HTTP_BAD_REQUEST);
+        }
     }
 }

@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Pencil } from 'lucide-react';
 import { api } from '@/api/client';
 import { ConfigBreadcrumb } from '@/components/config/ConfigBreadcrumb';
+import { ServicioDocumentosRequeridosPanel } from '@/components/config/servicio/ServicioDocumentosRequeridosPanel';
 import { ServicioForm } from '@/components/config/ServicioForm';
 import type { TipoServicioValue } from '@/lib/servicio-tipos';
 
@@ -43,13 +44,16 @@ export function ServiciosEditPage({ servicioId }: ServiciosEditPageProps) {
           )}
 
           {data && (
-            <ServicioForm
-              key={data.id}
-              mode="edit"
-              servicioId={data.id}
-              initialNombre={data.nombre}
-              initialTipo={data.tipo as TipoServicioValue}
-            />
+            <>
+              <ServicioForm
+                key={data.id}
+                mode="edit"
+                servicioId={data.id}
+                initialNombre={data.nombre}
+                initialTipo={data.tipo as TipoServicioValue}
+              />
+              <ServicioDocumentosRequeridosPanel servicioId={data.id} />
+            </>
           )}
         </div>
       </main>
