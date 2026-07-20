@@ -1,5 +1,6 @@
 /.phpunit.cache
-/bin/
+/bin/*
+!/bin/console
 /config/secrets/prod/prod.decrypt.private.php
 /public/bundles/
 /public/build/
