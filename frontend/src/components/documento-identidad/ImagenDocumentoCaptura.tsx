@@ -12,6 +12,10 @@ import { CapturaCamaraDocumento, type LadoCapturaCamara } from './CapturaCamaraD
 import { EncuadreHorizontal } from './EncuadreHorizontal';
 import { InstruccionesCapturaDocumentoDialog } from './InstruccionesCapturaDocumentoDialog';
 
+function clickInputRef(ref: React.RefObject<HTMLInputElement | null>): void {
+  ref.current?.click();
+}
+
 interface ImagenDocumentoCapturaProps {
   label: string;
   modo: 'cliente' | 'abogado';
@@ -22,8 +26,8 @@ interface ImagenDocumentoCapturaProps {
   etiquetaDocumento?: string;
   preview: string | null;
   inputId: string;
-  inputRef: React.Ref<HTMLInputElement>;
-  galeriaInputRef?: React.Ref<HTMLInputElement>;
+  inputRef: React.RefObject<HTMLInputElement | null>;
+  galeriaInputRef?: React.RefObject<HTMLInputElement | null>;
   isDragging?: boolean;
   rotation: number;
   onRotationChange: (deg: number) => void;
@@ -53,8 +57,8 @@ export function ImagenDocumentoCaptura({
   onDragLeave,
   onDrop,
 }: ImagenDocumentoCapturaProps) {
-  const galeriaRefLocal = useRef<HTMLInputElement>(null);
-  const galeriaRef = galeriaInputRef ?? galeriaRefLocal;
+  const galeriaRefLocal = useRef<HTMLInputElement | null>(null);
+  const galeriaRef: React.RefObject<HTMLInputElement | null> = galeriaInputRef ?? galeriaRefLocal;
   const [procesando, setProcesando] = useState(false);
   const [avisoVertical, setAvisoVertical] = useState(false);
   const [rawFile, setRawFile] = useState<File | null>(null);
@@ -107,14 +111,14 @@ export function ImagenDocumentoCaptura({
   };
 
   const abrirGaleria = () => {
-    galeriaRef.current?.click();
+    clickInputRef(galeriaRef);
   };
 
   const abrirFichero = () => {
     if (onActivar) {
       onActivar();
     } else {
-      inputRef.current?.click();
+      clickInputRef(inputRef);
     }
   };
 
@@ -123,7 +127,7 @@ export function ImagenDocumentoCaptura({
       setInstruccionesAbiertas(true);
       return;
     }
-    inputRef.current?.click();
+    clickInputRef(inputRef);
   };
 
   const zonaProps = esCliente
@@ -233,7 +237,7 @@ export function ImagenDocumentoCaptura({
           <>
             <input
               id={inputId}
-              ref={inputRef}
+              ref={inputRef as React.Ref<HTMLInputElement>}
               type="file"
               accept="image/*"
               capture={esCliente && esMovil ? 'environment' : undefined}
@@ -245,7 +249,7 @@ export function ImagenDocumentoCaptura({
               }}
             />
             <input
-              ref={galeriaRef}
+              ref={galeriaRef as React.Ref<HTMLInputElement>}
               type="file"
               accept="image/*"
               className="sr-only"
