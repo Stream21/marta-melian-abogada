@@ -64,7 +64,9 @@ export function ClienteIdentidadOnboarding({
       soloDatos: boolean;
     }) =>
       api.guardarDatosIdentidadAcceso(token!, {
-        tipoEscaneo: payload.archivos?.tipoEscaneo ?? identidadEdicion?.tipoEscaneo ?? 'dni_nie',
+        tipoEscaneo: (payload.archivos?.tipoEscaneo
+          ?? identidadEdicion?.tipoEscaneo
+          ?? 'dni_nie') as TipoEscaneoDocumentoIdentidad,
         anverso: payload.archivos?.anverso ?? null,
         reverso: payload.archivos?.reverso ?? null,
         datos: payload.datos,

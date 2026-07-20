@@ -297,7 +297,10 @@ function isSignatureBlock(
   return bloque.type === 'signature_client' || bloque.type === 'signature_lawyer';
 }
 
-function isAdjacentSignaturePair(a: BloqueEscrito, b: BloqueEscrito | undefined): boolean {
+function isAdjacentSignaturePair(
+  a: BloqueEscrito,
+  b: BloqueEscrito | undefined,
+): b is BloqueSignatureClient | BloqueSignatureLawyer {
   if (!b) return false;
   return (
     (a.type === 'signature_lawyer' && b.type === 'signature_client') ||

@@ -101,7 +101,7 @@ export function PortalClienteRoadmap({
           </div>
 
           <div className="flex items-center justify-center gap-1.5 sm:hidden">
-            {pasos.map((paso, i) => {
+            {pasos.map((paso) => {
               const activo = paso.paso === pasoActivo;
               const completado = paso.estado === 'validado_abogado';
               const enRevision = paso.estado === 'realizado_cliente';

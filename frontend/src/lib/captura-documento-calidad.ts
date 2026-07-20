@@ -338,6 +338,7 @@ function evaluarTextoAnverso(
   );
   const mitadIzq = zonaFoto.filter((_, i) => i % ancho < ancho * 0.35);
   const brilloFoto = media(mitadIzq);
+  const brillo = media(grises);
   const hayFoto = brilloFoto < brillo - 12;
 
   return mediaTransiciones >= 8 && (hayFoto || mediaTransiciones >= 12);

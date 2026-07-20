@@ -1,4 +1,4 @@
-import { api, type CobrosGlobalesResponse } from '@/api/client';
+import { type CobrosGlobalesResponse } from '@/api/client';
 
 const fmt = (n: number) =>
   new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(n);

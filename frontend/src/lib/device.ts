@@ -2,7 +2,8 @@
 export function esDispositivoMovil(): boolean {
   if (typeof window === 'undefined' || typeof navigator === 'undefined') return false;
 
-  const uaData = navigator.userAgentData as { mobile?: boolean } | undefined;
+  const nav = navigator as Navigator & { userAgentData?: { mobile?: boolean } };
+  const uaData = nav.userAgentData;
   if (uaData?.mobile === true) return true;
 
   const coarse = window.matchMedia('(pointer: coarse)').matches;

@@ -22,8 +22,8 @@ interface ImagenDocumentoCapturaProps {
   etiquetaDocumento?: string;
   preview: string | null;
   inputId: string;
-  inputRef: React.RefObject<HTMLInputElement | null>;
-  galeriaInputRef?: React.RefObject<HTMLInputElement | null>;
+  inputRef: React.Ref<HTMLInputElement>;
+  galeriaInputRef?: React.Ref<HTMLInputElement>;
   isDragging?: boolean;
   rotation: number;
   onRotationChange: (deg: number) => void;

@@ -19,5 +19,7 @@ export function parseVariableDragData(dataTransfer: DataTransfer): string | null
 
 export function handleVariableDragOver(event: DragEvent): void {
   event.preventDefault();
-  event.dataTransfer.dropEffect = 'copy';
+  if (event.dataTransfer) {
+    event.dataTransfer.dropEffect = 'copy';
+  }
 }

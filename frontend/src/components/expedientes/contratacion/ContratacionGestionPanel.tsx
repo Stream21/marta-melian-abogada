@@ -4,7 +4,6 @@ import { useMercureContratacion } from '@/hooks/useMercureContratacion';
 import { ContratacionRevisionModal } from './ContratacionRevisionModal';
 import {
   CheckCircle2,
-  Circle,
   Clock,
   ChevronDown,
   CreditCard,

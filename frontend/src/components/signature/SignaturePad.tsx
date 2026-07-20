@@ -38,11 +38,10 @@ export function SignaturePad({
   isSaving = false,
   disabled = false,
   title = 'Firma manuscrita',
-  description = 'Dibuje su firma con el ratón o el dedo. Se guardará en PNG con fondo transparente para insertarla en los documentos.',
   filename = 'firma.png',
   className,
 }: SignaturePadProps) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const drawingRef = useRef(false);
   const lastPointRef = useRef<SignaturePoint | null>(null);
   const [isRedrawing, setIsRedrawing] = useState(false);

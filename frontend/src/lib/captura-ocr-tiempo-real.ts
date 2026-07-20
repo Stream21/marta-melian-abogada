@@ -1,4 +1,4 @@
-import Tesseract, { type Worker } from 'tesseract.js';
+import Tesseract, { PSM, type Worker } from 'tesseract.js';
 import {
   regionMarcoEnVideoPixels,
   type LadoCapturaEval,
@@ -32,7 +32,7 @@ async function obtenerWorkerMrz(): Promise<Worker> {
       const w = await Tesseract.createWorker('eng', 1, { logger: () => {} });
       await w.setParameters({
         tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789<',
-        tessedit_pageseg_mode: '6',
+        tessedit_pageseg_mode: PSM.SINGLE_BLOCK,
       });
       workerMrz = w;
       return w;
@@ -47,7 +47,7 @@ async function obtenerWorkerGeneral(): Promise<Worker> {
     iniciandoGeneral = (async () => {
       const w = await Tesseract.createWorker('spa+eng', 1, { logger: () => {} });
       await w.setParameters({
-        tessedit_pageseg_mode: '6',
+        tessedit_pageseg_mode: PSM.SINGLE_BLOCK,
       });
       workerGeneral = w;
       return w;
@@ -118,12 +118,12 @@ async function analizarReverso(canvas: HTMLCanvasElement): Promise<OcrAnalisisMa
   const visual = evaluarPresenciaMrzVisual(canvas);
 
   const [bandaPrincipal, bandaAmplia, lineasMrz] = await Promise.all([
-    ocrBandaMrz(worker, canvas, 0.36, 5, '6'),
-    ocrBandaMrz(worker, canvas, 0.42, 4.5, '7'),
+    ocrBandaMrz(worker, canvas, 0.36, 5, PSM.SINGLE_BLOCK),
+    ocrBandaMrz(worker, canvas, 0.42, 4.5, PSM.SINGLE_LINE),
     ocrLineasMrz(worker, canvas, 0.44),
   ]);
 
-  await worker.setParameters({ tessedit_pageseg_mode: '6' });
+  await worker.setParameters({ tessedit_pageseg_mode: PSM.SINGLE_BLOCK });
 
   const texto = [bandaPrincipal, bandaAmplia, lineasMrz].filter(Boolean).join('\n');
   const textoNorm = normalizarTextoOcrMrz(texto);
@@ -201,7 +201,7 @@ async function ocrBandaMrz(
   canvas: HTMLCanvasElement,
   fraccion: number,
   escala: number,
-  psm: '4' | '6' | '7',
+  psm: typeof PSM.SINGLE_BLOCK | typeof PSM.SINGLE_COLUMN | typeof PSM.SINGLE_LINE,
 ): Promise<string> {
   const banda = recortarBandaInferior(canvas, fraccion);
   const procesada = preprocesarMrz(banda, escala);
@@ -219,7 +219,7 @@ async function ocrLineasMrz(
   const banda = recortarBandaInferior(canvas, fraccionBanda);
   const lineas: string[] = [];
 
-  await worker.setParameters({ tessedit_pageseg_mode: '7' });
+  await worker.setParameters({ tessedit_pageseg_mode: PSM.SINGLE_LINE });
 
   for (let i = 0; i < 3; i++) {
     const franja = recortarFranjaHorizontal(banda, i, 3);
