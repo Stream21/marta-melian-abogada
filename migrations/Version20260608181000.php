@@ -17,6 +17,9 @@ final class Version20260608181000 extends AbstractMigration
 
     public function up(Schema $schema): void
     {
+        // servicio.descripcion was removed from the domain model; drop legacy column before seed inserts.
+        $this->addSql('ALTER TABLE servicio DROP COLUMN IF EXISTS descripcion');
+
         $areaId = ExtranjeriaCatalogSeedData::AREA_ID;
 
         foreach (ExtranjeriaCatalogSeedData::servicios() as $servicio) {
