@@ -497,12 +497,11 @@ export function ClienteDatosRevisionPanel({
       return;
     }
 
-    if (key === 'fechaNacimiento') {
-      body.fechaNacimiento = valor || null;
-    } else {
-      (body as Record<string, string | null>)[key] = valor;
-    }
-    saveMutation.mutate(body);
+    const next: ClienteInput =
+      key === 'fechaNacimiento'
+        ? { ...body, fechaNacimiento: valor || null }
+        : { ...body, [key]: valor };
+    saveMutation.mutate(next);
   };
 
   if (isLoading) {
