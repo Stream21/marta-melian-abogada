@@ -150,7 +150,7 @@ export function NotificacionesPanel({
           )}
         >
           <div className="flex items-start justify-between gap-3 border-b bg-muted/30 px-5 py-4">
-            <div>
+            <div className="min-w-0">
               <h3 className="text-base font-semibold text-foreground">Notificaciones</h3>
               <p className="mt-0.5 text-xs text-muted-foreground">
                 {totalPendientes === 0
@@ -158,14 +158,35 @@ export function NotificacionesPanel({
                   : `${totalPendientes} pendiente${totalPendientes !== 1 ? 's' : ''} de revisión`}
               </p>
             </div>
-            <button
-              type="button"
-              onClick={() => onOpenChange(false)}
-              className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-              aria-label="Cerrar"
-            >
-              <X className="h-4 w-4" />
-            </button>
+            <div className="flex shrink-0 items-center gap-1">
+              {totalPendientes > 0 && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 px-2 text-xs text-primary hover:bg-primary/10 hover:text-primary"
+                  disabled={marcandoTodas}
+                  onClick={() => void handleMarcarTodas()}
+                >
+                  {marcandoTodas ? (
+                    <>
+                      <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                      Marcando…
+                    </>
+                  ) : (
+                    'Marcar todas'
+                  )}
+                </Button>
+              )}
+              <button
+                type="button"
+                onClick={() => onOpenChange(false)}
+                className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                aria-label="Cerrar"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
           </div>
 
           <div className="max-h-[min(32rem,70vh)] overflow-y-auto overflow-x-hidden overscroll-contain">
@@ -234,27 +255,6 @@ export function NotificacionesPanel({
             )}
           </div>
 
-          {notificaciones.length > 0 && (
-            <div className="border-t bg-muted/20 px-5 py-3">
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="w-full text-muted-foreground hover:text-foreground"
-                disabled={marcandoTodas}
-                onClick={() => void handleMarcarTodas()}
-              >
-                {marcandoTodas ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Marcando…
-                  </>
-                ) : (
-                  'Marcar todas como leídas'
-                )}
-              </Button>
-            </div>
-          )}
         </div>
       )}
     </div>
