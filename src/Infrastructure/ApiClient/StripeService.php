@@ -47,7 +47,7 @@ final class StripeService implements StripePort
                 ],
             ],
             'mode' => 'payment',
-            'success_url' => $successUrl . '?session_id={CHECKOUT_SESSION_ID}',
+            'success_url' => $this->appendSessionIdPlaceholder($successUrl),
             'cancel_url' => $cancelUrl,
             'metadata' => array_merge(['expediente_id' => $expedienteId], $metadata),
         ]);
@@ -102,7 +102,7 @@ final class StripeService implements StripePort
                 ],
             ],
             'mode' => 'payment',
-            'success_url' => $successUrl . '?session_id={CHECKOUT_SESSION_ID}',
+            'success_url' => $this->appendSessionIdPlaceholder($successUrl),
             'cancel_url' => $cancelUrl,
             'metadata' => [
                 'expediente_id' => $expedienteId,
@@ -113,5 +113,12 @@ final class StripeService implements StripePort
             'url' => $session->url ?? '',
             'sessionId' => $session->id ?? '',
         ];
+    }
+
+    private function appendSessionIdPlaceholder(string $url): string
+    {
+        $separator = str_contains($url, '?') ? '&' : '?';
+
+        return $url . $separator . 'session_id={CHECKOUT_SESSION_ID}';
     }
 }

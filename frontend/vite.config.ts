@@ -4,7 +4,10 @@ import { TanStackRouterVite } from '@tanstack/router-vite-plugin'
 import path from 'path'
 
 const proxyTarget = process.env.PROXY_TARGET || 'http://localhost:8080'
-const ngrokFrontUrl = process.env.NGROK_FRONT_URL || ''
+// Solo activar HMR vía ngrok cuando se trabaja explícitamente por el túnel.
+// Si NGROK_FRONT_URL está en .env pero abres localhost:5173, el HMR wss falla y Vite recarga en bucle.
+const ngrokFrontUrl =
+  process.env.VITE_HMR_NGROK === '1' ? process.env.NGROK_FRONT_URL || '' : ''
 
 export default defineConfig({
   plugins: [TanStackRouterVite(), react()],

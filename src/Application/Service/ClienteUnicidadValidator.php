@@ -15,7 +15,7 @@ final class ClienteUnicidadValidator
     ) {
     }
 
-    public function assertTelefonoUnico(?string $telefono, ?string $excludeClienteId): void
+    public function assertTelefonoUnico(?string $telefono, ?string $excludeClienteId, bool $permitirDuplicado = false): void
     {
         if (null === $telefono || '' === $telefono) {
             return;
@@ -30,6 +30,13 @@ final class ClienteUnicidadValidator
             return;
         }
 
+        if ($permitirDuplicado) {
+            // Liberar el teléfono del otro cliente (NULL en BD) para poder reasignarlo.
+            $this->repository->save($existente->withoutTelefono());
+
+            return;
+        }
+
         throw new TelefonoClienteDuplicadoException(
             $telefono,
             $existente->id()->value(),
@@ -37,7 +44,7 @@ final class ClienteUnicidadValidator
         );
     }
 
-    public function assertDocumentoUnico(string $numDocumento, ?string $excludeClienteId): void
+    public function assertDocumentoUnico(string $numDocumento, ?string $excludeClienteId, bool $permitirDuplicado = false): void
     {
         if ('' === $numDocumento) {
             return;
@@ -49,6 +56,10 @@ final class ClienteUnicidadValidator
         }
 
         if (null !== $excludeClienteId && $excludeClienteId === $existente->id()->value()) {
+            return;
+        }
+
+        if ($permitirDuplicado) {
             return;
         }
 

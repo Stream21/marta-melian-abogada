@@ -23,4 +23,9 @@ final class DocumentoIdentidadClienteDuplicadoException extends \DomainException
     {
         return $this->clienteExistenteNombre;
     }
+
+    public function campoDuplicado(): string
+    {
+        return 'documento';
+    }
 }

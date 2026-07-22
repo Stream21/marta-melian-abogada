@@ -1,0 +1,81 @@
+=== Command 1: ls -la src/Infrastructure/Symfony/Controller/ContratacionController.php src/Application/UseCase/ActualizarDatosClienteContratacionUseCase.php ===
+
+-rw-r--r-- 1 stream stream  5695 Jul 22 20:57 src/Application/UseCase/ActualizarDatosClienteContratacionUseCase.php
+-rw-r--r-- 1 stream stream 10455 Jul 22 20:57 src/Infrastructure/Symfony/Controller/ContratacionController.php
+
+
+=== Command 2: grep -n "datos-cliente\|ActualizarDatosCliente\|datos_cliente" src/Infrastructure/Symfony/Controller/ContratacionController.php ===
+
+10:use App\Application\UseCase\ActualizarDatosClienteContratacionUseCase;
+41:        private ActualizarDatosClienteContratacionUseCase $actualizarDatosCliente,
+160:    #[Route(path: '/datos-cliente', name: 'datos_cliente', methods: ['PUT'])]
+
+
+=== Command 3: docker compose exec -T php php bin/console cache:clear ===
+
+unknown shorthand flag: 'T' in -T
+
+Usage:  docker [OPTIONS] COMMAND [ARG...]
+
+Run 'docker --help' for more information
+
+NOTE: docker compose plugin (v2) not available; used fallback below.
+
+
+=== Command 3 (fallback): bash scripts/compose.sh exec -T php php bin/console cache:clear ===
+
+AVISO: Usando docker-compose v1 (puede fallar al recrear con KeyError ContainerConfig).
+       Instala v2: bash scripts/install-docker-compose-plugin.sh
+       Recuperación: bash scripts/fix-compose-recreate.sh php
+
+ // Clearing the cache for the dev environment with debug true                  
+
+ [OK] Cache for the "dev" environment (debug=true) was successfully cleared.    
+
+
+=== Command 4: docker compose exec -T php php bin/console debug:router api_expedientes_contratacion_datos_cliente ===
+
+NOTE: docker compose plugin failed (same -T error). Used fallback: bash scripts/compose.sh exec -T php ...
+
+AVISO: Usando docker-compose v1 (puede fallar al recrear con KeyError ContainerConfig).
+       Instala v2: bash scripts/install-docker-compose-plugin.sh
+       Recuperación: bash scripts/fix-compose-recreate.sh php
++--------------+-------------------------------------------------------------------------------------------+
+| Property     | Value                                                                                     |
++--------------+-------------------------------------------------------------------------------------------+
+| Route Name   | api_expedientes_contratacion_datos_cliente                                                |
+| Path         | /api/expedientes/{id}/contratacion/datos-cliente                                          |
+| Path Regex   | {^/api/expedientes/(?P<id>[^/]++)/contratacion/datos\-cliente$}sDu                        |
+| Host         | ANY                                                                                       |
+| Host Regex   |                                                                                           |
+| Scheme       | ANY                                                                                       |
+| Method       | PUT                                                                                       |
+| Requirements | NO CUSTOM                                                                                 |
+| Class        | Symfony\Component\Routing\Route                                                           |
+| Defaults     | _controller: App\Infrastructure\Symfony\Controller\ContratacionController::datosCliente() |
+| Options      | compiler_class: Symfony\Component\Routing\RouteCompiler                                   |
+|              | utf8: true                                                                                |
++--------------+-------------------------------------------------------------------------------------------+
+
+
+=== Command 5: docker compose exec -T php php bin/console debug:router 2>&1 | grep -i contratacion ===
+
+NOTE: Used fallback: bash scripts/compose.sh exec -T php ...
+
+  api_expedientes_contratacion_show                          GET      /api/expedientes/{id}/contratacion                                       
+  api_expedientes_contratacion_condiciones_pago              PUT      /api/expedientes/{id}/contratacion/condiciones-pago                      
+  api_expedientes_contratacion_documentos                    GET      /api/expedientes/{id}/contratacion/documentos                            
+  api_expedientes_contratacion_documento_archivo             GET      /api/expedientes/{id}/contratacion/documentos/{docId}/archivo            
+  api_expedientes_contratacion_firma_pdf                     GET      /api/expedientes/{id}/contratacion/firmas/{tipo}/pdf                     
+  api_expedientes_contratacion_documento_identidad           POST     /api/expedientes/{id}/contratacion/documento-identidad                   
+  api_expedientes_contratacion_datos_cliente                 PUT      /api/expedientes/{id}/contratacion/datos-cliente                         
+  api_expedientes_contratacion_validar                       POST     /api/expedientes/{id}/contratacion/validar/{paso}                        
+  api_expedientes_contratacion_devolver                      POST     /api/expedientes/{id}/contratacion/devolver/{paso}                       
+
+
+=== Summary ===
+
+Route api_expedientes_contratacion_datos_cliente: EXISTS after cache clear
+Path: PUT /api/expedientes/{id}/contratacion/datos-cliente
+Controller: ContratacionController::datosCliente()
+DI/syntax errors: NONE — no fixes required

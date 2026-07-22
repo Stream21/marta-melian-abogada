@@ -378,7 +378,15 @@ final class AccesoController extends AbstractController
                 $datos = [];
             }
 
-            ($this->actualizarIdentidad)($token, $tipo, $anverso, $reverso, $this->inputFromArray($datos), $soloDatos);
+            ($this->actualizarIdentidad)(
+                $token,
+                $tipo,
+                $anverso,
+                $reverso,
+                $this->inputFromArray($datos),
+                $soloDatos,
+                filter_var($request->request->get('permitirDuplicado', false), FILTER_VALIDATE_BOOLEAN),
+            );
 
             return new JsonResponse(($this->obtenerAcceso)($token));
         } catch (ClienteDuplicadoExceptionInterface $e) {

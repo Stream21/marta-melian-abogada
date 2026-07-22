@@ -22,8 +22,7 @@ final class IniciarPagoAccesoUseCase
         private PaymentRepositoryInterface $paymentRepository,
         private StripePort $stripePort,
         private CalendarioPagoService $calendarioPagoService,
-        private string $frontendSuccessUrl,
-        private string $frontendCancelUrl,
+        private string $frontendBaseUrl,
     ) {
     }
 
@@ -56,11 +55,16 @@ final class IniciarPagoAccesoUseCase
         }
 
         $amountCents = (string) (int) round($amount * 100);
+        $base = rtrim($this->frontendBaseUrl, '/');
+        $tokenQuery = rawurlencode($token);
+        $successUrl = $base . '/payment/success?token=' . $tokenQuery;
+        $cancelUrl = $base . '/payment/cancel?token=' . $tokenQuery;
+
         $session = $this->stripePort->createCheckoutSession(
             $amountCents,
             $expediente->id()->value(),
-            $this->frontendSuccessUrl,
-            $this->frontendCancelUrl,
+            $successUrl,
+            $cancelUrl,
             ['cuota_numero' => '1'],
         );
 

@@ -154,7 +154,12 @@ final class ClienteController extends AbstractController
         $data = json_decode($request->getContent(), true) ?? [];
 
         try {
-            $cliente = ($this->guardar)($id, $this->inputFromArray($data));
+            $cliente = ($this->guardar)(
+                $id,
+                $this->inputFromArray($data),
+                altaMinima: false,
+                permitirDuplicado: (bool) ($data['permitirDuplicado'] ?? false),
+            );
         } catch (ClienteDuplicadoExceptionInterface $e) {
             return ClienteDuplicadoJsonResponse::create($e);
         } catch (\InvalidArgumentException $e) {

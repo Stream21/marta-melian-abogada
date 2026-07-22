@@ -18,18 +18,58 @@ function getAuthHeaders(): Record<string, string> {
   return { Authorization: `Bearer ${token}` };
 }
 
-function parseApiError(status: number, err: unknown): string {
+export class ApiError extends Error {
+  readonly status: number;
+  readonly clienteExistenteId?: string;
+  readonly clienteExistenteNombre?: string;
+  readonly campoDuplicado?: 'telefono' | 'documento';
+
+  constructor(
+    message: string,
+    status: number,
+    extras?: {
+      clienteExistenteId?: string;
+      clienteExistenteNombre?: string;
+      campoDuplicado?: 'telefono' | 'documento';
+    },
+  ) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+    this.clienteExistenteId = extras?.clienteExistenteId;
+    this.clienteExistenteNombre = extras?.clienteExistenteNombre;
+    this.campoDuplicado = extras?.campoDuplicado;
+  }
+}
+
+export function isClienteDuplicadoError(error: unknown): error is ApiError {
+  return (
+    error instanceof ApiError &&
+    error.status === 409 &&
+    typeof error.clienteExistenteId === 'string' &&
+    error.clienteExistenteId.length > 0
+  );
+}
+
+function throwApiError(status: number, err: unknown): never {
   const payload = err as {
     error?: string;
     message?: string;
+    clienteExistenteId?: string;
     clienteExistenteNombre?: string;
+    campoDuplicado?: 'telefono' | 'documento';
   };
   let message = payload.message || payload.error || 'Error';
   if (status === 409 && payload.clienteExistenteNombre) {
     message = `${message} (${payload.clienteExistenteNombre})`;
   }
-  return message;
+  throw new ApiError(message, status, {
+    clienteExistenteId: payload.clienteExistenteId,
+    clienteExistenteNombre: payload.clienteExistenteNombre,
+    campoDuplicado: payload.campoDuplicado,
+  });
 }
+
 
 async function uploadRequest<T>(path: string, file: File): Promise<T> {
   const formData = new FormData();
@@ -43,13 +83,15 @@ async function uploadRequest<T>(path: string, file: File): Promise<T> {
 
   if (res.status === 401) {
     localStorage.removeItem(TOKEN_KEY);
-    window.location.href = '/login';
+    if (!window.location.pathname.startsWith('/login')) {
+      window.location.href = '/login';
+    }
     throw new Error('Sesión expirada. Por favor, inicie sesión de nuevo.');
   }
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }));
-    throw new Error(parseApiError(res.status, err));
+    throwApiError(res.status, err);
   }
 
   return res.json() as Promise<T>;
@@ -79,7 +121,9 @@ export async function fetchAuthenticatedBlob(path: string, cacheKey?: string): P
 
   if (res.status === 401) {
     localStorage.removeItem(TOKEN_KEY);
-    window.location.href = '/login';
+    if (!window.location.pathname.startsWith('/login')) {
+      window.location.href = '/login';
+    }
     throw new Error('Sesión expirada. Por favor, inicie sesión de nuevo.');
   }
 
@@ -123,20 +167,56 @@ export async function fetchAccesoPdf(previewUrl: string): Promise<string> {
 }
 
 async function publicRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const res = await fetch(API_BASE + path, {
-    ...options,
-    headers: mergeFetchHeaders({
-      'Content-Type': 'application/json',
-      ...options.headers,
-    }),
-  });
-
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: res.statusText }));
-    throw new Error(parseApiError(res.status, err));
+  let res: Response;
+  try {
+    res = await fetch(API_BASE + path, {
+      ...options,
+      headers: mergeFetchHeaders({
+        'Content-Type': 'application/json',
+        ...options.headers,
+      }),
+    });
+  } catch {
+    throw new Error(
+      'No se pudo conectar con el servidor. Compruebe la red o, si usa ngrok, pulse «Visit Site» y reintente.',
+    );
   }
 
-  return res.json() as Promise<T>;
+  const text = await res.text();
+  const looksLikeHtml = /^\s*</.test(text);
+
+  if (!res.ok) {
+    if (looksLikeHtml) {
+      throw new Error(
+        res.status >= 500
+          ? 'Error del servidor al procesar la solicitud.'
+          : 'No se pudo completar la solicitud. Si usa ngrok, pulse «Visit Site» y reintente.',
+      );
+    }
+    let err: unknown = { error: res.statusText };
+    try {
+      err = text ? JSON.parse(text) : err;
+    } catch {
+      // keep statusText fallback
+    }
+    throwApiError(res.status, err);
+  }
+
+  if (looksLikeHtml) {
+    throw new Error(
+      'Respuesta inválida del túnel (ngrok). Pulse «Visit Site» en el aviso de ngrok y vuelva a intentar.',
+    );
+  }
+
+  if (text === '') {
+    return undefined as T;
+  }
+
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    throw new Error('Respuesta inválida del servidor.');
+  }
 }
 
 async function publicMultipartRequest<T>(path: string, formData: FormData, method = 'POST'): Promise<T> {
@@ -148,7 +228,7 @@ async function publicMultipartRequest<T>(path: string, formData: FormData, metho
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }));
-    throw new Error(parseApiError(res.status, err));
+    throwApiError(res.status, err);
   }
 
   return res.json() as Promise<T>;
@@ -163,13 +243,15 @@ async function multipartRequest<T>(path: string, formData: FormData, method = 'P
 
   if (res.status === 401) {
     localStorage.removeItem(TOKEN_KEY);
-    window.location.href = '/login';
+    if (!window.location.pathname.startsWith('/login')) {
+      window.location.href = '/login';
+    }
     throw new Error('Sesión expirada. Por favor, inicie sesión de nuevo.');
   }
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }));
-    throw new Error(parseApiError(res.status, err));
+    throwApiError(res.status, err);
   }
 
   return res.json() as Promise<T>;
@@ -187,13 +269,16 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
   if (res.status === 401) {
     localStorage.removeItem(TOKEN_KEY);
-    window.location.href = '/login';
+    // Evitar bucle de recargas si ya estamos en /login
+    if (!window.location.pathname.startsWith('/login')) {
+      window.location.href = '/login';
+    }
     throw new Error('Sesión expirada. Por favor, inicie sesión de nuevo.');
   }
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }));
-    throw new Error(parseApiError(res.status, err));
+    throwApiError(res.status, err);
   }
   if (res.status === 204) {
     return undefined as T;
@@ -584,6 +669,9 @@ export const api = {
 
   getAccesoExpediente: (token: string) => publicRequest<AccesoExpedienteResponse>('/api/acceso/' + encodeURIComponent(token)),
 
+  getNacionalidades: () =>
+    publicRequest<NacionalidadOption[]>('/api/catalogos/nacionalidades'),
+
   completarPasoCliente: (token: string, paso: string) =>
     publicRequest<AccesoExpedienteResponse>('/api/acceso/' + encodeURIComponent(token) + '/completar-paso', {
       method: 'POST',
@@ -618,11 +706,15 @@ export const api = {
       reverso: File | null;
       datos: ClienteInput;
       soloDatos?: boolean;
+      permitirDuplicado?: boolean;
     },
   ) => {
     const formData = new FormData();
     if (input.soloDatos) {
       formData.append('soloDatos', '1');
+    }
+    if (input.permitirDuplicado) {
+      formData.append('permitirDuplicado', '1');
     }
     formData.append('tipoEscaneo', input.tipoEscaneo);
     if (input.anverso) {
@@ -717,6 +809,7 @@ export const api = {
       anverso: File;
       reverso: File | null;
       datos: ClienteInput;
+      permitirDuplicado?: boolean;
     },
   ) => {
     const formData = new FormData();
@@ -724,6 +817,9 @@ export const api = {
     formData.append('anverso', input.anverso);
     if (input.reverso) {
       formData.append('reverso', input.reverso);
+    }
+    if (input.permitirDuplicado) {
+      formData.append('permitirDuplicado', '1');
     }
     Object.entries(input.datos).forEach(([key, value]) => {
       if (value != null && value !== '') {
@@ -735,6 +831,15 @@ export const api = {
       formData,
     );
   },
+
+  actualizarDatosClienteContratacion: (
+    expedienteId: string,
+    body: ClienteInput & { permitirDuplicado?: boolean },
+  ) =>
+    request<ContratacionResponse>(
+      '/api/expedientes/' + encodeURIComponent(expedienteId) + '/contratacion/datos-cliente',
+      { method: 'PUT', body: JSON.stringify(body) },
+    ),
 
   contratacionDocumentoArchivoUrl: (expedienteId: string, docId: string) =>
     `/api/expedientes/${encodeURIComponent(expedienteId)}/contratacion/documentos/${encodeURIComponent(docId)}/archivo`,
@@ -763,7 +868,7 @@ export const api = {
   enviarOtpFirma: (token: string) =>
     publicRequest<OtpFirmaEnviarResponse>(
       '/api/acceso/' + encodeURIComponent(token) + '/firma/otp/enviar',
-      { method: 'POST' },
+      { method: 'POST', body: '{}' },
     ),
 
   verificarOtpFirma: (token: string, codigo: string) =>
@@ -787,7 +892,7 @@ export const api = {
     expedienteId: string,
     paso: string,
     nota: string,
-    motivos?: MotivoDevolucionIdentidad[],
+    motivos?: string[],
   ) =>
     request<ContratacionResponse>(
       '/api/expedientes/' + encodeURIComponent(expedienteId) + '/contratacion/devolver/' + encodeURIComponent(paso),
@@ -942,7 +1047,9 @@ export const api = {
 
     if (res.status === 401) {
       localStorage.removeItem(TOKEN_KEY);
-      window.location.href = '/login';
+      if (!window.location.pathname.startsWith('/login')) {
+        window.location.href = '/login';
+      }
       throw new Error('Sesión expirada. Por favor, inicie sesión de nuevo.');
     }
 
@@ -1225,6 +1332,7 @@ export interface AltaExpedienteInput {
   notificar?: boolean;
   canalesNotificacion?: ('whatsapp' | 'email')[];
   fechaVencimientoFase?: string | null;
+  permitirDuplicado?: boolean;
 }
 
 export interface AltaExpedienteResponse {
@@ -1259,7 +1367,8 @@ export interface AccesoIdentidadEdicionResponse {
   tipoEscaneo?: TipoEscaneoDocumentoIdentidad | string | null;
   anversoUrl?: string | null;
   reversoUrl?: string | null;
-  motivosDevolucion?: MotivoDevolucionIdentidad[];
+  /** Motivos de documento y marcas `campo:clave` para guiar al cliente. */
+  motivosDevolucion?: string[];
 }
 
 export interface AccesoPasoResponse {
@@ -1269,7 +1378,7 @@ export interface AccesoPasoResponse {
   estadoLabel: string;
   esActivo?: boolean;
   notaDevolucion?: string | null;
-  motivosDevolucion?: MotivoDevolucionIdentidad[];
+  motivosDevolucion?: string[];
 }
 
 export interface AccesoDocumentoFirmaResponse {
@@ -1670,7 +1779,7 @@ export interface DocumentoIdentidadExtraido {
   nombrePadre?: string;
   nombreMadre?: string;
   extraccionAutomatica?: boolean;
-  /** Campos leídos de la MRZ que el cliente no puede modificar. */
+  /** Campos leídos del documento que suelen quedar bloqueados (tipo/número). */
   camposMrz?: string[];
 }
 
@@ -1721,6 +1830,11 @@ export interface SincronizarHoldedResponse {
   success: boolean;
   holdedContactId?: string;
   error?: string;
+}
+
+export interface NacionalidadOption {
+  codigo: string;
+  nombre: string;
 }
 
 export interface ClienteInput {

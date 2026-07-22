@@ -26,8 +26,8 @@ use App\Domain\ValueObject\ClienteId;
 
 final class ActualizarClienteIdentidadAccesoUseCase
 {
-    /** Campos que provienen de la MRZ y no pueden ser alterados por el cliente. */
-    private const CAMPOS_MRZ = ['nombre', 'nacionalidad', 'tipoDocumento', 'numDocumento', 'fechaNacimiento'];
+    /** Campos del documento que el cliente no puede alterar (identidad del soporte). */
+    private const CAMPOS_DOCUMENTO_BLOQUEADOS = ['tipoDocumento', 'numDocumento'];
 
     public function __construct(
         private ExpedienteRepositoryInterface $expedienteRepository,
@@ -50,6 +50,7 @@ final class ActualizarClienteIdentidadAccesoUseCase
         ?string $reversoBinary,
         ClienteInput $input,
         bool $soloDatos = false,
+        bool $permitirDuplicado = false,
     ): void {
         $expediente = $this->expedienteRepository->findByAccessToken($token);
         if (null === $expediente) {
@@ -116,9 +117,13 @@ final class ActualizarClienteIdentidadAccesoUseCase
             }
         }
 
-        $nombre = $this->resolverCampoMrz('nombre', $input, $extraidos, $soloDatos, $cliente);
+        $nombre = $this->resolverCampoEditable(
+            trim($input->nombre),
+            (string) ($extraidos['nombre'] ?? ''),
+            $soloDatos ? $cliente->nombre() : '',
+        );
         $numDocumento = $this->documentoNormalizer->normalize(
-            $this->resolverCampoMrz('numDocumento', $input, $extraidos, $soloDatos, $cliente),
+            $this->resolverCampoDocumentoBloqueado('numDocumento', $input, $extraidos, $soloDatos, $cliente),
         );
 
         if ('' === $nombre) {
@@ -131,20 +136,24 @@ final class ActualizarClienteIdentidadAccesoUseCase
 
         $this->emailValidator->assertValid($input->email);
 
-        $fechaNacimiento = $this->resolverFechaNacimientoMrz($input, $extraidos, $soloDatos, $cliente);
+        $fechaNacimiento = $this->resolverFechaNacimientoEditable($input, $extraidos, $soloDatos, $cliente);
 
         $telefono = $this->telefonoNormalizer->normalize($input->telefono);
         if (null === $telefono || !$this->telefonoNormalizer->isValid($telefono)) {
             throw new \InvalidArgumentException('El teléfono móvil es obligatorio y debe ser válido.');
         }
 
-        $this->unicidadValidator->assertTelefonoUnico($telefono, $clienteId);
-        $this->unicidadValidator->assertDocumentoUnico($numDocumento, $clienteId);
+        $this->unicidadValidator->assertTelefonoUnico($telefono, $clienteId, $permitirDuplicado);
+        $this->unicidadValidator->assertDocumentoUnico($numDocumento, $clienteId, $permitirDuplicado);
 
         $clienteActualizado = $cliente->withDatos(
             $nombre,
-            $this->resolverCampoMrz('nacionalidad', $input, $extraidos, $soloDatos, $cliente),
-            $this->resolverCampoMrz('tipoDocumento', $input, $extraidos, $soloDatos, $cliente),
+            $this->resolverCampoEditable(
+                trim($input->nacionalidad),
+                (string) ($extraidos['nacionalidad'] ?? ''),
+                $soloDatos ? $cliente->nacionalidad() : '',
+            ),
+            $this->resolverCampoDocumentoBloqueado('tipoDocumento', $input, $extraidos, $soloDatos, $cliente),
             $numDocumento,
             $fechaNacimiento,
             $this->priorizar($input->lugarNacimiento, (string) $extraidos['lugarNacimiento']),
@@ -301,24 +310,35 @@ final class ActualizarClienteIdentidadAccesoUseCase
         return '' !== $manual ? $manual : trim($extraido);
     }
 
+    /** Prefiere el valor del formulario; si vacío, OCR; si vacío, valor ya guardado. */
+    private function resolverCampoEditable(string $manual, string $extraido, string $existente): string
+    {
+        if ('' !== trim($manual)) {
+            return trim($manual);
+        }
+        if ('' !== trim($extraido)) {
+            return trim($extraido);
+        }
+
+        return trim($existente);
+    }
+
     /**
      * @param array<string, mixed> $extraidos
      */
-    private function resolverCampoMrz(
+    private function resolverCampoDocumentoBloqueado(
         string $campo,
         ClienteInput $input,
         array $extraidos,
         bool $soloDatos,
         \App\Domain\Entity\Cliente $cliente,
     ): string {
-        if (!in_array($campo, self::CAMPOS_MRZ, true) || 'fechaNacimiento' === $campo) {
+        if (!in_array($campo, self::CAMPOS_DOCUMENTO_BLOQUEADOS, true)) {
             return '';
         }
 
         if ($soloDatos) {
             return match ($campo) {
-                'nombre' => $cliente->nombre(),
-                'nacionalidad' => $cliente->nacionalidad(),
                 'tipoDocumento' => $cliente->tipoDocumento(),
                 'numDocumento' => $cliente->numDocumento(),
                 default => '',
@@ -331,8 +351,6 @@ final class ActualizarClienteIdentidadAccesoUseCase
         }
 
         return match ($campo) {
-            'nombre' => trim($input->nombre),
-            'nacionalidad' => trim($input->nacionalidad),
             'tipoDocumento' => trim($input->tipoDocumento),
             'numDocumento' => trim($input->numDocumento),
             default => '',
@@ -342,25 +360,21 @@ final class ActualizarClienteIdentidadAccesoUseCase
     /**
      * @param array<string, mixed> $extraidos
      */
-    private function resolverFechaNacimientoMrz(
+    private function resolverFechaNacimientoEditable(
         ClienteInput $input,
         array $extraidos,
         bool $soloDatos,
         \App\Domain\Entity\Cliente $cliente,
     ): ?\DateTimeImmutable {
-        if ($soloDatos) {
-            return $cliente->fechaNacimiento();
-        }
-
-        if (null !== $extraidos['fechaNacimiento'] && '' !== $extraidos['fechaNacimiento']) {
-            return \DateTimeImmutable::createFromFormat('Y-m-d', (string) $extraidos['fechaNacimiento']) ?: null;
-        }
-
         if (null !== $input->fechaNacimiento && '' !== trim($input->fechaNacimiento)) {
-            return \DateTimeImmutable::createFromFormat('Y-m-d', $input->fechaNacimiento)
+            return \DateTimeImmutable::createFromFormat('Y-m-d', trim($input->fechaNacimiento))
                 ?: throw new \InvalidArgumentException('Fecha de nacimiento no válida.');
         }
 
-        return null;
+        if (!$soloDatos && null !== $extraidos['fechaNacimiento'] && '' !== $extraidos['fechaNacimiento']) {
+            return \DateTimeImmutable::createFromFormat('Y-m-d', (string) $extraidos['fechaNacimiento']) ?: null;
+        }
+
+        return $cliente->fechaNacimiento();
     }
 }

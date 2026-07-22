@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Document;
 
+use App\Infrastructure\Persistence\Migration\NacionalidadSeedData;
+
 /**
  * Parser MRZ TD1 (DNI/NIE español, 3 líneas × 30 caracteres).
  */
@@ -294,9 +296,9 @@ final class DocumentoIdentidadMrzParser
 
     private function nacionalidadLabel(string $codigo): string
     {
-        return match ($codigo) {
-            'ESP' => 'Española',
-            default => $codigo,
-        };
+        $codigo = strtoupper(trim($codigo));
+        $label = NacionalidadSeedData::nombrePorCodigo($codigo);
+
+        return $label ?? $codigo;
     }
 }

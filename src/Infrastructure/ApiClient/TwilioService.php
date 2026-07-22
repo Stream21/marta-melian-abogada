@@ -27,13 +27,23 @@ final class TwilioService implements TwilioPort
         $to = $this->resolveToNumber($to);
         $client = new Client($this->resolveAccountSid(), $this->resolveAuthToken());
 
-        $client->messages->create(
-            'whatsapp:' . $to,
-            [
-                'from' => 'whatsapp:' . $this->resolveWhatsAppFrom(),
-                'body' => $message,
-            ]
-        );
+        try {
+            $client->messages->create(
+                'whatsapp:' . $to,
+                [
+                    'from' => 'whatsapp:' . $this->resolveWhatsAppFrom(),
+                    'body' => $message,
+                ]
+            );
+        } catch (\Twilio\Exceptions\RestException $e) {
+            throw new \RuntimeException($this->humanizeTwilioError('WhatsApp', $to, $e), 0, $e);
+        } catch (\Twilio\Exceptions\TwilioException $e) {
+            throw new \RuntimeException(
+                'No se pudo enviar el mensaje de WhatsApp. Inténtelo de nuevo más tarde.',
+                0,
+                $e,
+            );
+        }
     }
 
     public function sendSmsMessage(string $to, string $message): void
@@ -42,20 +52,30 @@ final class TwilioService implements TwilioPort
             throw new \RuntimeException(
                 'Twilio SMS no configurado. Revise en .env: '
                 . implode(', ', $this->smsConfigFaltante())
-                . '. Tras editar .env: docker-compose up -d php && docker-compose exec php php bin/console cache:clear',
+                . '. Tras editar .env: docker compose up -d php && docker compose exec php php bin/console cache:clear',
             );
         }
 
         $to = $this->resolveToNumber($to);
         $client = new Client($this->resolveAccountSid(), $this->resolveAuthToken());
 
-        $client->messages->create(
-            $to,
-            [
-                'from' => $this->resolveSmsFrom(),
-                'body' => $message,
-            ]
-        );
+        try {
+            $client->messages->create(
+                $to,
+                [
+                    'from' => $this->resolveSmsFrom(),
+                    'body' => $message,
+                ]
+            );
+        } catch (\Twilio\Exceptions\RestException $e) {
+            throw new \RuntimeException($this->humanizeTwilioError('SMS', $to, $e), 0, $e);
+        } catch (\Twilio\Exceptions\TwilioException $e) {
+            throw new \RuntimeException(
+                'No se pudo enviar el SMS de verificación. Inténtelo de nuevo o contacte con el despacho.',
+                0,
+                $e,
+            );
+        }
     }
 
     private function resolveToNumber(string $to): string
@@ -71,6 +91,44 @@ final class TwilioService implements TwilioPort
         }
 
         return $normalized;
+    }
+
+    private function humanizeTwilioError(string $canal, string $to, \Twilio\Exceptions\RestException $e): string
+    {
+        $detail = trim($e->getMessage());
+        $lower = strtolower($detail);
+
+        if (
+            str_contains($lower, 'unverified')
+            || str_contains($lower, 'trial')
+            || 21608 === $e->getCode()
+            || 21265 === $e->getCode()
+        ) {
+            return sprintf(
+                'Twilio (cuenta de prueba) no puede enviar %s a %s. Verifique el número en la consola de Twilio o use una cuenta con permisos SMS internacionales.',
+                $canal,
+                $to,
+            );
+        }
+
+        if (
+            str_contains($lower, 'permission')
+            || str_contains($lower, 'not enabled')
+            || str_contains($lower, 'geo-permissions')
+            || 21408 === $e->getCode()
+        ) {
+            return sprintf(
+                'Twilio no tiene permisos geográficos para enviar %s a %s. Active el país destino en Messaging → Geo Permissions.',
+                $canal,
+                $to,
+            );
+        }
+
+        if ('' !== $detail) {
+            return sprintf('Error Twilio al enviar %s: %s', $canal, $detail);
+        }
+
+        return sprintf('No se pudo enviar el %s de verificación a %s.', $canal, $to);
     }
 
     public function isWhatsAppConfigured(): bool

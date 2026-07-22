@@ -16,6 +16,7 @@ final class ClienteDuplicadoJsonResponse
             'message' => $exception->getMessage(),
             'clienteExistenteId' => $exception->clienteExistenteId(),
             'clienteExistenteNombre' => $exception->clienteExistenteNombre(),
+            'campoDuplicado' => $exception->campoDuplicado(),
         ], Response::HTTP_CONFLICT);
     }
 }

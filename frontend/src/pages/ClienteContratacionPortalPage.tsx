@@ -106,7 +106,7 @@ export function ClienteContratacionPortalPage({ token }: ClienteContratacionPort
     return (
       <PortalClienteShell data={data}>
         <p className="text-center text-sm text-muted-foreground py-8">
-          Este expediente no est? disponible en el portal en este momento.
+          Este expediente no está disponible en el portal en este momento.
         </p>
       </PortalClienteShell>
     );
@@ -131,7 +131,7 @@ export function ClienteContratacionPortalPage({ token }: ClienteContratacionPort
         />
       ) : (
         <div className="py-8 text-center text-sm text-muted-foreground">
-          Todos los pasos han sido completados. Su abogado finalizar? la contrataci?n.
+          Todos los pasos han sido completados. Su abogado finalizará la contratación.
         </div>
       )}
     </PortalClienteShell>
@@ -144,9 +144,9 @@ function WaitingScreen() {
       <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-amber-100">
         <Clock className="h-7 w-7 text-amber-600 animate-pulse" />
       </div>
-      <h2 className="text-lg font-semibold">Esperando revisi?n del abogado</h2>
+      <h2 className="text-lg font-semibold">Esperando revisión del abogado</h2>
       <p className="mt-2 max-w-sm text-sm text-muted-foreground">
-        Su abogado est? revisando la informaci?n enviada. Podr? continuar cuando le avisemos.
+        Su abogado está revisando la información enviada. Podrá continuar cuando le avisemos.
       </p>
     </div>
   );
@@ -202,7 +202,6 @@ function PasoActivoContent({
     return (
       <div>
         {paso.notaDevolucion && <NotaDevolucionBanner nota={paso.notaDevolucion} />}
-        <PasoTitulo icon={Icon} label={paso.label} />
         <ClienteIdentidadOnboarding
           token={token}
           tipoServicio={data.tipoServicio}
@@ -213,7 +212,7 @@ function PasoActivoContent({
         />
         {docsAdicionales.length > 0 && (
           <div className="mt-6 border-t pt-6">
-            <p className="section-label mb-3">Documentaci?n adicional</p>
+            <p className="section-label mb-3">Documentación adicional</p>
             <DocumentoUploadPanel token={token} documentos={data.documentosRequeridos ?? []} />
           </div>
         )}
@@ -223,7 +222,9 @@ function PasoActivoContent({
 
   return (
     <div>
-      {paso.notaDevolucion && <NotaDevolucionBanner nota={paso.notaDevolucion} />}
+      {paso.notaDevolucion && paso.paso !== 'firmas' && (
+        <NotaDevolucionBanner nota={paso.notaDevolucion} />
+      )}
       <PasoTitulo icon={Icon} label={paso.label} />
 
       {paso.paso === 'firmas' && (
@@ -231,6 +232,8 @@ function PasoActivoContent({
           token={token}
           documentos={data.documentosFirma ?? []}
           firmasConfig={data.firmas}
+          notaDevolucion={paso.notaDevolucion}
+          motivosDevolucion={paso.motivosDevolucion}
         />
       )}
 
@@ -240,10 +243,10 @@ function PasoActivoContent({
 
       {paso.paso === 'pago' && data.resumenPago?.metodoPago === 'manual' && (
         <div className="mt-6 rounded-lg border border-border bg-muted/20 p-4 text-sm text-muted-foreground">
-          <p className="font-medium text-foreground">?C?mo funciona el pago manual?</p>
+          <p className="font-medium text-foreground">¿Cómo funciona el pago manual?</p>
           <p className="mt-2">
-            Realice el pago inicial seg?n las instrucciones anteriores (transferencia, Bizum o el medio acordado con su
-            abogado). <strong>No debe confirmar nada en este portal</strong>: su abogado validar? el cobro cuando lo
+            Realice el pago inicial según las instrucciones anteriores (transferencia, Bizum o el medio acordado con su
+            abogado). <strong>No debe confirmar nada en este portal</strong>: su abogado validará el cobro cuando lo
             reciba.
           </p>
         </div>
@@ -253,7 +256,7 @@ function PasoActivoContent({
         <>
           {!firmasOk && paso.paso === 'firmas' && (
             <p className="mt-4 text-xs text-muted-foreground">
-              Complete la verificaci?n SMS y firme los tres documentos para continuar.
+              Cuando haya firmado todos los documentos, pulse Continuar.
             </p>
           )}
 
@@ -263,7 +266,7 @@ function PasoActivoContent({
             onClick={() => onCompletar(paso.paso)}
             disabled={!puedeConfirmar || completando}
           >
-            {completando ? 'Enviando?' : 'Confirmar y continuar'}
+            {completando ? 'Enviando…' : 'Confirmar y continuar'}
           </Button>
         </>
       )}
@@ -300,14 +303,14 @@ function PagoResumen({
   const planLabel =
     resumen.planPago === 'fraccionado'
       ? `Fraccionado (${resumen.numCuotas} cuotas)`
-      : 'Pago ?nico';
+      : 'Pago único';
   const esManual = resumen.metodoPago === 'manual';
 
   return (
     <div className="space-y-4">
       <div className="space-y-3 rounded-lg border bg-card p-4 text-sm">
         <DatoFila
-          label={resumen.planPago === 'fraccionado' ? 'Pago inicial (1.? cuota)' : 'Importe a pagar'}
+          label={resumen.planPago === 'fraccionado' ? 'Pago inicial (1.ª cuota)' : 'Importe a pagar'}
           value={formatEuros(importePagoInicial)}
           destacado
         />
@@ -317,7 +320,7 @@ function PagoResumen({
             value={formatEuros(resumen.honorariosAcordados)}
           />
         )}
-        <DatoFila label="M?todo" value={resumen.metodoPagoLabel} />
+        <DatoFila label="Método" value={resumen.metodoPagoLabel} />
         <DatoFila label="Plan" value={resumen.planPagoLabel ?? planLabel} />
         {esManual && resumen.iban && (
           <>
@@ -330,7 +333,7 @@ function PagoResumen({
             {iniciando ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Redirigiendo?
+                Redirigiendo…
               </>
             ) : (
               'Pagar ahora'

@@ -64,5 +64,7 @@ fi
 "${COMPOSE[@]}" exec -T php php bin/console cache:clear --env=prod
 
 echo "==> Done"
-echo "App:    http://$(hostname -I | awk '{print $1}')"
+echo "App:     https://app.martamelianguerraabogados.com"
+echo "Health:  https://app.martamelianguerraabogados.com/health"
 echo "Mailpit: http://$(hostname -I | awk '{print $1}'):8025"
+echo "Nginx local (detrás de Caddy): http://127.0.0.1:8088"

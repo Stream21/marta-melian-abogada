@@ -1,11 +1,12 @@
 import { type FormEvent, useEffect, useState } from 'react';
 import { Save, User } from 'lucide-react';
-import type { ClienteInput, ClienteResponse } from '@/api/client';
+import { api, type ClienteInput, type ClienteResponse, type NacionalidadOption } from '@/api/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { TelefonoInput } from '@/components/ui/TelefonoInput';
 import { ESTADOS_CIVILES } from '@/lib/cliente-datos';
+import { cn } from '@/lib/utils';
 
 const TIPOS_DOCUMENTO_DEFAULT = ['DNI', 'NIE', 'PASAPORTE', 'OTRO'];
 
@@ -15,7 +16,7 @@ interface ClienteDatosFormProps {
   onSubmit: (body: ClienteInput) => void;
   isSaving?: boolean;
   readOnly?: boolean;
-  /** Campos concretos en solo lectura (p. ej. datos MRZ del documento). */
+  /** Campos concretos en solo lectura (p. ej. tipo/número de documento). */
   camposSoloLectura?: (keyof ClienteInput)[];
   /** Restringe opciones del selector de tipo de documento. */
   tiposDocumentoPermitidos?: string[];
@@ -25,6 +26,8 @@ interface ClienteDatosFormProps {
   portalCliente?: boolean;
   onVolver?: () => void;
   volverLabel?: string;
+  /** Campos a resaltar (devolución guiada del abogado). */
+  camposResaltados?: string[];
 }
 
 export function ClienteDatosForm({
@@ -40,6 +43,7 @@ export function ClienteDatosForm({
   portalCliente = false,
   onVolver,
   volverLabel = 'Volver',
+  camposResaltados = [],
 }: ClienteDatosFormProps) {
   const [nombre, setNombre] = useState('');
   const [nacionalidad, setNacionalidad] = useState('');
@@ -56,6 +60,7 @@ export function ClienteDatosForm({
   const [nombreMadre, setNombreMadre] = useState('');
   const [telefono, setTelefono] = useState('');
   const [email, setEmail] = useState('');
+  const [nacionalidades, setNacionalidades] = useState<NacionalidadOption[]>([]);
 
   const applyValues = (values: ClienteInput) => {
     setNombre(values.nombre ?? '');
@@ -74,6 +79,31 @@ export function ClienteDatosForm({
     setTelefono(values.telefono ?? '');
     setEmail(values.email ?? '');
   };
+
+  useEffect(() => {
+    let cancelado = false;
+    void api
+      .getNacionalidades()
+      .then((rows) => {
+        if (!cancelado) setNacionalidades(rows);
+      })
+      .catch(() => {
+        if (!cancelado) setNacionalidades([]);
+      });
+    return () => {
+      cancelado = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!nacionalidad || nacionalidades.length === 0) return;
+    const porCodigo = nacionalidades.find(
+      (n) => n.codigo.toUpperCase() === nacionalidad.toUpperCase(),
+    );
+    if (porCodigo && porCodigo.nombre !== nacionalidad) {
+      setNacionalidad(porCodigo.nombre);
+    }
+  }, [nacionalidades, nacionalidad]);
 
   useEffect(() => {
     if (cliente) {
@@ -102,6 +132,14 @@ export function ClienteDatosForm({
   const bloqueado = (campo: keyof ClienteInput) =>
     readOnly || camposSoloLectura.includes(campo);
 
+  const resaltado = (campo: keyof ClienteInput) => camposResaltados.includes(campo);
+
+  const claseSelect = (campo: keyof ClienteInput) =>
+    cn(
+      'space-y-1',
+      resaltado(campo) && 'rounded-lg p-2 ring-2 ring-amber-400 ring-offset-2 ring-offset-background',
+    );
+
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     if (readOnly) return;
@@ -124,6 +162,14 @@ export function ClienteDatosForm({
     });
   };
 
+  const nacionalidadFueraDeCatalogo =
+    nacionalidad !== '' &&
+    !nacionalidades.some(
+      (n) =>
+        n.nombre === nacionalidad ||
+        n.codigo.toUpperCase() === nacionalidad.toUpperCase(),
+    );
+
   return (
     <form onSubmit={handleSubmit} className="panel">
       <div className="panel-header">
@@ -137,13 +183,13 @@ export function ClienteDatosForm({
               {readOnly
                 ? 'Solo lectura. Los datos no se pueden modificar hasta que cierre el proceso de contratación.'
                 : camposSoloLectura.length > 0
-                  ? 'Los datos leídos de la banda MRZ del documento no se pueden modificar. Complete el resto de campos (contacto, domicilio, etc.).'
+                  ? 'Puede corregir nombre, nacionalidad y fecha si la lectura falló. Tipo y número de documento vienen del documento.'
                   : 'Complete la ficha mínima del cliente. Los campos del documento se rellenan al escanear; el resto debe indicarlo el cliente.'}
             </p>
           )}
           {portalCliente && (
             <p className="text-sm text-muted-foreground">
-              Revise sus datos y complete contacto y domicilio.
+              Revise sus datos (puede corregir nombre, nacionalidad y fecha) y complete contacto y domicilio.
             </p>
           )}
         </div>
@@ -153,9 +199,41 @@ export function ClienteDatosForm({
         <section>
           <h3 className="section-label mb-3">Identificación</h3>
           <div className="grid gap-3 md:grid-cols-2">
-            <Field label="Nombre completo" id="nombre" value={nombre} onChange={setNombre} required disabled={bloqueado('nombre')} className="md:col-span-2" />
-            <Field label="Nacionalidad" id="nacionalidad" value={nacionalidad} onChange={setNacionalidad} disabled={bloqueado('nacionalidad')} />
-            <div className="space-y-1">
+            <Field
+              label="Nombre completo"
+              id="nombre"
+              value={nombre}
+              onChange={setNombre}
+              required
+              disabled={bloqueado('nombre')}
+              className="md:col-span-2"
+              resaltado={resaltado('nombre')}
+            />
+            <div className={claseSelect('nacionalidad')}>
+              <Label htmlFor="nacionalidad">Nacionalidad</Label>
+              <select
+                id="nacionalidad"
+                className="input-field h-9 w-full disabled:cursor-not-allowed disabled:opacity-60"
+                value={nacionalidad}
+                onChange={(e) => setNacionalidad(e.target.value)}
+                disabled={bloqueado('nacionalidad')}
+                required
+              >
+                <option value="">Seleccionar…</option>
+                {nacionalidadFueraDeCatalogo && (
+                  <option value={nacionalidad}>{nacionalidad}</option>
+                )}
+                {nacionalidades.map((n) => (
+                  <option key={n.codigo} value={n.nombre}>
+                    {n.nombre}
+                  </option>
+                ))}
+              </select>
+              {resaltado('nacionalidad') && (
+                <p className="text-[11px] font-medium text-amber-800">Revise este campo</p>
+              )}
+            </div>
+            <div className={claseSelect('tipoDocumento')}>
               <Label htmlFor="tipoDocumento">Tipo de documento</Label>
               <select
                 id="tipoDocumento"
@@ -166,20 +244,47 @@ export function ClienteDatosForm({
               >
                 <option value="">Seleccionar…</option>
                 {tiposDocumentoPermitidos.map((t) => (
-                  <option key={t} value={t}>{t}</option>
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
                 ))}
               </select>
+              {resaltado('tipoDocumento') && (
+                <p className="text-[11px] font-medium text-amber-800">Revise este campo</p>
+              )}
             </div>
-            <Field label={etiquetaNumDocumento} id="numDocumento" value={numDocumento} onChange={setNumDocumento} disabled={bloqueado('numDocumento')} />
+            <Field
+              label={etiquetaNumDocumento}
+              id="numDocumento"
+              value={numDocumento}
+              onChange={setNumDocumento}
+              disabled={bloqueado('numDocumento')}
+              resaltado={resaltado('numDocumento')}
+            />
           </div>
         </section>
 
         <section>
           <h3 className="section-label mb-3">Datos personales</h3>
           <div className="grid gap-3 md:grid-cols-2">
-            <Field label="Fecha de nacimiento" id="fechaNacimiento" type="date" value={fechaNacimiento} onChange={setFechaNacimiento} disabled={bloqueado('fechaNacimiento')} />
-            <Field label="Lugar de nacimiento" id="lugarNacimiento" value={lugarNacimiento} onChange={setLugarNacimiento} disabled={bloqueado('lugarNacimiento')} />
-            <div className="space-y-1 md:col-span-2">
+            <Field
+              label="Fecha de nacimiento"
+              id="fechaNacimiento"
+              type="date"
+              value={fechaNacimiento}
+              onChange={setFechaNacimiento}
+              disabled={bloqueado('fechaNacimiento')}
+              resaltado={resaltado('fechaNacimiento')}
+            />
+            <Field
+              label="Lugar de nacimiento"
+              id="lugarNacimiento"
+              value={lugarNacimiento}
+              onChange={setLugarNacimiento}
+              disabled={bloqueado('lugarNacimiento')}
+              resaltado={resaltado('lugarNacimiento')}
+            />
+            <div className={cn(claseSelect('estadoCivil'), 'md:col-span-2')}>
               <Label htmlFor="estadoCivil">Estado civil</Label>
               <select
                 id="estadoCivil"
@@ -190,9 +295,14 @@ export function ClienteDatosForm({
               >
                 <option value="">Seleccionar…</option>
                 {ESTADOS_CIVILES.map((e) => (
-                  <option key={e.value} value={e.value}>{e.label}</option>
+                  <option key={e.value} value={e.value}>
+                    {e.label}
+                  </option>
                 ))}
               </select>
+              {resaltado('estadoCivil') && (
+                <p className="text-[11px] font-medium text-amber-800">Revise este campo</p>
+              )}
             </div>
           </div>
         </section>
@@ -200,25 +310,69 @@ export function ClienteDatosForm({
         <section>
           <h3 className="section-label mb-3">Filiación</h3>
           <div className="grid gap-3 md:grid-cols-2">
-            <Field label="Nombre del padre" id="nombrePadre" value={nombrePadre} onChange={setNombrePadre} disabled={readOnly} />
-            <Field label="Nombre de la madre" id="nombreMadre" value={nombreMadre} onChange={setNombreMadre} disabled={readOnly} />
+            <Field
+              label="Nombre del padre"
+              id="nombrePadre"
+              value={nombrePadre}
+              onChange={setNombrePadre}
+              disabled={readOnly}
+              resaltado={resaltado('nombrePadre')}
+            />
+            <Field
+              label="Nombre de la madre"
+              id="nombreMadre"
+              value={nombreMadre}
+              onChange={setNombreMadre}
+              disabled={readOnly}
+              resaltado={resaltado('nombreMadre')}
+            />
           </div>
         </section>
 
         <section>
           <h3 className="section-label mb-3">Domicilio</h3>
           <div className="grid gap-3 md:grid-cols-2">
-            <Field label="Domicilio" id="domicilio" value={domicilio} onChange={setDomicilio} disabled={readOnly} className="md:col-span-2" />
-            <Field label="Código postal" id="codigoPostal" value={codigoPostal} onChange={setCodigoPostal} disabled={readOnly} />
-            <Field label="Ciudad / municipio" id="ciudad" value={ciudad} onChange={setCiudad} disabled={readOnly} />
-            <Field label="Provincia" id="provincia" value={provincia} onChange={setProvincia} disabled={readOnly} className="md:col-span-2" />
+            <Field
+              label="Domicilio"
+              id="domicilio"
+              value={domicilio}
+              onChange={setDomicilio}
+              disabled={readOnly}
+              className="md:col-span-2"
+              resaltado={resaltado('domicilio')}
+            />
+            <Field
+              label="Código postal"
+              id="codigoPostal"
+              value={codigoPostal}
+              onChange={setCodigoPostal}
+              disabled={readOnly}
+              resaltado={resaltado('codigoPostal')}
+            />
+            <Field
+              label="Ciudad / municipio"
+              id="ciudad"
+              value={ciudad}
+              onChange={setCiudad}
+              disabled={readOnly}
+              resaltado={resaltado('ciudad')}
+            />
+            <Field
+              label="Provincia"
+              id="provincia"
+              value={provincia}
+              onChange={setProvincia}
+              disabled={readOnly}
+              className="md:col-span-2"
+              resaltado={resaltado('provincia')}
+            />
           </div>
         </section>
 
         <section>
           <h3 className="section-label mb-3">Contacto</h3>
           <div className={portalCliente ? 'grid gap-3' : 'grid max-w-xl gap-3'}>
-            <div className="space-y-1">
+            <div className={claseSelect('telefono')}>
               <Label htmlFor="telefono">Teléfono</Label>
               <TelefonoInput
                 id="telefono"
@@ -226,8 +380,19 @@ export function ClienteDatosForm({
                 onChange={setTelefono}
                 disabled={bloqueado('telefono')}
               />
+              {resaltado('telefono') && (
+                <p className="text-[11px] font-medium text-amber-800">Revise este campo</p>
+              )}
             </div>
-            <Field label="Email" id="email" type="email" value={email} onChange={setEmail} disabled={bloqueado('email')} />
+            <Field
+              label="Email"
+              id="email"
+              type="email"
+              value={email}
+              onChange={setEmail}
+              disabled={bloqueado('email')}
+              resaltado={resaltado('email')}
+            />
           </div>
         </section>
       </div>
@@ -276,6 +441,7 @@ function Field({
   required,
   disabled,
   className,
+  resaltado,
 }: {
   label: string;
   id: string;
@@ -285,9 +451,15 @@ function Field({
   required?: boolean;
   disabled?: boolean;
   className?: string;
+  resaltado?: boolean;
 }) {
   return (
-    <div className={`space-y-1 ${className ?? ''}`}>
+    <div
+      className={cn(
+        `space-y-1 ${className ?? ''}`,
+        resaltado && 'rounded-lg p-2 ring-2 ring-amber-400 ring-offset-2 ring-offset-background',
+      )}
+    >
       <Label htmlFor={id}>{label}</Label>
       <Input
         id={id}
@@ -297,6 +469,7 @@ function Field({
         required={required}
         disabled={disabled}
       />
+      {resaltado && <p className="text-[11px] font-medium text-amber-800">Revise este campo</p>}
     </div>
   );
 }

@@ -80,8 +80,9 @@ export async function analizarMarcoConOcr(
   lado: LadoCapturaEval,
 ): Promise<OcrAnalisisMarco> {
   if (ocrEnCurso) {
+    // No resetear progreso ni el contador de frames en el caller.
     return {
-      progreso: 0,
+      progreso: -1,
       datosLeidos: false,
       mensaje: 'Leyendo documento…',
       analizando: true,
@@ -147,11 +148,11 @@ async function analizarReverso(canvas: HTMLCanvasElement): Promise<OcrAnalisisMa
     };
   }
 
+  // Exige señal de texto MRZ (no solo presencia visual) para auto-capturar.
   if (
-    progresoCombinado >= 70 ||
-    (lineas >= 2 && parcial >= 45) ||
-    (lineas >= 1 && parcial >= 58) ||
-    (progresoVisual >= 58 && (lineas >= 1 || parcial >= 38))
+    (lineas >= 2 && parcial >= 40) ||
+    (lineas >= 1 && parcial >= 50) ||
+    (progresoCombinado >= 75 && (lineas >= 1 || parcial >= 45))
   ) {
     return {
       progreso: Math.max(82, progresoCombinado),
@@ -237,6 +238,25 @@ async function analizarAnverso(canvas: HTMLCanvasElement): Promise<OcrAnalisisMa
   const worker = await obtenerWorkerGeneral();
   const { data } = await worker.recognize(procesada);
   const texto = data.text ?? '';
+  const textoNorm = normalizarTextoOcrMrz(texto);
+  const lineasMrz = cuentaLineasMrz(textoNorm);
+  const mrzParcial = puntuacionMrzParcial(textoNorm);
+
+  // La MRZ del reverso contiene patrones tipo DNI (p. ej. 8 dígitos + letra).
+  // Si la detectamos, el usuario está mostrando el reverso: no auto-capturar.
+  if (
+    lineasMrz >= 1
+    || mrzParcial >= 40
+    || tieneMrzLegible(textoNorm)
+    || /IDESP|I<DESP|<<<</.test(textoNorm)
+  ) {
+    return {
+      progreso: 20,
+      datosLeidos: false,
+      mensaje: 'Está mostrando el reverso (banda MRZ). Gire a la cara con foto',
+      analizando: false,
+    };
+  }
 
   if (tieneDniNieEnTexto(texto)) {
     return {

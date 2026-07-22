@@ -43,9 +43,10 @@ export function PasoClientePanel({ state, onChange }: PasoClientePanelProps) {
       if (coincidenciaExacta) {
         onChange({
           telefonoDuplicado: { id: coincidenciaExacta.id, nombre: coincidenciaExacta.nombre },
+          permitirDuplicado: false,
         });
       } else {
-        onChange({ telefonoDuplicado: null });
+        onChange({ telefonoDuplicado: null, permitirDuplicado: false });
       }
     } catch {
       setError('No se pudo verificar el teléfono.');
@@ -120,6 +121,7 @@ export function PasoClientePanel({ state, onChange }: PasoClientePanelProps) {
               clienteId: null,
               clienteNombre: '',
               telefonoDuplicado: null,
+              permitirDuplicado: false,
               busquedaCliente: '',
             });
             setResultados([]);
@@ -139,7 +141,13 @@ export function PasoClientePanel({ state, onChange }: PasoClientePanelProps) {
         <button
           type="button"
           onClick={() => {
-            onChange({ modoCliente: 'existente', telefonoDuplicado: null, clienteId: null, clienteNombre: '' });
+            onChange({
+              modoCliente: 'existente',
+              telefonoDuplicado: null,
+              permitirDuplicado: false,
+              clienteId: null,
+              clienteNombre: '',
+            });
             setResultados([]);
             setHaBusado(false);
           }}
@@ -164,7 +172,7 @@ export function PasoClientePanel({ state, onChange }: PasoClientePanelProps) {
               id="telefono"
               value={state.telefono}
               onChange={(value) => {
-                onChange({ telefono: value, telefonoDuplicado: null });
+                onChange({ telefono: value, telefonoDuplicado: null, permitirDuplicado: false });
                 setTelefonoError(null);
               }}
               onBlur={() => void verificarTelefonoDuplicado(state.telefono)}
@@ -209,25 +217,40 @@ export function PasoClientePanel({ state, onChange }: PasoClientePanelProps) {
                   <p className="text-sm font-medium text-destructive">Teléfono ya registrado</p>
                   <p className="mt-1 text-sm text-muted-foreground">
                     Ya existe el cliente <strong>{state.telefonoDuplicado.nombre}</strong> con este teléfono.
-                    Use la opción &quot;Cliente Existente&quot; para vincularlo.
+                    Puede vincularlo como cliente existente o continuar creando uno nuevo (el teléfono
+                    se quitará del cliente anterior).
                   </p>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="mt-3"
-                    onClick={() => {
-                      const q = state.telefono;
-                      onChange({
-                        modoCliente: 'existente',
-                        busquedaCliente: q,
-                        telefonoDuplicado: null,
-                      });
-                      void buscarConQuery(q);
-                    }}
-                  >
-                    Usar cliente existente
-                  </Button>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const q = state.telefono;
+                        onChange({
+                          modoCliente: 'existente',
+                          busquedaCliente: q,
+                          telefonoDuplicado: null,
+                          permitirDuplicado: false,
+                        });
+                        void buscarConQuery(q);
+                      }}
+                    >
+                      Usar cliente existente
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => onChange({ permitirDuplicado: true })}
+                    >
+                      Continuar como cliente nuevo
+                    </Button>
+                  </div>
+                  {state.permitirDuplicado && (
+                    <p className="mt-2 text-xs font-medium text-emerald-700">
+                      Confirmado: se creará un cliente nuevo con este teléfono.
+                    </p>
+                  )}
                 </div>
               </div>
             </div>

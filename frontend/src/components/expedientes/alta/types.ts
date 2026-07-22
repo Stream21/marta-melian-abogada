@@ -16,6 +16,8 @@ export interface ExpedienteAltaState {
   clienteId: string | null;
   clienteNombre: string;
   telefonoDuplicado: { id: string; nombre: string } | null;
+  /** El abogado confirma crear cliente nuevo aunque el teléfono ya exista. */
+  permitirDuplicado: boolean;
   areaTipo: TipoServicioValue | '';
   servicioId: string;
   servicioNombre: string;
@@ -41,6 +43,7 @@ export const initialAltaState: ExpedienteAltaState = {
   clienteId: null,
   clienteNombre: '',
   telefonoDuplicado: null,
+  permitirDuplicado: false,
   areaTipo: '',
   servicioId: '',
   servicioNombre: '',

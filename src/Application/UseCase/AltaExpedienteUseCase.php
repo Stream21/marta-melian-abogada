@@ -192,7 +192,7 @@ final class AltaExpedienteUseCase
             nombre: '',
             telefono: $telefono,
             email: $input->email ?? '',
-        ), altaMinima: true);
+        ), altaMinima: true, permitirDuplicado: $input->permitirDuplicado);
     }
 
     private function toResponse(Expediente $expediente, string $accessUrl): ExpedienteResponse

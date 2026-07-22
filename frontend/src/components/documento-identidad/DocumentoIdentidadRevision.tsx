@@ -1,12 +1,15 @@
 import type { ClienteInput } from '@/api/client';
 import { ClienteDatosForm } from '@/components/clientes/ClienteDatosForm';
 import { labelsDocumentoIdentidad } from '@/lib/documento-identidad-labels';
+import { ETIQUETAS_CAMPO_CLIENTE } from '@/lib/campos-devolucion';
 
 interface DocumentoIdentidadRevisionProps {
   datosIniciales: ClienteInput;
   tipoServicio?: string | null;
   extraccionAutomatica?: boolean;
   camposSoloLectura?: (keyof ClienteInput)[];
+  /** Campos que el abogado marcó para revisión guiada. */
+  camposResaltados?: string[];
   onConfirmar: (datos: ClienteInput) => void;
   onVolverEscaneo: () => void;
   isSaving?: boolean;
@@ -20,6 +23,7 @@ export function DocumentoIdentidadRevision({
   tipoServicio,
   extraccionAutomatica = false,
   camposSoloLectura = [],
+  camposResaltados = [],
   onConfirmar,
   onVolverEscaneo,
   isSaving,
@@ -33,6 +37,21 @@ export function DocumentoIdentidadRevision({
 
   return (
     <div className="space-y-4">
+      {esCliente && camposResaltados.length > 0 && (
+        <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">
+          <p className="font-semibold">Su abogado le pide revisar:</p>
+          <ul className="mt-2 flex flex-wrap gap-1.5">
+            {camposResaltados.map((c) => (
+              <li
+                key={c}
+                className="rounded-full border border-amber-400 bg-white px-2.5 py-0.5 text-xs font-medium"
+              >
+                {ETIQUETAS_CAMPO_CLIENTE[c] ?? c}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       {esCliente && !extraccionAutomatica && (
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
           No se pudieron leer los datos automáticamente del documento. Para {docTarjeta}, asegúrese de que el{' '}
@@ -49,6 +68,7 @@ export function DocumentoIdentidadRevision({
         onSubmit={onConfirmar}
         isSaving={isSaving}
         camposSoloLectura={esCliente ? camposSoloLectura : undefined}
+        camposResaltados={camposResaltados}
         tiposDocumentoPermitidos={labels.tipoDocumentoSelect}
         etiquetaNumDocumento={labels.numeroDocumento}
         submitLabel={confirmLabel ?? (esCliente ? 'Confirmar y continuar' : 'Crear cliente')}

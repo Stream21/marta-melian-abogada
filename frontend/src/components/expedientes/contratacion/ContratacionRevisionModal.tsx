@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { api, type ContratacionPasoResponse, type MotivoDevolucionIdentidad } from '@/api/client';
+import { api, type ContratacionPasoResponse } from '@/api/client';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -16,6 +16,11 @@ import { AbogadoContratacionIdentidadCarga } from './AbogadoContratacionIdentida
 import { FirmasRevisionPanel } from './FirmasRevisionPanel';
 import { ContratacionPdfEmbed } from './ContratacionPdfEmbed';
 import { formatEuros, getImportePagoInicial } from '@/lib/pago-contratacion';
+import {
+  combinarMotivosDevolucion,
+  ETIQUETAS_CAMPO_CLIENTE,
+  motivoFirmaDevolucion,
+} from '@/lib/campos-devolucion';
 
 interface ContratacionRevisionModalProps {
   expedienteId: string;
@@ -23,7 +28,7 @@ interface ContratacionRevisionModalProps {
   open: boolean;
   onClose: () => void;
   onValidar: (paso: string) => void;
-  onDevolver: (paso: string, nota: string, motivos?: MotivoDevolucionIdentidad[]) => void;
+  onDevolver: (paso: string, nota: string, motivos?: string[]) => void;
   validando: boolean;
   devolviendo: boolean;
   errorAccion?: string | null;
@@ -43,10 +48,11 @@ export function ContratacionRevisionModal({
   const queryClient = useQueryClient();
   const [nota, setNota] = useState('');
   const [mostrarDevolucion, setMostrarDevolucion] = useState(false);
-  const [motivos, setMotivos] = useState<MotivoDevolucionIdentidad[]>([]);
+  const [motivos, setMotivos] = useState<string[]>([]);
+  const [camposMarcados, setCamposMarcados] = useState<string[]>([]);
+  const [firmasARefirmar, setFirmasARefirmar] = useState<string[]>([]);
 
-  const MOTIVOS_DATOS_CLIENTE: { id: MotivoDevolucionIdentidad; label: string }[] = [
-    { id: 'datos_personales', label: 'Corregir datos personales (domicilio, email, etc.)' },
+  const MOTIVOS_DATOS_CLIENTE: { id: string; label: string }[] = [
     { id: 'documento_anverso', label: 'Nueva foto del anverso del documento' },
     { id: 'documento_reverso', label: 'Nueva foto del reverso (MRZ)' },
     { id: 'documento_completo', label: 'Actualizar documento completo' },
@@ -58,6 +64,8 @@ export function ContratacionRevisionModal({
       setNota('');
       setMostrarDevolucion(false);
       setMotivos([]);
+      setCamposMarcados([]);
+      setFirmasARefirmar([]);
     }
   }, [open, paso?.paso]);
 
@@ -78,6 +86,22 @@ export function ContratacionRevisionModal({
   const docsEntregados = (documentos ?? []).filter((d) => d.archivoPath);
   const procesando = validando || devolviendo;
   const esPagoManual = paso.paso === 'pago' && contratacion?.metodoPago === 'manual';
+  const firmasFirmadas = (contratacion?.firmasDocumento ?? []).filter((f) => f.firmado);
+  const motivosDocumentoOpciones = MOTIVOS_DATOS_CLIENTE.filter(
+    (m) => m.id !== 'documentacion_adicional' || docsEntregados.length > 0,
+  );
+  const motivosDevolucionPayload =
+    paso.paso === 'firmas'
+      ? firmasARefirmar.map(motivoFirmaDevolucion)
+      : combinarMotivosDevolucion(motivos, camposMarcados);
+  const puedeEnviarDevolucion =
+    nota.trim().length >= 1
+    && (
+      paso.paso !== 'firmas'
+      || firmasFirmadas.length === 0
+      || firmasARefirmar.length > 0
+      || esPagoManual
+    );
   const importePagoInicial = contratacion
     ? getImportePagoInicial(contratacion)
     : 0;
@@ -90,6 +114,15 @@ export function ContratacionRevisionModal({
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent
         className={`${paso.paso === 'datos_cliente' ? 'max-w-4xl' : 'max-w-3xl'} max-h-[90vh] overflow-y-auto`}
+        onPointerDownOutside={(e) => e.preventDefault()}
+        onInteractOutside={(e) => e.preventDefault()}
+        onEscapeKeyDown={(e) => {
+          // Si hay lightbox abierto, su listener en capture ya cierra la imagen;
+          // evitamos que Escape cierre también este modal.
+          if (document.querySelector('[data-image-lightbox]')) {
+            e.preventDefault();
+          }
+        }}
       >
         <DialogHeader>
           <DialogTitle>Revisar: {paso.label}</DialogTitle>
@@ -110,7 +143,14 @@ export function ContratacionRevisionModal({
                   }
                 }}
               />
-              {contratacion?.clienteId && <ClienteDatosRevisionPanel clienteId={contratacion.clienteId} />}
+              {contratacion?.clienteId && (
+                <ClienteDatosRevisionPanel
+                  expedienteId={expedienteId}
+                  clienteId={contratacion.clienteId}
+                  camposMarcados={camposMarcados}
+                  onCamposMarcadosChange={setCamposMarcados}
+                />
+              )}
               {docsEntregados.length > 0 && (
                 <div className="space-y-4">
                   <p className="section-label">Documentación adicional</p>
@@ -172,8 +212,23 @@ export function ContratacionRevisionModal({
               {paso.paso === 'datos_cliente' && (
                 <div className="space-y-2">
                   <p className="text-sm font-medium text-amber-900">¿Qué debe corregir el cliente?</p>
+                  {camposMarcados.length > 0 && (
+                    <div className="rounded-md border border-amber-200 bg-white/70 px-3 py-2">
+                      <p className="text-xs font-medium text-amber-900">Campos marcados en la ficha:</p>
+                      <ul className="mt-1.5 flex flex-wrap gap-1.5">
+                        {camposMarcados.map((k) => (
+                          <li
+                            key={k}
+                            className="rounded-full bg-amber-100 px-2.5 py-0.5 text-[11px] font-medium text-amber-950"
+                          >
+                            {ETIQUETAS_CAMPO_CLIENTE[k] ?? k}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                   <div className="grid gap-2 sm:grid-cols-2">
-                    {MOTIVOS_DATOS_CLIENTE.map((m) => (
+                    {motivosDocumentoOpciones.map((m) => (
                       <label
                         key={m.id}
                         className="flex cursor-pointer items-start gap-2 rounded-md border border-amber-200/80 bg-white/60 px-3 py-2 text-sm"
@@ -192,8 +247,56 @@ export function ContratacionRevisionModal({
                       </label>
                     ))}
                   </div>
+                  <p className="text-xs text-amber-800/80">
+                    Los campos de la ficha se marcan arriba con «Pedir al cliente». Aquí solo la
+                    documentación e imágenes.
+                  </p>
                 </div>
               )}
+
+              {paso.paso === 'firmas' && (
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-amber-900">
+                    ¿Qué documento(s) debe volver a firmar?
+                  </p>
+                  {firmasFirmadas.length === 0 ? (
+                    <p className="text-xs text-amber-800/90">
+                      Aún no hay documentos firmados que invalidar. Puede enviar solo la nota si el
+                      cliente debe completar firmas pendientes.
+                    </p>
+                  ) : (
+                    <div className="grid gap-2">
+                      {firmasFirmadas.map((f) => (
+                        <label
+                          key={f.tipo}
+                          className="flex cursor-pointer items-start gap-2 rounded-md border border-amber-200/80 bg-white/60 px-3 py-2 text-sm"
+                        >
+                          <input
+                            type="checkbox"
+                            className="mt-0.5"
+                            checked={firmasARefirmar.includes(f.tipo)}
+                            onChange={(e) => {
+                              setFirmasARefirmar((prev) =>
+                                e.target.checked
+                                  ? [...prev, f.tipo]
+                                  : prev.filter((x) => x !== f.tipo),
+                              );
+                            }}
+                          />
+                          <span>
+                            Volver a firmar <strong>{f.label}</strong>
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                  <p className="text-xs text-amber-800/80">
+                    Los documentos marcados dejarán de constar como firmados y el cliente deberá
+                    firmarlos otra vez en su portal.
+                  </p>
+                </div>
+              )}
+
               <Label htmlFor="nota-devolucion" className="text-sm font-medium">
                 {esPagoManual ? 'Mensaje para el cliente' : 'Nota para el cliente'}
               </Label>
@@ -203,14 +306,16 @@ export function ContratacionRevisionModal({
                 placeholder={
                   esPagoManual
                     ? 'Indique si ha tenido algún problema con el pago o qué debe hacer el cliente…'
-                    : 'Indique qué debe corregir o revisar el cliente…'
+                    : paso.paso === 'firmas'
+                      ? 'Explique el error o el motivo por el que debe firmar de nuevo…'
+                      : 'Indique qué debe corregir o revisar el cliente…'
                 }
                 value={nota}
                 onChange={(e) => setNota(e.target.value)}
                 maxLength={1000}
               />
               <p className="text-xs text-muted-foreground">
-                Mínimo 5 caracteres. El cliente recibirá un correo y verá este mensaje en su portal.
+                Mínimo 1 carácter. El cliente recibirá un correo y verá este mensaje en su portal.
               </p>
             </div>
           )}
@@ -253,6 +358,7 @@ export function ContratacionRevisionModal({
                     setMostrarDevolucion(false);
                     setNota('');
                     setMotivos([]);
+                    setFirmasARefirmar([]);
                   }}
                   disabled={procesando}
                 >
@@ -261,8 +367,10 @@ export function ContratacionRevisionModal({
                 <Button
                   type="button"
                   variant="destructive"
-                  onClick={() => onDevolver(paso.paso, nota.trim(), motivos)}
-                  disabled={procesando || nota.trim().length < 5}
+                  onClick={() =>
+                    onDevolver(paso.paso, nota.trim(), motivosDevolucionPayload)
+                  }
+                  disabled={procesando || !puedeEnviarDevolucion}
                 >
                   {devolviendo
                     ? 'Enviando…'

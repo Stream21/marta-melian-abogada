@@ -45,6 +45,12 @@ docker compose exec php bin/console list
 docker compose exec php composer require symfony/orm-pack
 ```
 
+## Staging (VPS / Marta)
+
+Desarrollo local → GitHub → VPS: ver [docs/DEPLOY_STAGING.md](docs/DEPLOY_STAGING.md).
+
+URL staging: https://app.martamelianguerraabogados.com
+
 ## Estructura del backend
 
 Ver [ARCHITECTURE.md](ARCHITECTURE.md) para la descripción de la arquitectura hexagonal y la ubicación del frontend React.

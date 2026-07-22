@@ -42,7 +42,7 @@ final class NotificacionDestinoResolver
 
         if (str_starts_with($tipo, 'documento_requerimientos_')) {
             return [
-                'tab' => 'auditoria',
+                'tab' => 'gestion',
                 'hitoId' => $hitoId,
                 'paso' => null,
                 'referenciaId' => $referenciaId,
@@ -52,7 +52,7 @@ final class NotificacionDestinoResolver
 
         if (null !== $paso && '' !== $paso) {
             return [
-                'tab' => 'auditoria',
+                'tab' => 'gestion',
                 'hitoId' => $hitoId,
                 'paso' => $paso,
                 'referenciaId' => $referenciaId,
@@ -61,7 +61,7 @@ final class NotificacionDestinoResolver
         }
 
         return [
-            'tab' => 'auditoria',
+            'tab' => 'gestion',
             'hitoId' => $hitoId,
             'paso' => null,
             'referenciaId' => $referenciaId,

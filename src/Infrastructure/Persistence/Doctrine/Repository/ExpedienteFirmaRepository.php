@@ -68,6 +68,21 @@ final class ExpedienteFirmaRepository implements ExpedienteFirmaRepositoryInterf
         return $orm instanceof ExpedienteFirmaDocumentoOrm ? $this->ormToDomain($orm) : null;
     }
 
+    public function deleteByExpedienteAndTipo(ExpedienteId $expedienteId, TipoEscrito $tipo): void
+    {
+        $orm = $this->entityManager->getRepository(ExpedienteFirmaDocumentoOrm::class)->findOneBy([
+            'expedienteId' => $expedienteId->value(),
+            'tipoEscrito' => $tipo->value,
+        ]);
+
+        if (!$orm instanceof ExpedienteFirmaDocumentoOrm) {
+            return;
+        }
+
+        $this->entityManager->remove($orm);
+        $this->entityManager->flush();
+    }
+
     private function ormToDomain(ExpedienteFirmaDocumentoOrm $orm): ExpedienteFirmaDocumento
     {
         return new ExpedienteFirmaDocumento(

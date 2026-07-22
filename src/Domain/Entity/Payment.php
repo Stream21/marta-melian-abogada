@@ -133,6 +133,12 @@ final readonly class Payment
         ?string $syncError = null,
         ?\DateTimeImmutable $syncedAt = null,
     ): self {
+        $error = null;
+        if (null !== $syncError && '' !== trim($syncError)) {
+            $limpio = trim(preg_replace('/\s+/u', ' ', strip_tags($syncError)) ?? $syncError);
+            $error = mb_strlen($limpio) <= 500 ? $limpio : mb_substr($limpio, 0, 499) . '…';
+        }
+
         return new self(
             $this->id,
             $this->expedienteId,
@@ -145,7 +151,7 @@ final readonly class Payment
             $this->createdAt,
             new \DateTimeImmutable('now'),
             $estado,
-            $syncError,
+            $error,
             $syncedAt ?? $this->holdedSyncedAt,
             $this->cuotaNumero,
         );

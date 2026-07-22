@@ -13,7 +13,7 @@ import {
   User,
   AlertTriangle,
 } from 'lucide-react';
-import { api, type ContratacionPasoResponse, type ContratacionResponse, type MotivoDevolucionIdentidad } from '@/api/client';
+import { api, type ContratacionPasoResponse, type ContratacionResponse } from '@/api/client';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -273,7 +273,7 @@ export function ContratacionGestionPanel({
     }: {
       paso: string;
       nota: string;
-      motivos?: MotivoDevolucionIdentidad[];
+      motivos?: string[];
     }) => api.devolverPasoContratacion(expedienteId, paso, nota, motivos),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['contratacion', expedienteId] });
@@ -335,7 +335,7 @@ function ContratacionContent({
   abrirRevision?: boolean;
   onFocusConsumed?: () => void;
   onValidar: (paso: string) => void;
-  onDevolver: (paso: string, nota: string, motivos?: MotivoDevolucionIdentidad[]) => void;
+  onDevolver: (paso: string, nota: string, motivos?: string[]) => void;
   validando: boolean;
   devolviendo: boolean;
   errorAccion: string | null;

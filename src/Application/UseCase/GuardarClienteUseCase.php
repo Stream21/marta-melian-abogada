@@ -26,7 +26,7 @@ final class GuardarClienteUseCase
     ) {
     }
 
-    public function __invoke(?string $id, ClienteInput $input, bool $altaMinima = false): Cliente
+    public function __invoke(?string $id, ClienteInput $input, bool $altaMinima = false, bool $permitirDuplicado = false): Cliente
     {
         $nombre = trim($input->nombre);
         if ('' === $nombre && !$altaMinima) {
@@ -45,8 +45,8 @@ final class GuardarClienteUseCase
 
         $this->emailValidator->assertValid($input->email);
 
-        $this->unicidadValidator->assertTelefonoUnico($telefono, $id);
-        $this->unicidadValidator->assertDocumentoUnico($numDocumento, $id);
+        $this->unicidadValidator->assertTelefonoUnico($telefono, $id, $permitirDuplicado);
+        $this->unicidadValidator->assertDocumentoUnico($numDocumento, $id, $permitirDuplicado);
 
         $fechaNacimiento = null;
         if (null !== $input->fechaNacimiento && '' !== trim($input->fechaNacimiento)) {

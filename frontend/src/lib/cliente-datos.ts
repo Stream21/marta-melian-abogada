@@ -1,11 +1,8 @@
 import type { ClienteInput, DocumentoIdentidadExtraido } from '@/api/client';
 
 export const CAMPOS_MRZ = [
-  'nombre',
-  'nacionalidad',
   'tipoDocumento',
   'numDocumento',
-  'fechaNacimiento',
 ] as const satisfies readonly (keyof ClienteInput)[];
 
 export type CampoMrz = (typeof CAMPOS_MRZ)[number];

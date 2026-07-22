@@ -267,6 +267,28 @@ final readonly class Cliente
         );
     }
 
+    /** Vacía el teléfono (p. ej. para reasignarlo a otro cliente manteniendo la unicidad en BD). */
+    public function withoutTelefono(): self
+    {
+        return $this->withDatos(
+            $this->nombre,
+            $this->nacionalidad,
+            $this->tipoDocumento,
+            $this->numDocumento,
+            $this->fechaNacimiento,
+            $this->lugarNacimiento,
+            $this->estadoCivil,
+            $this->domicilio,
+            $this->codigoPostal,
+            $this->ciudad,
+            $this->provincia,
+            $this->nombrePadre,
+            $this->nombreMadre,
+            '',
+            $this->email,
+        );
+    }
+
     public function withHoldedSincronizado(string $holdedContactId): self
     {
         return new self(
@@ -323,11 +345,22 @@ final readonly class Cliente
             $this->holdedContactId,
             ClienteHoldedEstado::Error,
             $this->holdedSyncedAt,
-            $error,
+            self::truncarTexto($error, 500),
             $this->documentoIdentidadTipo,
             $this->documentoIdentidadAnversoPath,
             $this->documentoIdentidadReversoPath,
             $this->documentoIdentidadEscaneadoAt,
         );
+    }
+
+    /** Ajusta textos a columnas varchar de la BD (p. ej. holded_sync_error). */
+    private static function truncarTexto(string $texto, int $max): string
+    {
+        $limpio = trim(preg_replace('/\s+/u', ' ', strip_tags($texto)) ?? $texto);
+        if (mb_strlen($limpio) <= $max) {
+            return $limpio;
+        }
+
+        return mb_substr($limpio, 0, $max - 1) . '…';
     }
 }

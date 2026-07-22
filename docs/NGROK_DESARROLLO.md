@@ -37,7 +37,13 @@ Inspector: [http://localhost:4040](http://localhost:4040)
 
 ## Configurar `.env` tras levantar ngrok
 
-Copie la URL del inspector (`front`) y use **la misma** para todo:
+Copie la URL del inspector (`front`) y use **la misma** para todo.
+
+**Importante — HMR:** tener `NGROK_FRONT_URL` en `.env` **ya no** cambia el HMR de Vite.
+Si trabajas por el túnel ngrok y quieres HMR por WSS, reinicia `node` con `VITE_HMR_NGROK=1`.
+En `http://localhost:5173` no hace falta (evita el bucle de recargas).
+
+Variables típicas:
 
 ```env
 NGROK_FRONT_URL=https://xxxx.ngrok-free.dev

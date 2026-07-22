@@ -18,4 +18,6 @@ interface ExpedienteFirmaRepositoryInterface
     public function findByExpediente(ExpedienteId $expedienteId): array;
 
     public function findByExpedienteAndTipo(ExpedienteId $expedienteId, TipoEscrito $tipo): ?ExpedienteFirmaDocumento;
+
+    public function deleteByExpedienteAndTipo(ExpedienteId $expedienteId, TipoEscrito $tipo): void;
 }

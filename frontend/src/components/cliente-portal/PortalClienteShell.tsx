@@ -10,7 +10,6 @@ import {
   PortalClienteRoadmap,
   roadmapFromAcceso,
 } from '@/components/cliente-portal/PortalClienteRoadmap';
-import { Badge } from '@/components/ui/badge';
 import { esDispositivoMovil } from '@/lib/device';
 
 interface PortalClienteShellProps {
@@ -34,23 +33,15 @@ export function PortalClienteShell({ data, children }: PortalClienteShellProps) 
     <div className="min-h-screen bg-muted/40 pb-10">
       <PortalClienteBrandingHero {...branding} compact={esMovil} />
 
-      <div className="border-b border-border bg-card shadow-sm">
-        <div className="mx-auto max-w-2xl px-4 py-3">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0 flex-1">
-              <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
-                Portal del cliente
-              </p>
-              <p className="mt-1 truncate text-base font-semibold leading-tight text-foreground">
-                {nombre}
-              </p>
-              <p className="mt-1 truncate text-xs text-muted-foreground">
-                {data.expedienteNumero} · {data.tramiteNombre}
-              </p>
-            </div>
-            <Badge variant="info" className="shrink-0">
-              {data.faseNegocioLabel}
-            </Badge>
+      <div className="border-b border-border bg-card">
+        <div className="mx-auto max-w-2xl px-4 py-4">
+          <p className="break-words text-lg font-semibold leading-snug text-foreground">{nombre}</p>
+          <div className="mt-1.5 space-y-0.5 text-sm text-muted-foreground sm:flex sm:flex-wrap sm:items-baseline sm:gap-x-2 sm:space-y-0">
+            <p className="shrink-0 font-mono text-[13px] tracking-tight">{data.expedienteNumero}</p>
+            <p className="hidden sm:inline" aria-hidden>
+              ·
+            </p>
+            <p className="break-words leading-snug">{data.tramiteNombre}</p>
           </div>
         </div>
       </div>

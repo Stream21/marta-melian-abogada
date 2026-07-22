@@ -32,6 +32,11 @@ export function ClienteDatosPanel() {
     queryFn: () => api.getClientes(),
   });
 
+  const { data: nacionalidades = [] } = useQuery({
+    queryKey: ['nacionalidades'],
+    queryFn: () => api.getNacionalidades(),
+  });
+
   const resetForm = () => {
     setSelectedId(null);
     setNombre('');
@@ -155,7 +160,23 @@ export function ClienteDatosPanel() {
           </div>
           <div className="space-y-1">
             <Label htmlFor="cli-nacionalidad">Nacionalidad</Label>
-            <Input id="cli-nacionalidad" value={nacionalidad} onChange={(e) => setNacionalidad(e.target.value)} />
+            <select
+              id="cli-nacionalidad"
+              className="input-field h-9 w-full"
+              value={nacionalidad}
+              onChange={(e) => setNacionalidad(e.target.value)}
+            >
+              <option value="">Seleccionar…</option>
+              {nacionalidad !== '' &&
+                !nacionalidades.some((n) => n.nombre === nacionalidad) && (
+                  <option value={nacionalidad}>{nacionalidad}</option>
+                )}
+              {nacionalidades.map((n) => (
+                <option key={n.codigo} value={n.nombre}>
+                  {n.nombre}
+                </option>
+              ))}
+            </select>
           </div>
           <div className="space-y-1">
             <Label htmlFor="cli-tipo-doc">Tipo documento</Label>

@@ -48,6 +48,7 @@ export function NuevoExpedientePage() {
           ...(state.canalesNotificacion.email && state.email.trim() ? ['email' as const] : []),
         ],
         fechaVencimientoFase: state.fechaVencimientoFase.trim() || null,
+        permitirDuplicado: state.modoCliente === 'nuevo' && state.permitirDuplicado,
       }),
     onSuccess: (result) => {
       guardarNotificacionAlta(result.canalesNotificados, emailEstado?.bandejaUrl);
@@ -62,7 +63,7 @@ export function NuevoExpedientePage() {
       case 1:
         if (state.modoCliente === 'nuevo') {
           if (!state.telefono.trim() || !isValidTelefono(state.telefono)) return false;
-          if (state.telefonoDuplicado) return false;
+          if (state.telefonoDuplicado && !state.permitirDuplicado) return false;
           if (state.email.trim() && !isValidEmail(state.email)) return false;
           return true;
         }

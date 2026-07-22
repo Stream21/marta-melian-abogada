@@ -39,12 +39,20 @@ final class CreateSubscription3MonthsUseCase
 
         try {
             $amountCents = (string) (int) round((float) $request->amount * 100);
+            $token = trim((string) $expediente->accessToken());
+            $successUrl = $this->frontendSuccessUrl;
+            $cancelUrl = $this->frontendCancelUrl;
+            if ('' !== $token) {
+                $q = 'token=' . rawurlencode($token);
+                $successUrl .= (str_contains($successUrl, '?') ? '&' : '?') . $q;
+                $cancelUrl .= (str_contains($cancelUrl, '?') ? '&' : '?') . $q;
+            }
 
             $result = $this->stripePort->createSubscription3Months(
                 $amountCents,
                 $request->expedienteId,
-                $this->frontendSuccessUrl,
-                $this->frontendCancelUrl,
+                $successUrl,
+                $cancelUrl,
             );
 
             $payment = new Payment(

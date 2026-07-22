@@ -102,6 +102,7 @@ final class ExpedienteController extends AbstractController
                     fn ($c) => is_string($c) && in_array($c, ['whatsapp', 'email'], true),
                 )),
                 fechaVencimientoFase: isset($data['fechaVencimientoFase']) ? (string) $data['fechaVencimientoFase'] : null,
+                permitirDuplicado: (bool) ($data['permitirDuplicado'] ?? false),
             ));
         } catch (ClienteDuplicadoExceptionInterface $e) {
             return ClienteDuplicadoJsonResponse::create($e);

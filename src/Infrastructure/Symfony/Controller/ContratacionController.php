@@ -7,16 +7,19 @@ namespace App\Infrastructure\Symfony\Controller;
 use App\Application\Port\ExpedienteFileStoragePort;
 use App\Application\Service\DocumentoIntegridadService;
 use App\Application\UseCase\ActualizarCondicionesPagoContratacionUseCase;
+use App\Application\UseCase\ActualizarDatosClienteContratacionUseCase;
 use App\Application\UseCase\ActualizarDocumentoIdentidadContratacionUseCase;
 use App\Application\UseCase\DevolverPasoContratacionUseCase;
 use App\Application\UseCase\ListarDocumentosContratacionUseCase;
 use App\Application\UseCase\ObtenerContratacionExpedienteUseCase;
 use App\Application\UseCase\ValidarPasoContratacionUseCase;
 use App\Domain\Entity\TipoEscrito;
+use App\Domain\Exception\ClienteDuplicadoExceptionInterface;
 use App\Domain\Repository\ExpedienteDocumentoRepositoryInterface;
 use App\Domain\Repository\ExpedienteFirmaRepositoryInterface;
 use App\Domain\ValueObject\ExpedienteId;
 use App\Domain\ValueObject\TramiteDocumentoRequeridoId;
+use App\Infrastructure\Http\ClienteDuplicadoJsonResponse;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -37,6 +40,7 @@ final class ContratacionController extends AbstractController
         private DocumentoIntegridadService $integridadService,
         private ActualizarCondicionesPagoContratacionUseCase $actualizarCondicionesPago,
         private ActualizarDocumentoIdentidadContratacionUseCase $actualizarDocumentoIdentidad,
+        private ActualizarDatosClienteContratacionUseCase $actualizarDatosCliente,
     ) {
     }
 
@@ -146,10 +150,42 @@ final class ContratacionController extends AbstractController
             if (!is_array($datos)) {
                 $datos = [];
             }
+            $permitirDuplicado = filter_var($request->request->get('permitirDuplicado', false), FILTER_VALIDATE_BOOLEAN);
 
-            ($this->actualizarDocumentoIdentidad)($id, $tipo, $anverso, $reverso, $this->inputFromArray($datos));
+            ($this->actualizarDocumentoIdentidad)(
+                $id,
+                $tipo,
+                $anverso,
+                $reverso,
+                $this->inputFromArray($datos),
+                $permitirDuplicado,
+            );
 
             return new JsonResponse(($this->obtenerContratacion)($id));
+        } catch (ClienteDuplicadoExceptionInterface $e) {
+            return ClienteDuplicadoJsonResponse::create($e);
+        } catch (\InvalidArgumentException $e) {
+            return new JsonResponse(['message' => $e->getMessage()], Response::HTTP_BAD_REQUEST);
+        }
+    }
+
+    #[Route(path: '/datos-cliente', name: 'datos_cliente', methods: ['PUT'])]
+    public function datosCliente(string $id, Request $request): JsonResponse
+    {
+        $data = json_decode($request->getContent(), true) ?? [];
+        if (!is_array($data)) {
+            $data = [];
+        }
+
+        try {
+            $permitirDuplicado = (bool) ($data['permitirDuplicado'] ?? false);
+            unset($data['permitirDuplicado']);
+
+            ($this->actualizarDatosCliente)($id, $this->inputFromArray($data), $permitirDuplicado);
+
+            return new JsonResponse(($this->obtenerContratacion)($id));
+        } catch (ClienteDuplicadoExceptionInterface $e) {
+            return ClienteDuplicadoJsonResponse::create($e);
         } catch (\InvalidArgumentException $e) {
             return new JsonResponse(['message' => $e->getMessage()], Response::HTTP_BAD_REQUEST);
         }

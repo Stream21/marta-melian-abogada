@@ -56,11 +56,13 @@ final class GeneratePaymentLinkUseCase
                 $metadata['cuota_numero'] = (string) $request->cuotaNumero;
             }
 
+            [$successUrl, $cancelUrl] = $this->urlsRetornoCliente($expediente->accessToken());
+
             $session = $this->stripePort->createCheckoutSession(
                 $amountCents,
                 $request->expedienteId,
-                $this->frontendSuccessUrl,
-                $this->frontendCancelUrl,
+                $successUrl,
+                $cancelUrl,
                 $metadata,
             );
 
@@ -126,5 +128,26 @@ final class GeneratePaymentLinkUseCase
         } catch (\Throwable $e) {
             return GenerateLinkResult::failure('No se pudo generar el enlace: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * @return array{0: string, 1: string}
+     */
+    private function urlsRetornoCliente(?string $accessToken): array
+    {
+        $token = null !== $accessToken ? trim($accessToken) : '';
+        if ('' === $token) {
+            return [$this->frontendSuccessUrl, $this->frontendCancelUrl];
+        }
+
+        $success = $this->appendQuery($this->frontendSuccessUrl, 'token=' . rawurlencode($token));
+        $cancel = $this->appendQuery($this->frontendCancelUrl, 'token=' . rawurlencode($token));
+
+        return [$success, $cancel];
+    }
+
+    private function appendQuery(string $url, string $query): string
+    {
+        return $url . (str_contains($url, '?') ? '&' : '?') . $query;
     }
 }

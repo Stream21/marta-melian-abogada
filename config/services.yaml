@@ -21,6 +21,7 @@ services:
     App\Domain\Repository\DespachoConfigRepositoryInterface: '@App\Infrastructure\Persistence\Doctrine\Repository\DespachoConfigRepository'
     App\Domain\Repository\EscritoPlantillaRepositoryInterface: '@App\Infrastructure\Persistence\Doctrine\Repository\EscritoPlantillaRepository'
     App\Domain\Repository\ClienteRepositoryInterface: '@App\Infrastructure\Persistence\Doctrine\Repository\ClienteRepository'
+    App\Domain\Repository\NacionalidadRepositoryInterface: '@App\Infrastructure\Persistence\Doctrine\Repository\NacionalidadRepository'
     App\Domain\Repository\TramiteDocumentoRequeridoRepositoryInterface: '@App\Infrastructure\Persistence\Doctrine\Repository\TramiteDocumentoRequeridoRepository'
     App\Domain\Repository\ServicioDocumentoRequeridoRepositoryInterface: '@App\Infrastructure\Persistence\Doctrine\Repository\ServicioDocumentoRequeridoRepository'
     App\Domain\Repository\ContratacionRepositoryInterface: '@App\Infrastructure\Persistence\Doctrine\Repository\ContratacionRepository'
@@ -166,8 +167,7 @@ services:
 
     App\Application\UseCase\IniciarPagoAccesoUseCase:
         arguments:
-            $frontendSuccessUrl: '%env(FRONTEND_SUCCESS_URL)%'
-            $frontendCancelUrl: '%env(FRONTEND_CANCEL_URL)%'
+            $frontendBaseUrl: '%env(FRONTEND_BASE_URL)%'
 
     App\Infrastructure\Symfony\Controller\AccesoController:
         arguments:

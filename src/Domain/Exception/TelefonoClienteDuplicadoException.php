@@ -23,4 +23,9 @@ final class TelefonoClienteDuplicadoException extends \DomainException implement
     {
         return $this->clienteExistenteNombre;
     }
+
+    public function campoDuplicado(): string
+    {
+        return 'telefono';
+    }
 }

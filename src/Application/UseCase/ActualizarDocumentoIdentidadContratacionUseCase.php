@@ -50,6 +50,7 @@ final class ActualizarDocumentoIdentidadContratacionUseCase
         string $anversoBinary,
         ?string $reversoBinary,
         ClienteInput $input,
+        bool $permitirDuplicado = false,
     ): void {
         $expediente = $this->expedienteRepository->findById(new ExpedienteId($expedienteId));
         if (null === $expediente) {
@@ -134,8 +135,8 @@ final class ActualizarDocumentoIdentidadContratacionUseCase
             $fechaNacimiento = \DateTimeImmutable::createFromFormat('Y-m-d', (string) $extraidos['fechaNacimiento']) ?: $fechaNacimiento;
         }
 
-        $this->unicidadValidator->assertTelefonoUnico($telefono, $clienteId);
-        $this->unicidadValidator->assertDocumentoUnico($numDocumento, $clienteId);
+        $this->unicidadValidator->assertTelefonoUnico($telefono, $clienteId, $permitirDuplicado);
+        $this->unicidadValidator->assertDocumentoUnico($numDocumento, $clienteId, $permitirDuplicado);
 
         $anversoPath = $this->fileStorage->saveDocumentoIdentidad($cliente->id(), 'anverso.jpg', $anversoBinary);
         $reversoPath = null;

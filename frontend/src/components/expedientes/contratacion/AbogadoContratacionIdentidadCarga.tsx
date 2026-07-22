@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { ChevronDown, Upload } from 'lucide-react';
-import { api, type ClienteInput } from '@/api/client';
+import { api, isClienteDuplicadoError, type ClienteInput } from '@/api/client';
+import { ClienteDuplicadoConfirmDialog } from '@/components/cliente/ClienteDuplicadoConfirmDialog';
 import { DocumentoIdentidadFlujo } from '@/components/documento-identidad/DocumentoIdentidadFlujo';
 import { DocumentoIdentidadRevision } from '@/components/documento-identidad/DocumentoIdentidadRevision';
 import type { DocumentoIdentidadArchivos } from '@/components/documento-identidad/types';
-import { Button } from '@/components/ui/button';
 import { datosExtraidosAClienteInput } from '@/lib/cliente-datos';
 import { cn } from '@/lib/utils';
 
@@ -25,9 +25,20 @@ export function AbogadoContratacionIdentidadCarga({
   const [archivos, setArchivos] = useState<DocumentoIdentidadArchivos | null>(null);
   const [datosIniciales, setDatosIniciales] = useState<ClienteInput | null>(null);
   const [extraccionAutomatica, setExtraccionAutomatica] = useState(false);
+  const [duplicado, setDuplicado] = useState<{
+    datos: ClienteInput;
+    nombre: string;
+    campo?: string;
+  } | null>(null);
 
   const guardarMutation = useMutation({
-    mutationFn: (datos: ClienteInput) => {
+    mutationFn: ({
+      datos,
+      permitirDuplicado = false,
+    }: {
+      datos: ClienteInput;
+      permitirDuplicado?: boolean;
+    }) => {
       if (!archivos) {
         throw new Error('Debe adjuntar el documento de identidad.');
       }
@@ -36,17 +47,33 @@ export function AbogadoContratacionIdentidadCarga({
         anverso: archivos.anverso,
         reverso: archivos.reverso,
         datos,
+        permitirDuplicado,
       });
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['contratacion', expedienteId] });
       void queryClient.invalidateQueries({ queryKey: ['cliente'] });
+      setDuplicado(null);
       setPaso('cerrado');
       setArchivos(null);
       setDatosIniciales(null);
       onGuardado?.();
     },
+    onError: (error, variables) => {
+      if (isClienteDuplicadoError(error) && !variables.permitirDuplicado) {
+        setDuplicado({
+          datos: variables.datos,
+          nombre: error.clienteExistenteNombre ?? 'otro cliente',
+          campo: error.campoDuplicado,
+        });
+      }
+    },
   });
+
+  const errorSinDuplicado =
+    guardarMutation.isError && !isClienteDuplicadoError(guardarMutation.error)
+      ? (guardarMutation.error as Error).message
+      : null;
 
   return (
     <section className="rounded-xl border border-primary/20 bg-primary/5 overflow-hidden">
@@ -60,7 +87,7 @@ export function AbogadoContratacionIdentidadCarga({
           <div>
             <p className="text-sm font-semibold text-foreground">Cargar documento en nombre del cliente</p>
             <p className="text-xs text-muted-foreground">
-              Suba las imágenes directamente desde su equipo (el cliente solo puede usar la cámara del portal).
+              Seleccione DNI/NIE o pasaporte y suba las imágenes JPG/PNG desde su equipo.
             </p>
           </div>
         </div>
@@ -72,6 +99,7 @@ export function AbogadoContratacionIdentidadCarga({
           {paso === 'documento' && (
             <DocumentoIdentidadFlujo
               modo="abogado"
+              ocultarIndicadorPasos
               onCompletado={({ archivos: files, datosExtraidos }) => {
                 setArchivos(files);
                 setExtraccionAutomatica(datosExtraidos.extraccionAutomatica === true);
@@ -86,29 +114,35 @@ export function AbogadoContratacionIdentidadCarga({
               modo="abogado"
               extraccionAutomatica={extraccionAutomatica}
               datosIniciales={datosIniciales}
-              onConfirmar={(datos) => guardarMutation.mutate(datos)}
+              onConfirmar={(datos) => guardarMutation.mutate({ datos })}
               onVolverEscaneo={() => {
                 setArchivos(null);
                 setDatosIniciales(null);
+                setDuplicado(null);
                 setPaso('documento');
               }}
               isSaving={guardarMutation.isPending}
               confirmLabel="Guardar documento del cliente"
-              volverLabel="Volver al escaneo"
+              volverLabel="Volver a subir imágenes"
             />
           )}
 
-          {guardarMutation.isError && (
-            <p className="text-sm text-destructive">{(guardarMutation.error as Error).message}</p>
-          )}
-
-          {paso === 'documento' && (
-            <Button type="button" variant="ghost" size="sm" onClick={() => setPaso('cerrado')}>
-              Cancelar
-            </Button>
-          )}
+          {errorSinDuplicado && <p className="text-sm text-destructive">{errorSinDuplicado}</p>}
         </div>
       )}
+
+      <ClienteDuplicadoConfirmDialog
+        open={!!duplicado}
+        clienteNombre={duplicado?.nombre ?? ''}
+        campo={duplicado?.campo}
+        loading={guardarMutation.isPending}
+        onCancel={() => setDuplicado(null)}
+        onConfirm={() => {
+          if (!duplicado) return;
+          guardarMutation.mutate({ datos: duplicado.datos, permitirDuplicado: true });
+        }}
+        confirmLabel="Continuar con este cliente"
+      />
     </section>
   );
 }

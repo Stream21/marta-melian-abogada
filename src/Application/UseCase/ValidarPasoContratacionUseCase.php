@@ -64,7 +64,12 @@ final class ValidarPasoContratacionUseCase
         }
 
         if (PasoContratacionCliente::DatosCliente === $pasoEnum) {
-            $this->sincronizarClienteHoldedTrasContratacion($expediente->clienteId());
+            try {
+                $this->sincronizarClienteHoldedTrasContratacion($expediente->clienteId());
+            } catch (\Throwable) {
+                // La validación del paso no debe fallar por un error de Holded;
+                // el propio caso de uso de sync ya persiste el fallo truncado.
+            }
         }
 
         if (PasoContratacionCliente::Pago === $pasoEnum && MetodoPagoExpediente::Manual === $expediente->metodoPago()) {

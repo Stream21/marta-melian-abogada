@@ -19,6 +19,7 @@ final readonly class AltaExpedienteInput
         /** @var string[] */
         public array $canalesNotificacion = [],
         public ?string $fechaVencimientoFase = null,
+        public bool $permitirDuplicado = false,
     ) {
     }
 }
