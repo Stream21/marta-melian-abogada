@@ -20,8 +20,8 @@ interface InstruccionesCapturaDocumentoDialogProps {
 }
 
 const TITULO: Record<LadoCapturaCamara, string> = {
-  anverso: 'Prepare el anverso',
-  reverso: 'Prepare el reverso',
+  anverso: 'Prepare la delantera',
+  reverso: 'Prepare la trasera',
   pasaporte: 'Prepare el pasaporte',
 };
 

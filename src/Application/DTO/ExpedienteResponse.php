@@ -11,6 +11,7 @@ final readonly class ExpedienteResponse
         public string $numero,
         public string $titulo,
         public string $estado,
+        public string $estadoLabel = '',
         public string $fechaApertura,
         public string $clientName = '',
         public string $caseReference = '',

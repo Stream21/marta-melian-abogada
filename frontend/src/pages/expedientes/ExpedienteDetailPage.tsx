@@ -13,6 +13,7 @@ import { ExpedienteAuditoriaPanel } from '@/components/expedientes/ExpedienteAud
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { ExpedienteGestionToolbarActions } from '@/components/expedientes/ExpedienteGestionToolbarActions';
+import { ExpedienteEstadoActions } from '@/components/expedientes/ExpedienteEstadoActions';
 import { consumirNotificacionAlta } from '@/lib/email-notificacion';
 import { cn } from '@/lib/utils';
 
@@ -90,6 +91,7 @@ export function ExpedienteDetailPage({ expedienteId, notificacionSearch }: Exped
                 {expediente.honorariosAcordados.toLocaleString('es-ES', { minimumFractionDigits: 2 })} €
               </span>
             )}
+            <ExpedienteEstadoActions expediente={expediente} />
           </div>
         )}
       </div>
@@ -119,13 +121,25 @@ export function ExpedienteDetailPage({ expedienteId, notificacionSearch }: Exped
             <TabsTrigger value="auditoria">Auditoría</TabsTrigger>
             <TabsTrigger value="facturacion">Facturación</TabsTrigger>
           </TabsList>
-          {activeTab === 'gestion' && expediente?.faseNegocio && (
+          {activeTab === 'gestion' &&
+            expediente?.faseNegocio &&
+            expediente.estado === 'abierto' && (
             <ExpedienteGestionToolbarActions
               expedienteId={expedienteId}
               faseNegocio={expediente.faseNegocio}
             />
           )}
         </div>
+
+        {expediente && expediente.estado !== 'abierto' && activeTab === 'gestion' && (
+          <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+            Este expediente está{' '}
+            <strong>{expediente.estadoLabel || expediente.estado}</strong>.
+            {expediente.estado === 'cancelado'
+              ? ' La gestión de fases queda en solo lectura hasta reabrirlo.'
+              : ' El expediente está cerrado; no admite nuevas gestiones.'}
+          </div>
+        )}
 
         <TabsContent value="gestion">
           {expediente?.faseNegocio === 'contratacion' ? (

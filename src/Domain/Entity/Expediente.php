@@ -216,12 +216,49 @@ final readonly class Expediente
         return $this->rebuild(fechaVencimientoFase: $fecha);
     }
 
+    public function withEstado(EstadoExpediente $estado): self
+    {
+        return $this->rebuild(
+            estado: $estado,
+            fechaUltimoCambioEstado: new \DateTimeImmutable('now'),
+        );
+    }
+
+    public function cancelar(): self
+    {
+        if (EstadoExpediente::Abierto !== $this->estado) {
+            throw new \DomainException('Solo se puede cancelar un expediente abierto.');
+        }
+
+        return $this->withEstado(EstadoExpediente::Cancelado);
+    }
+
+    public function archivar(): self
+    {
+        if (EstadoExpediente::Abierto !== $this->estado) {
+            throw new \DomainException('Solo se puede archivar un expediente abierto.');
+        }
+
+        return $this->withEstado(EstadoExpediente::Archivado);
+    }
+
+    public function reabrir(): self
+    {
+        if (EstadoExpediente::Cancelado !== $this->estado) {
+            throw new \DomainException('Solo se puede reabrir un expediente cancelado.');
+        }
+
+        // Conserva faseNegocio y estadoFase para no romper el flujo entre fases.
+        return $this->withEstado(EstadoExpediente::Abierto);
+    }
+
     public function touchEstadoCambio(): self
     {
         return $this->rebuild(fechaUltimoCambioEstado: new \DateTimeImmutable('now'));
     }
 
     private function rebuild(
+        ?EstadoExpediente $estado = null,
         ?string $clienteId = null,
         ?string $tramiteId = null,
         ?string $servicioId = null,
@@ -247,7 +284,7 @@ final readonly class Expediente
             $this->id,
             $numero ?? $this->numero,
             $titulo ?? $this->titulo,
-            $this->estado,
+            $estado ?? $this->estado,
             $this->fechaApertura,
             $clientName ?? $this->clientName,
             $this->caseReference,

@@ -366,6 +366,17 @@ export const api = {
 
   getExpediente: (id: string) => request<ExpedienteResponse>('/api/expedientes/' + encodeURIComponent(id)),
 
+  cancelarExpediente: (id: string, motivo?: string) =>
+    request<ExpedienteResponse>('/api/expedientes/' + encodeURIComponent(id) + '/cancelar', {
+      method: 'POST',
+      body: JSON.stringify(motivo ? { motivo } : {}),
+    }),
+
+  reabrirExpediente: (id: string) =>
+    request<ExpedienteResponse>('/api/expedientes/' + encodeURIComponent(id) + '/reabrir', {
+      method: 'POST',
+    }),
+
   getExpedienteAuditoria: (expedienteId: string) =>
     request<ExpedienteAuditoriaResponse>(
       '/api/expedientes/' + encodeURIComponent(expedienteId) + '/auditoria',
@@ -775,6 +786,52 @@ export const api = {
   documentacionIdentidadUrl: (expedienteId: string, lado: 'anverso' | 'reverso') =>
     `/api/expedientes/${encodeURIComponent(expedienteId)}/documentacion/identidad/${lado}`,
 
+  descargarZipDocumentacion: async (
+    expedienteId: string,
+    itemIds: string[],
+  ): Promise<{ blob: Blob; filename: string }> => {
+    const res = await fetch(
+      API_BASE +
+        '/api/expedientes/' +
+        encodeURIComponent(expedienteId) +
+        '/documentacion/zip',
+      {
+        method: 'POST',
+        headers: mergeFetchHeaders({
+          'Content-Type': 'application/json',
+          ...getAuthHeaders(),
+        }),
+        body: JSON.stringify({ itemIds }),
+      },
+    );
+
+    if (res.status === 401) {
+      localStorage.removeItem(TOKEN_KEY);
+      if (!window.location.pathname.startsWith('/login')) {
+        window.location.href = '/login';
+      }
+      throw new Error('Sesión expirada. Por favor, inicie sesión de nuevo.');
+    }
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ message: res.statusText }));
+      throw new Error(
+        (err as { error?: string; message?: string }).message ||
+          (err as { error?: string }).error ||
+          'No se pudo generar el ZIP.',
+      );
+    }
+
+    const disposition = res.headers.get('Content-Disposition');
+    const utf8Match = disposition ? /filename\*=UTF-8''([^;]+)/i.exec(disposition) : null;
+    const plainMatch = disposition ? /filename="([^"]+)"/i.exec(disposition) : null;
+    const filename = utf8Match?.[1]
+      ? decodeURIComponent(utf8Match[1])
+      : (plainMatch?.[1] ?? `documentacion-${expedienteId}.zip`);
+
+    return { blob: await res.blob(), filename };
+  },
+
   getTwilioEstado: () => request<TwilioEstadoResponse>('/api/integraciones/twilio/estado'),
 
   getEmailEstado: () => request<EmailEstadoResponse>('/api/integraciones/email/estado'),
@@ -1026,49 +1083,6 @@ export const api = {
       { method: 'POST' },
     ),
 
-  generarPdfConjuntoRequerimientos: async (
-    expedienteId: string,
-    archivoIds: string[],
-  ): Promise<{ blob: Blob; filename: string }> => {
-    const res = await fetch(
-      API_BASE +
-        '/api/expedientes/' +
-        encodeURIComponent(expedienteId) +
-        '/requerimientos/pdf-conjunto',
-      {
-        method: 'POST',
-        headers: mergeFetchHeaders({
-          'Content-Type': 'application/json',
-          ...getAuthHeaders(),
-        }),
-        body: JSON.stringify({ archivoIds }),
-      },
-    );
-
-    if (res.status === 401) {
-      localStorage.removeItem(TOKEN_KEY);
-      if (!window.location.pathname.startsWith('/login')) {
-        window.location.href = '/login';
-      }
-      throw new Error('Sesión expirada. Por favor, inicie sesión de nuevo.');
-    }
-
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({ message: res.statusText }));
-      throw new Error(
-        (err as { error?: string; message?: string }).message ||
-          (err as { error?: string }).error ||
-          'No se pudo generar el PDF conjunto.',
-      );
-    }
-
-    const disposition = res.headers.get('Content-Disposition');
-    const filenameMatch = disposition ? /filename="([^"]+)"/i.exec(disposition) : null;
-    const filename = filenameMatch?.[1] ?? `mercurio-${expedienteId}.pdf`;
-
-    return { blob: await res.blob(), filename };
-  },
-
   subirDocumentoRequerimientos: (token: string, docId: string, files: File[]) => {
     const formData = new FormData();
     appendArchivosToFormData(formData, files);
@@ -1298,6 +1312,7 @@ export interface ExpedienteResponse {
   numero: string;
   titulo: string;
   estado: string;
+  estadoLabel?: string;
   fechaApertura: string;
   clientName: string;
   caseReference: string;

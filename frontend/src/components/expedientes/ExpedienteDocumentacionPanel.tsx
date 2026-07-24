@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Download, FileText, Filter, ImageIcon, Loader2, PenLine } from 'lucide-react';
+import { Download, FileArchive, FileText, Filter, ImageIcon, Loader2, PenLine } from 'lucide-react';
 import { api, openAuthenticatedDocument, type DocumentacionExpedienteItemResponse } from '@/api/client';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -18,9 +18,21 @@ interface ExpedienteDocumentacionPanelProps {
   expedienteId: string;
 }
 
+function downloadBlob(blob: Blob, filename: string): void {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+}
+
 export function ExpedienteDocumentacionPanel({ expedienteId }: ExpedienteDocumentacionPanelProps) {
   const [filtroFase, setFiltroFase] = useState<string>('todos');
   const [filtroTipo, setFiltroTipo] = useState<string>('todos');
+  const [seleccionados, setSeleccionados] = useState<Set<string>>(new Set());
+  const [descargandoZip, setDescargandoZip] = useState(false);
+  const [zipError, setZipError] = useState<string | null>(null);
 
   const { data: items = [], isLoading } = useQuery({
     queryKey: ['documentacion', expedienteId],
@@ -40,6 +52,57 @@ export function ExpedienteDocumentacionPanel({ expedienteId }: ExpedienteDocumen
     });
   }, [items, filtroFase, filtroTipo]);
 
+  const descargables = useMemo(
+    () => filtrados.filter((item) => resolveDescargaPath(expedienteId, item) !== null),
+    [filtrados, expedienteId],
+  );
+
+  const todosSeleccionados =
+    descargables.length > 0 && descargables.every((item) => seleccionados.has(item.id));
+
+  const toggleItem = (id: string) => {
+    setSeleccionados((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleTodos = () => {
+    if (todosSeleccionados) {
+      setSeleccionados((prev) => {
+        const next = new Set(prev);
+        for (const item of descargables) next.delete(item.id);
+        return next;
+      });
+      return;
+    }
+    setSeleccionados((prev) => {
+      const next = new Set(prev);
+      for (const item of descargables) next.add(item.id);
+      return next;
+    });
+  };
+
+  const handleDescargarZip = async () => {
+    const ids = Array.from(seleccionados).filter((id) =>
+      descargables.some((item) => item.id === id),
+    );
+    if (ids.length === 0) return;
+
+    setDescargandoZip(true);
+    setZipError(null);
+    try {
+      const { blob, filename } = await api.descargarZipDocumentacion(expedienteId, ids);
+      downloadBlob(blob, filename);
+    } catch (e) {
+      setZipError(e instanceof Error ? e.message : 'No se pudo generar el ZIP.');
+    } finally {
+      setDescargandoZip(false);
+    }
+  };
+
   if (isLoading) {
     return <p className="text-muted-foreground py-8 text-center">Cargando documentación…</p>;
   }
@@ -50,7 +113,7 @@ export function ExpedienteDocumentacionPanel({ expedienteId }: ExpedienteDocumen
         <p className="section-label">Expediente</p>
         <h2 className="panel-title">Documentación y escritos</h2>
         <p className="text-sm text-muted-foreground mt-1">
-          Requisitos definidos en el trámite y documentos generados o entregados en este expediente.
+          Seleccione los documentos que necesite y descárguelos juntos en un ZIP.
         </p>
       </div>
 
@@ -82,12 +145,50 @@ export function ExpedienteDocumentacionPanel({ expedienteId }: ExpedienteDocumen
         <Badge variant="secondary">{filtrados.length} elemento(s)</Badge>
       </div>
 
+      {descargables.length > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-muted/30 px-4 py-3">
+          <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
+            <input
+              type="checkbox"
+              className="h-4 w-4 rounded border-input accent-primary"
+              checked={todosSeleccionados}
+              onChange={toggleTodos}
+            />
+            {todosSeleccionados ? 'Quitar selección' : 'Seleccionar todos los descargables'}
+            {seleccionados.size > 0 && (
+              <span className="text-muted-foreground">({seleccionados.size})</span>
+            )}
+          </label>
+          <div className="flex flex-col items-end gap-1">
+            <Button
+              size="sm"
+              disabled={seleccionados.size === 0 || descargandoZip}
+              onClick={() => void handleDescargarZip()}
+            >
+              {descargandoZip ? (
+                <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <FileArchive className="mr-1.5 h-3.5 w-3.5" />
+              )}
+              Descargar ZIP
+            </Button>
+            {zipError && <span className="text-xs text-destructive max-w-sm text-right">{zipError}</span>}
+          </div>
+        </div>
+      )}
+
       {filtrados.length === 0 ? (
         <p className="text-sm text-muted-foreground py-8 text-center">No hay elementos con estos filtros.</p>
       ) : (
         <ul className="space-y-3">
           {filtrados.map((item) => (
-            <DocumentacionItem key={item.id} item={item} expedienteId={expedienteId} />
+            <DocumentacionItem
+              key={item.id}
+              item={item}
+              expedienteId={expedienteId}
+              seleccionado={seleccionados.has(item.id)}
+              onToggle={() => toggleItem(item.id)}
+            />
           ))}
         </ul>
       )}
@@ -126,9 +227,13 @@ function resolveDescargaPath(
 function DocumentacionItem({
   item,
   expedienteId,
+  seleccionado,
+  onToggle,
 }: {
   item: DocumentacionExpedienteItemResponse;
   expedienteId: string;
+  seleccionado: boolean;
+  onToggle: () => void;
 }) {
   const [abriendo, setAbriendo] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -154,9 +259,27 @@ function DocumentacionItem({
   };
 
   return (
-    <li className="rounded-lg border border-border bg-card px-4 py-3 text-sm">
+    <li
+      className={cn(
+        'rounded-lg border bg-card px-4 py-3 text-sm transition-colors',
+        seleccionado ? 'border-primary/40 bg-primary/5' : 'border-border',
+      )}
+    >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex gap-3 min-w-0">
+          {descargaPath ? (
+            <label className="mt-2 flex shrink-0 cursor-pointer">
+              <input
+                type="checkbox"
+                className="h-4 w-4 rounded border-input accent-primary"
+                checked={seleccionado}
+                onChange={onToggle}
+                aria-label={`Seleccionar ${item.nombre}`}
+              />
+            </label>
+          ) : (
+            <span className="mt-2 w-4 shrink-0" aria-hidden />
+          )}
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted">
             <Icon className="h-4 w-4 text-muted-foreground" />
           </div>

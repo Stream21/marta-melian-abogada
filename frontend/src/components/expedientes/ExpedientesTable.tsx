@@ -23,6 +23,11 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { labelFaseNegocio } from '@/lib/portal-fases';
+import {
+  labelEstadoExpediente,
+  normalizarEstadoFiltro,
+  variantEstadoExpediente,
+} from '@/lib/expediente-estado';
 import { cn } from '@/lib/utils';
 
 interface ExpedientesTableProps {
@@ -42,7 +47,12 @@ export function ExpedientesTable({ data, isLoading, isFetching, onRefresh }: Exp
 
   const filteredData = useMemo(() => {
     return data.filter((exp) => {
-      if (estadoFilter.length > 0 && !estadoFilter.includes(exp.estado)) return false;
+      if (
+        estadoFilter.length > 0 &&
+        !estadoFilter.includes(normalizarEstadoFiltro(exp.estado))
+      ) {
+        return false;
+      }
       if (faseFilter.length > 0 && (!exp.faseNegocio || !faseFilter.includes(exp.faseNegocio))) return false;
       if (cobroFilter.length > 0 && !cobroFilter.includes(exp.paymentStatus)) return false;
       if (avisosFilter.includes('pendientes') && (exp.avisosPendientes ?? 0) === 0) return false;
@@ -113,8 +123,8 @@ export function ExpedientesTable({ data, isLoading, isFetching, onRefresh }: Exp
         accessorKey: 'estado',
         header: 'Estado',
         cell: ({ row }) => (
-          <Badge variant={row.original.estado === 'abierto' ? 'default' : 'secondary'}>
-            {row.original.estado}
+          <Badge variant={variantEstadoExpediente(row.original.estado)}>
+            {row.original.estadoLabel || labelEstadoExpediente(row.original.estado)}
           </Badge>
         ),
       },
@@ -170,7 +180,7 @@ export function ExpedientesTable({ data, isLoading, isFetching, onRefresh }: Exp
             onChange: setEstadoFilter,
             options: [
               { value: 'abierto', label: 'Abierto' },
-              { value: 'cerrado', label: 'Cerrado' },
+              { value: 'cancelado', label: 'Cancelado' },
               { value: 'archivado', label: 'Archivado' },
             ],
           },

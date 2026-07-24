@@ -28,7 +28,7 @@ export function PasoClientePanel({ state, onChange }: PasoClientePanelProps) {
 
     if (!isValidTelefono(trimmed)) {
       setTelefonoError('El teléfono no tiene un formato válido.');
-      onChange({ telefonoDuplicado: null });
+      onChange({ telefonoDuplicado: null, permitirDuplicado: false });
       return;
     }
     setTelefonoError(null);
@@ -41,9 +41,11 @@ export function PasoClientePanel({ state, onChange }: PasoClientePanelProps) {
         (c) => c.telefono.replace(/\s+/g, '') === trimmed.replace(/\s+/g, ''),
       );
       if (coincidenciaExacta) {
+        // No resetear permitirDuplicado: el blur del input al pulsar
+        // «Continuar como cliente nuevo» puede re-lanzar esta verificación
+        // y pisar la confirmación del usuario.
         onChange({
           telefonoDuplicado: { id: coincidenciaExacta.id, nombre: coincidenciaExacta.nombre },
-          permitirDuplicado: false,
         });
       } else {
         onChange({ telefonoDuplicado: null, permitirDuplicado: false });
@@ -241,6 +243,7 @@ export function PasoClientePanel({ state, onChange }: PasoClientePanelProps) {
                     <Button
                       type="button"
                       size="sm"
+                      onMouseDown={(e) => e.preventDefault()}
                       onClick={() => onChange({ permitirDuplicado: true })}
                     >
                       Continuar como cliente nuevo

@@ -50,8 +50,8 @@ final class ListarDocumentacionExpedienteUseCase
                 $items[] = $this->itemIdentidadCliente(
                     $expedienteId,
                     'identidad-anverso',
-                    'Documento de identidad — Anverso',
-                    sprintf('Escaneo del anverso (%s) aportado en contratación.', $tipoDoc),
+                    'Documento de identidad — Delantera',
+                    sprintf('Escaneo de la delantera (%s) aportado en contratación.', $tipoDoc),
                     $escaneadoAt,
                 );
 
@@ -59,8 +59,8 @@ final class ListarDocumentacionExpedienteUseCase
                     $items[] = $this->itemIdentidadCliente(
                         $expedienteId,
                         'identidad-reverso',
-                        'Documento de identidad — Reverso',
-                        sprintf('Escaneo del reverso (%s) aportado en contratación.', $tipoDoc),
+                        'Documento de identidad — Trasera',
+                        sprintf('Escaneo de la trasera (%s) aportado en contratación.', $tipoDoc),
                         $escaneadoAt,
                     );
                 }

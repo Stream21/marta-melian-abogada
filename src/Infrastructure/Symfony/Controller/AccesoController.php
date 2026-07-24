@@ -488,7 +488,7 @@ final class AccesoController extends AbstractController
         }
 
         if (!$archivosOpcionales && !$soloDatos && (null === $anverso || '' === $anverso)) {
-            throw new \InvalidArgumentException('Debe adjuntar la imagen del anverso del documento.');
+            throw new \InvalidArgumentException('Debe adjuntar la imagen de la delantera del documento.');
         }
 
         return [$tipo, $anverso, $reverso, $soloDatos];

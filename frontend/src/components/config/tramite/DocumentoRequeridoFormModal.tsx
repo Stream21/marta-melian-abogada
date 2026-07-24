@@ -31,7 +31,8 @@ interface DocumentoRequeridoFormModalProps {
   onSubmit: (values: DocumentoRequeridoFormValues) => void;
 }
 
-const MAX_IMAGENES_CONJUNTO = 50;
+const MIN_IMAGENES_CONJUNTO = 1;
+const MAX_IMAGENES_CONJUNTO = 100;
 const DEFAULT_MAX_CONJUNTO = 5;
 
 const emptyValues: DocumentoRequeridoFormValues = {
@@ -71,38 +72,72 @@ export function DocumentoRequeridoFormModal({
   onSubmit,
 }: DocumentoRequeridoFormModalProps) {
   const [values, setValues] = useState<DocumentoRequeridoFormValues>(emptyValues);
+  const [maxImagenesText, setMaxImagenesText] = useState(String(DEFAULT_MAX_CONJUNTO));
   const [nombreError, setNombreError] = useState(false);
   const [maxImagenesError, setMaxImagenesError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open) return;
     if (mode === 'edit' && initial) {
+      const tipo = initial.tipo ?? 'individual';
+      const maxImagenes = initial.maxImagenes ?? 1;
       setValues({
         nombre: initial.nombre,
         descripcion: initial.descripcion,
         obligatorio: initial.obligatorio,
-        tipo: initial.tipo ?? 'individual',
-        maxImagenes: initial.maxImagenes ?? 1,
+        tipo,
+        maxImagenes,
       });
+      setMaxImagenesText(
+        tipo === 'conjunto' ? String(maxImagenes) : String(DEFAULT_MAX_CONJUNTO),
+      );
     } else {
       setValues(emptyValues);
+      setMaxImagenesText(String(DEFAULT_MAX_CONJUNTO));
     }
     setNombreError(false);
     setMaxImagenesError(null);
   }, [open, mode, initial]);
 
   const handleTipoChange = (tipo: TipoDocumentoRequerido) => {
-    setValues((v) => ({
-      ...v,
-      tipo,
-      maxImagenes:
-        tipo === 'individual'
-          ? 1
-          : v.tipo === 'conjunto' && v.maxImagenes >= 2
-            ? v.maxImagenes
-            : DEFAULT_MAX_CONJUNTO,
-    }));
+    const nextMax =
+      tipo === 'individual'
+        ? 1
+        : values.tipo === 'conjunto' && values.maxImagenes >= MIN_IMAGENES_CONJUNTO
+          ? values.maxImagenes
+          : DEFAULT_MAX_CONJUNTO;
+    setValues((v) => ({ ...v, tipo, maxImagenes: nextMax }));
+    if (tipo === 'conjunto') {
+      setMaxImagenesText(String(nextMax));
+    }
     setMaxImagenesError(null);
+  };
+
+  const handleMaxImagenesChange = (raw: string) => {
+    // Solo dígitos; permite vacío mientras escribe.
+    const digits = raw.replace(/\D/g, '').slice(0, 3);
+    setMaxImagenesText(digits);
+    setMaxImagenesError(null);
+
+    if (digits === '') {
+      return;
+    }
+
+    const parsed = Number.parseInt(digits, 10);
+    if (!Number.isNaN(parsed)) {
+      setValues((v) => ({ ...v, maxImagenes: parsed }));
+    }
+  };
+
+  const parseMaxImagenesConjunto = (): number | null => {
+    if (maxImagenesText.trim() === '') {
+      return null;
+    }
+    const parsed = Number.parseInt(maxImagenesText, 10);
+    if (Number.isNaN(parsed)) {
+      return null;
+    }
+    return parsed;
   };
 
   const handleSubmit = (e: FormEvent) => {
@@ -113,14 +148,25 @@ export function DocumentoRequeridoFormModal({
     }
 
     if (values.tipo === 'conjunto') {
-      if (values.maxImagenes < 2) {
-        setMaxImagenesError('Indique al menos 2 archivos.');
+      const maxImagenes = parseMaxImagenesConjunto();
+      if (maxImagenes === null) {
+        setMaxImagenesError('Indique un número entero de archivos.');
         return;
       }
-      if (values.maxImagenes > MAX_IMAGENES_CONJUNTO) {
-        setMaxImagenesError(`El máximo permitido es ${MAX_IMAGENES_CONJUNTO} archivos.`);
+      if (maxImagenes < MIN_IMAGENES_CONJUNTO || maxImagenes > MAX_IMAGENES_CONJUNTO) {
+        setMaxImagenesError(
+          `Indique un número entre ${MIN_IMAGENES_CONJUNTO} y ${MAX_IMAGENES_CONJUNTO}.`,
+        );
         return;
       }
+      onSubmit({
+        nombre: values.nombre.trim(),
+        descripcion: values.descripcion.trim(),
+        obligatorio: values.obligatorio,
+        tipo: values.tipo,
+        maxImagenes,
+      });
+      return;
     }
 
     onSubmit({
@@ -128,7 +174,7 @@ export function DocumentoRequeridoFormModal({
       descripcion: values.descripcion.trim(),
       obligatorio: values.obligatorio,
       tipo: values.tipo,
-      maxImagenes: values.tipo === 'individual' ? 1 : values.maxImagenes,
+      maxImagenes: 1,
     });
   };
 
@@ -216,24 +262,22 @@ export function DocumentoRequeridoFormModal({
                 </Label>
                 <Input
                   id="doc-max-imagenes"
-                  type="number"
-                  min={2}
-                  max={MAX_IMAGENES_CONJUNTO}
-                  value={values.maxImagenes}
-                  onChange={(e) => {
-                    const parsed = Number.parseInt(e.target.value, 10);
-                    setValues((v) => ({
-                      ...v,
-                      maxImagenes: Number.isNaN(parsed) ? 2 : parsed,
-                    }));
-                    setMaxImagenesError(null);
-                  }}
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="off"
+                  pattern="[0-9]*"
+                  placeholder={`${MIN_IMAGENES_CONJUNTO}–${MAX_IMAGENES_CONJUNTO}`}
+                  value={maxImagenesText}
+                  onChange={(e) => handleMaxImagenesChange(e.target.value)}
                   disabled={isPending}
                   aria-invalid={maxImagenesError !== null}
+                  className="max-w-[8rem]"
                 />
                 <p className="text-xs text-muted-foreground">
-                  El cliente podrá subir entre 1 y {values.maxImagenes} archivos en este requisito.
-                  Todos se convertirán y unirán en un PDF.
+                  Número entero entre {MIN_IMAGENES_CONJUNTO} y {MAX_IMAGENES_CONJUNTO}. El cliente
+                  podrá subir hasta{' '}
+                  {maxImagenesText === '' ? '…' : maxImagenesText} archivo(s); todos se convertirán
+                  a PDF.
                 </p>
                 {maxImagenesError && (
                   <p className="text-xs text-destructive">{maxImagenesError}</p>

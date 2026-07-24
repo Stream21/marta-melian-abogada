@@ -30,17 +30,17 @@ export function ClienteIdentidadCorreccion({
 
   const etiquetaScan =
     ladoDocumento === 'anverso'
-      ? 'Fotografiar el anverso'
+      ? 'Fotografiar la delantera'
       : ladoDocumento === 'reverso'
-        ? 'Fotografiar el reverso'
+        ? 'Fotografiar la trasera'
         : `Fotografiar el ${labels.tipoDocumentoCorto}`;
 
   const ayudaScan =
     ladoDocumento === 'anverso'
-      ? 'Su abogado pide una nueva foto de la cara con su imagen. El reverso se conserva.'
+      ? 'Su abogado pide una nueva foto de la cara con su imagen. La trasera se conserva.'
       : ladoDocumento === 'reverso'
-        ? 'Su abogado pide una nueva foto de la cara con la banda MRZ. El anverso se conserva.'
-        : 'Vuelva a escanear anverso y reverso con buena luz y el documento entero en el marco.';
+        ? 'Su abogado pide una nueva foto de la cara con la banda MRZ. La delantera se conserva.'
+        : 'Vuelva a escanear la delantera y la trasera con buena luz y el documento entero en el marco.';
 
   return (
     <div className="panel space-y-4 p-6">

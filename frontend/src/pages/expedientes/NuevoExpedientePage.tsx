@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
-import { api } from '@/api/client';
+import { api, isClienteDuplicadoError } from '@/api/client';
+import { ClienteDuplicadoConfirmDialog } from '@/components/cliente/ClienteDuplicadoConfirmDialog';
 import { Button } from '@/components/ui/button';
 import { ExpedienteAltaStepper } from '@/components/expedientes/alta/ExpedienteAltaStepper';
 import { PasoClientePanel } from '@/components/expedientes/alta/PasoClientePanel';
@@ -23,6 +24,11 @@ export function NuevoExpedientePage() {
   const queryClient = useQueryClient();
   const [state, setState] = useState<ExpedienteAltaState>(initialAltaState);
   const [error, setError] = useState<string | null>(null);
+  const [duplicado, setDuplicado] = useState<{
+    nombre: string;
+    campo?: string;
+  } | null>(null);
+  const [duplicadoError, setDuplicadoError] = useState<string | null>(null);
 
   const patch = (p: Partial<ExpedienteAltaState>) => setState((s) => ({ ...s, ...p }));
 
@@ -32,7 +38,7 @@ export function NuevoExpedientePage() {
   });
 
   const altaMutation = useMutation({
-    mutationFn: () =>
+    mutationFn: (permitirDuplicado: boolean) =>
       api.altaExpediente({
         clienteId: state.modoCliente === 'existente' ? state.clienteId : null,
         telefono: state.modoCliente === 'nuevo' ? state.telefono : null,
@@ -48,14 +54,32 @@ export function NuevoExpedientePage() {
           ...(state.canalesNotificacion.email && state.email.trim() ? ['email' as const] : []),
         ],
         fechaVencimientoFase: state.fechaVencimientoFase.trim() || null,
-        permitirDuplicado: state.modoCliente === 'nuevo' && state.permitirDuplicado,
+        permitirDuplicado,
       }),
     onSuccess: (result) => {
+      setDuplicado(null);
+      setDuplicadoError(null);
       guardarNotificacionAlta(result.canalesNotificados, emailEstado?.bandejaUrl);
       void queryClient.invalidateQueries({ queryKey: ['expedientes'] });
       void navigate({ to: '/expedientes/$expedienteId', params: { expedienteId: result.expediente.id } });
     },
-    onError: (err: Error) => setError(err.message),
+    onError: (err: Error, permitirDuplicado) => {
+      if (isClienteDuplicadoError(err) && !permitirDuplicado) {
+        setError(null);
+        setDuplicadoError(null);
+        setDuplicado({
+          nombre: err.clienteExistenteNombre ?? 'otro cliente',
+          campo: err.campoDuplicado,
+        });
+        return;
+      }
+      if (permitirDuplicado) {
+        setDuplicadoError(err.message);
+        setError(err.message);
+        return;
+      }
+      setError(err.message);
+    },
   });
 
   const canContinue = (): boolean => {
@@ -109,7 +133,9 @@ export function NuevoExpedientePage() {
 
   const handleFinalizar = () => {
     setError(null);
-    altaMutation.mutate();
+    setDuplicado(null);
+    setDuplicadoError(null);
+    altaMutation.mutate(state.modoCliente === 'nuevo' && state.permitirDuplicado);
   };
 
   const renderStep = () => {
@@ -157,6 +183,13 @@ export function NuevoExpedientePage() {
           </p>
         )}
 
+        {state.step === 1 && state.telefonoDuplicado && !state.permitirDuplicado && (
+          <p className="mt-4 text-sm text-amber-800" role="status">
+            El teléfono ya está registrado. Use el cliente existente o confirme «Continuar como
+            cliente nuevo» para poder seguir.
+          </p>
+        )}
+
         <div className="mt-6 flex justify-between">
           <Button variant="outline" onClick={handleBack} disabled={state.step === 1}>
             <ArrowLeft className="mr-2 h-4 w-4" />
@@ -175,6 +208,24 @@ export function NuevoExpedientePage() {
           )}
         </div>
       </div>
+
+      <ClienteDuplicadoConfirmDialog
+        open={!!duplicado}
+        clienteNombre={duplicado?.nombre ?? ''}
+        campo={duplicado?.campo}
+        loading={altaMutation.isPending}
+        error={duplicadoError}
+        onCancel={() => {
+          setDuplicado(null);
+          setDuplicadoError(null);
+        }}
+        onConfirm={() => {
+          setDuplicadoError(null);
+          patch({ permitirDuplicado: true });
+          altaMutation.mutate(true);
+        }}
+        confirmLabel="Continuar como cliente nuevo"
+      />
     </div>
   );
 }

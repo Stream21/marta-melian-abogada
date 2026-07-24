@@ -9,11 +9,13 @@ use App\Application\DTO\CrearExpedienteInput;
 use App\Application\DTO\ExpedienteResponseMapper;
 use App\Application\Service\ExpedienteAvisosAggregator;
 use App\Application\UseCase\AltaExpedienteUseCase;
+use App\Application\UseCase\CancelarExpedienteUseCase;
 use App\Application\UseCase\CrearExpedienteUseCase;
 use App\Application\UseCase\ListarAuditoriaExpedienteUseCase;
 use App\Application\UseCase\ListarExpedientesUseCase;
 use App\Application\UseCase\ObtenerExpedienteUseCase;
 use App\Application\UseCase\ObtenerFacturacionExpedienteUseCase;
+use App\Application\UseCase\ReabrirExpedienteUseCase;
 use App\Application\UseCase\SincronizarCobrosExpedienteHoldedUseCase;
 use App\Application\UseCase\VincularExpedienteClienteUseCase;
 use App\Domain\Exception\ClienteDuplicadoExceptionInterface;
@@ -39,6 +41,8 @@ final class ExpedienteController extends AbstractController
         private VincularExpedienteClienteUseCase $vincularExpediente,
         private ObtenerFacturacionExpedienteUseCase $obtenerFacturacion,
         private SincronizarCobrosExpedienteHoldedUseCase $sincronizarCobrosHolded,
+        private CancelarExpedienteUseCase $cancelarExpediente,
+        private ReabrirExpedienteUseCase $reabrirExpediente,
         private ExpedienteAvisosAggregator $avisosAggregator,
         private string $frontendBaseUrl = 'http://localhost:5173',
     ) {
@@ -205,5 +209,34 @@ final class ExpedienteController extends AbstractController
         }
 
         return new JsonResponse(['success' => true]);
+    }
+
+    #[Route(path: '/{id}/cancelar', name: 'cancelar', methods: ['POST'])]
+    public function cancelar(string $id, Request $request): JsonResponse
+    {
+        $data = json_decode($request->getContent(), true) ?? [];
+
+        try {
+            $expediente = ($this->cancelarExpediente)(
+                $id,
+                isset($data['motivo']) ? (string) $data['motivo'] : null,
+            );
+
+            return new JsonResponse(ExpedienteResponseMapper::fromDomain($expediente, $this->frontendBaseUrl));
+        } catch (\InvalidArgumentException $e) {
+            return new JsonResponse(['message' => $e->getMessage()], Response::HTTP_BAD_REQUEST);
+        }
+    }
+
+    #[Route(path: '/{id}/reabrir', name: 'reabrir', methods: ['POST'])]
+    public function reabrir(string $id): JsonResponse
+    {
+        try {
+            $expediente = ($this->reabrirExpediente)($id);
+
+            return new JsonResponse(ExpedienteResponseMapper::fromDomain($expediente, $this->frontendBaseUrl));
+        } catch (\InvalidArgumentException $e) {
+            return new JsonResponse(['message' => $e->getMessage()], Response::HTTP_BAD_REQUEST);
+        }
     }
 }

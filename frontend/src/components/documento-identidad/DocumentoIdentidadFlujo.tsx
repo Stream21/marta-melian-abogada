@@ -166,7 +166,7 @@ export function DocumentoIdentidadFlujo({
 
   const etiquetaLado = (lado: LadoCaptura): string => {
     if (tipoEscaneo === 'pasaporte') return 'Página de identificación';
-    return lado === 'anverso' ? 'Anverso (cara con foto)' : 'Reverso (banda MRZ)';
+    return lado === 'anverso' ? 'Delantera (cara con foto)' : 'Trasera (banda MRZ)';
   };
 
   const handleAnversoReady = useCallback((file: File, previewUrl: string) => {
@@ -227,7 +227,7 @@ export function DocumentoIdentidadFlujo({
       }
 
       if (!fileAnverso) {
-        throw new Error('Falta la imagen del anverso del documento.');
+        throw new Error('Falta la imagen de la delantera del documento.');
       }
 
       const extraer = extraerDocumento ?? api.extraerDocumentoIdentidad.bind(api);
@@ -370,15 +370,15 @@ export function DocumentoIdentidadFlujo({
                     {tipoEscaneo === 'pasaporte'
                       ? 'Página interior con sus datos'
                       : ladoActivo === 'anverso'
-                        ? 'Anverso · Cara con foto'
-                        : 'Reverso · Banda MRZ'}
+                        ? 'Delantera · Cara con foto'
+                        : 'Trasera · Banda MRZ'}
                   </p>
                 </div>
 
                 {(anversoListo || reversoListo) && (
                   <div className="grid grid-cols-2 gap-3">
                     <MiniaturaLado
-                      label="Anverso"
+                      label="Delantera"
                       url={anversoPreview}
                       done={anversoListo}
                       active={ladoActivo === 'anverso'}
@@ -386,7 +386,7 @@ export function DocumentoIdentidadFlujo({
                     />
                     {requiereReverso && (
                       <MiniaturaLado
-                        label="Reverso"
+                        label="Trasera"
                         url={reversoPreview}
                         done={reversoListo}
                         active={ladoActivo === 'reverso'}
@@ -404,13 +404,13 @@ export function DocumentoIdentidadFlujo({
                       <div className="bg-muted/20 px-3 py-4">
                         <img
                           src={anversoPreview}
-                          alt="Anverso conservado"
+                          alt="Delantera conservada"
                           className="mx-auto max-h-52 w-full rounded-lg object-contain"
                         />
                       </div>
                     ) : null}
                     <p className="border-t border-border px-3 py-3 text-center text-sm text-emerald-800">
-                      Anverso conservado. Escanee el reverso o pulse Repetir en la miniatura para cambiarlo.
+                      Delantera conservada. Escanee la trasera o pulse Repetir en la miniatura para cambiarla.
                     </p>
                   </div>
                 ) : (
@@ -435,7 +435,7 @@ export function DocumentoIdentidadFlujo({
                 <div className={ladoActivo === 'reverso' ? '' : 'hidden'}>
                   {ladoConservado === 'reverso' ? (
                     <p className="rounded-lg border border-emerald-200 bg-emerald-50/50 px-3 py-2 text-sm text-emerald-800">
-                      Reverso conservado. Escanee el anverso.
+                      Trasera conservada. Escanee la delantera.
                     </p>
                   ) : (
                     <ImagenDocumentoCaptura
@@ -513,15 +513,15 @@ export function DocumentoIdentidadFlujo({
                     {tipoEscaneo === 'pasaporte'
                       ? 'Página interior con los datos · Imagen JPG/PNG'
                       : ladoActivo === 'anverso'
-                        ? 'Anverso · Cara con foto · Seleccione una imagen'
-                        : 'Reverso · Banda MRZ · Seleccione una imagen'}
+                        ? 'Delantera · Cara con foto · Seleccione una imagen'
+                        : 'Trasera · Banda MRZ · Seleccione una imagen'}
                   </p>
                 </div>
 
                 {(anversoListo || reversoListo) && (
                   <div className={cn('grid gap-3', requiereReverso ? 'grid-cols-2' : 'grid-cols-1')}>
                     <MiniaturaLado
-                      label="Anverso"
+                      label="Delantera"
                       url={anversoPreview}
                       done={anversoListo}
                       active={ladoActivo === 'anverso'}
@@ -529,7 +529,7 @@ export function DocumentoIdentidadFlujo({
                     />
                     {requiereReverso && (
                       <MiniaturaLado
-                        label="Reverso"
+                        label="Trasera"
                         url={reversoPreview}
                         done={reversoListo}
                         active={ladoActivo === 'reverso'}
@@ -547,13 +547,13 @@ export function DocumentoIdentidadFlujo({
                       <div className="bg-muted/20 px-3 py-4">
                         <img
                           src={anversoPreview}
-                          alt="Anverso conservado"
+                          alt="Delantera conservada"
                           className="mx-auto max-h-52 w-full rounded-lg object-contain"
                         />
                       </div>
                     ) : null}
                     <p className="border-t border-border px-3 py-3 text-center text-sm text-emerald-800">
-                      Anverso conservado. Suba el reverso o pulse la miniatura para cambiarlo.
+                      Delantera conservada. Suba la trasera o pulse la miniatura para cambiarla.
                     </p>
                   </div>
                 ) : (
@@ -581,7 +581,7 @@ export function DocumentoIdentidadFlujo({
                 <div className={ladoActivo === 'reverso' ? '' : 'hidden'}>
                   {ladoConservado === 'reverso' ? (
                     <p className="rounded-lg border border-emerald-200 bg-emerald-50/50 px-3 py-2 text-sm text-emerald-800">
-                      Reverso conservado. Suba el anverso.
+                      Trasera conservada. Suba la delantera.
                     </p>
                   ) : (
                     <ImagenDocumentoCaptura

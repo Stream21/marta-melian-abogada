@@ -1,13 +1,22 @@
 const ALPHA_THRESHOLD = 8;
 const TRIM_PADDING = 20;
 
+/** Same options everywhere — mismatched getContext attrs return null. */
+const CONTEXT_OPTIONS: CanvasRenderingContext2DSettings = {
+  willReadFrequently: true,
+};
+
 export interface SignaturePoint {
   x: number;
   y: number;
 }
 
+function getDrawingContext(canvas: HTMLCanvasElement): CanvasRenderingContext2D | null {
+  return canvas.getContext('2d', CONTEXT_OPTIONS);
+}
+
 export function isCanvasBlank(canvas: HTMLCanvasElement): boolean {
-  const context = canvas.getContext('2d', { willReadFrequently: true });
+  const context = getDrawingContext(canvas);
   if (!context) return true;
 
   const { width, height } = canvas;
@@ -24,7 +33,7 @@ export function isCanvasBlank(canvas: HTMLCanvasElement): boolean {
 }
 
 export function trimTransparentCanvas(source: HTMLCanvasElement): HTMLCanvasElement {
-  const context = source.getContext('2d', { willReadFrequently: true });
+  const context = getDrawingContext(source);
   if (!context) return source;
 
   const { width, height } = source;
@@ -62,7 +71,7 @@ export function trimTransparentCanvas(source: HTMLCanvasElement): HTMLCanvasElem
   trimmed.width = trimmedWidth;
   trimmed.height = trimmedHeight;
 
-  const trimmedContext = trimmed.getContext('2d');
+  const trimmedContext = trimmed.getContext('2d', CONTEXT_OPTIONS);
   if (!trimmedContext) return source;
 
   trimmedContext.drawImage(
@@ -96,34 +105,57 @@ export async function canvasToTransparentPngFile(
   return new File([blob], filename, { type: 'image/png' });
 }
 
-export function setupSignatureCanvas(
-  canvas: HTMLCanvasElement,
-  width: number,
-  height: number,
-): CanvasRenderingContext2D | null {
-  const ratio = window.devicePixelRatio || 1;
-  canvas.width = Math.floor(width * ratio);
-  canvas.height = Math.floor(height * ratio);
-  canvas.style.width = `${width}px`;
-  canvas.style.height = `${height}px`;
-
-  const context = canvas.getContext('2d');
-  if (!context) return null;
-
-  context.setTransform(ratio, 0, 0, ratio, 0, 0);
-  context.clearRect(0, 0, width, height);
+export function applySignatureStrokeStyle(context: CanvasRenderingContext2D): void {
   context.lineCap = 'round';
   context.lineJoin = 'round';
   context.lineWidth = 2.2;
   context.strokeStyle = '#1f2937';
+}
+
+/**
+ * Configura el buffer con DPR. El tamaño visual lo controla CSS (no style inline):
+ * asignar style.width en móvil desincroniza el hit-testing del touch.
+ */
+export function setupSignatureCanvas(
+  canvas: HTMLCanvasElement,
+  cssWidth: number,
+  cssHeight: number,
+): CanvasRenderingContext2D | null {
+  const ratio = window.devicePixelRatio || 1;
+  const nextW = Math.max(1, Math.floor(cssWidth * ratio));
+  const nextH = Math.max(1, Math.floor(cssHeight * ratio));
+
+  if (canvas.width !== nextW || canvas.height !== nextH) {
+    canvas.width = nextW;
+    canvas.height = nextH;
+  }
+
+  const context = getDrawingContext(canvas);
+  if (!context) return null;
+
+  context.setTransform(ratio, 0, 0, ratio, 0, 0);
+  context.clearRect(0, 0, cssWidth, cssHeight);
+  applySignatureStrokeStyle(context);
 
   return context;
 }
 
+/** Borra el trazo sin recrear el buffer (reescribir width/height rompe iOS/Safari). */
 export function clearSignatureCanvas(
   canvas: HTMLCanvasElement,
-  width: number,
-  height: number,
+  cssWidth: number,
+  cssHeight: number,
 ): CanvasRenderingContext2D | null {
-  return setupSignatureCanvas(canvas, width, height);
+  const context = getDrawingContext(canvas);
+  if (!context || canvas.width === 0 || canvas.height === 0) {
+    return setupSignatureCanvas(canvas, cssWidth, cssHeight);
+  }
+
+  const ratio = window.devicePixelRatio || 1;
+  context.setTransform(1, 0, 0, 1, 0, 0);
+  context.clearRect(0, 0, canvas.width, canvas.height);
+  context.setTransform(ratio, 0, 0, ratio, 0, 0);
+  applySignatureStrokeStyle(context);
+
+  return context;
 }

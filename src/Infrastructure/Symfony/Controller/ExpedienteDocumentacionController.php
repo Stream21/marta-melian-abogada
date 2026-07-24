@@ -6,6 +6,7 @@ namespace App\Infrastructure\Symfony\Controller;
 
 use App\Application\Port\ClienteFileStoragePort;
 use App\Application\Port\ExpedienteFileStoragePort;
+use App\Application\UseCase\DescargarZipDocumentacionExpedienteUseCase;
 use App\Application\UseCase\ListarDocumentacionExpedienteUseCase;
 use App\Domain\Repository\ClienteRepositoryInterface;
 use App\Domain\Repository\ExpedienteDocumentoRepositoryInterface;
@@ -18,6 +19,7 @@ use App\Infrastructure\Http\UploadedFileMimeDetector;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
@@ -28,6 +30,7 @@ final class ExpedienteDocumentacionController extends AbstractController
 {
     public function __construct(
         private ListarDocumentacionExpedienteUseCase $listarDocumentacion,
+        private DescargarZipDocumentacionExpedienteUseCase $descargarZip,
         private ExpedienteRepositoryInterface $expedienteRepository,
         private ClienteRepositoryInterface $clienteRepository,
         private ExpedienteDocumentoRepositoryInterface $documentoEntregadoRepository,
@@ -44,6 +47,31 @@ final class ExpedienteDocumentacionController extends AbstractController
             return new JsonResponse(($this->listarDocumentacion)($id));
         } catch (\InvalidArgumentException $e) {
             return new JsonResponse(['message' => $e->getMessage()], Response::HTTP_NOT_FOUND);
+        }
+    }
+
+    #[Route(path: '/zip', name: 'zip', methods: ['POST'])]
+    public function zip(string $id, Request $request): Response
+    {
+        $data = json_decode($request->getContent(), true) ?? [];
+        $itemIds = $data['itemIds'] ?? [];
+        if (!is_array($itemIds)) {
+            return new JsonResponse(['message' => 'itemIds debe ser un array.'], Response::HTTP_BAD_REQUEST);
+        }
+
+        $itemIds = array_values(array_map(static fn ($v) => (string) $v, $itemIds));
+
+        try {
+            $result = ($this->descargarZip)($id, $itemIds);
+
+            return new Response($result['content'], Response::HTTP_OK, [
+                'Content-Type' => 'application/zip',
+                'Content-Disposition' => $this->contentDispositionAttachment($result['filename']),
+            ]);
+        } catch (\InvalidArgumentException $e) {
+            return new JsonResponse(['message' => $e->getMessage()], Response::HTTP_BAD_REQUEST);
+        } catch (\RuntimeException $e) {
+            return new JsonResponse(['message' => $e->getMessage()], Response::HTTP_BAD_REQUEST);
         }
     }
 
@@ -115,5 +143,17 @@ final class ExpedienteDocumentacionController extends AbstractController
             'Content-Type' => 'application/pdf',
             'Content-Disposition' => 'inline; filename="documento.pdf"',
         ]);
+    }
+
+    private function contentDispositionAttachment(string $filename): string
+    {
+        $ascii = preg_replace('/[^\x20-\x7E]/', '_', $filename) ?? 'documentacion.zip';
+        $ascii = str_replace(['"', '\\'], '_', $ascii);
+
+        return sprintf(
+            "attachment; filename=\"%s\"; filename*=UTF-8''%s",
+            $ascii,
+            rawurlencode($filename),
+        );
     }
 }

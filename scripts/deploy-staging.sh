@@ -62,6 +62,20 @@ if [[ ! -f config/jwt/private.pem ]]; then
 fi
 "${COMPOSE[@]}" exec -T php php bin/console doctrine:migrations:migrate --no-interaction
 "${COMPOSE[@]}" exec -T php php bin/console cache:clear --env=prod
+# Deploy/cache como root: php-fpm (www-data) necesita escribir en storage y var
+echo "==> Permisos escritura (www-data)"
+"${COMPOSE[@]}" exec -T php sh -c \
+  'mkdir -p /app/public/storage/despacho \
+            /app/var/cache/prod/doctrine/orm/Proxies /app/var/log \
+            /app/var/clientes /app/var/expedientes /app/var/documentos/convertidos \
+   && chown -R www-data:www-data \
+        /app/public/storage \
+        /app/var/cache /app/var/log \
+        /app/var/clientes /app/var/expedientes /app/var/documentos \
+   && chmod -R ug+rwX \
+        /app/public/storage \
+        /app/var/cache /app/var/log \
+        /app/var/clientes /app/var/expedientes /app/var/documentos'
 
 echo "==> Done"
 echo "App:     https://app.martamelianguerraabogados.com"

@@ -55,7 +55,7 @@ export function DocumentoIdentidadRevision({
       {esCliente && !extraccionAutomatica && (
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
           No se pudieron leer los datos automáticamente del documento. Para {docTarjeta}, asegúrese de que el{' '}
-          <strong>reverso</strong> (zona MRZ) sea legible. Complete el formulario manualmente.
+          <strong>trasera</strong> (zona MRZ) sea legible. Complete el formulario manualmente.
         </div>
       )}
       {!esCliente && !extraccionAutomatica && (

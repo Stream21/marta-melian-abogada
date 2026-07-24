@@ -100,7 +100,15 @@ export function DocumentoArchivoUploadControl({
 
   const errorVisible = error ?? errorLocal;
   const puedeEnviar = seleccionados.length > 0 && !uploading;
-  const contadorLabel = multiple ? `${seleccionados.length}/${limite} archivos` : null;
+  const haySeleccion = seleccionados.length > 0;
+  const puedeAnadir = multiple
+    ? seleccionados.length < limite && seleccionados.length === 0
+    : seleccionados.length === 0;
+
+  const etiquetaEnvio =
+    seleccionados.length > 1
+      ? `Confirmar y enviar ${seleccionados.length} archivos`
+      : readyLabel || submitLabel;
 
   return (
     <div className={cn('relative space-y-3', className)}>
@@ -117,8 +125,12 @@ export function DocumentoArchivoUploadControl({
 
       {showLimiteHeader && (
         <div className="rounded-md border border-dashed border-border/80 bg-muted/20 px-3 py-2">
-          <p className="text-xs font-medium text-foreground">{documentoUploadLimiteLabel(tipo, maxImagenes)}</p>
-          <p className="mt-0.5 text-xs text-muted-foreground">{documentoUploadLimiteDetalle(tipo, maxImagenes)}</p>
+          <p className="text-xs font-medium text-foreground">
+            {documentoUploadLimiteLabel(tipo, maxImagenes)}
+          </p>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            {documentoUploadLimiteDetalle(tipo, maxImagenes)}
+          </p>
         </div>
       )}
 
@@ -134,80 +146,98 @@ export function DocumentoArchivoUploadControl({
         }}
       />
 
-      <div className="flex flex-wrap items-center gap-2">
-        {multiple && seleccionados.length < limite && (
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={uploading}
-            onClick={() => inputRef.current?.click()}
-          >
-            <Plus className="mr-2 h-4 w-4" />
-            Añadir {seleccionados.length === 0 ? 'archivo' : 'otro archivo'}
-          </Button>
-        )}
+      {puedeAnadir && (
+        <Button
+          type="button"
+          variant={variant}
+          size="sm"
+          disabled={uploading}
+          className="w-full sm:w-auto"
+          onClick={() => inputRef.current?.click()}
+        >
+          {multiple ? (
+            <>
+              <Plus className="mr-2 h-4 w-4" />
+              {seleccionados.length === 0 ? 'Añadir archivo' : 'Añadir otro archivo'}
+            </>
+          ) : (
+            <>
+              <Upload className="mr-2 h-4 w-4" />
+              Elegir archivo
+            </>
+          )}
+        </Button>
+      )}
 
-        {!multiple && (
-          <Button
-            type="button"
-            variant={variant}
-            size="sm"
-            disabled={uploading}
-            onClick={() => inputRef.current?.click()}
-          >
-            <Upload className="mr-2 h-4 w-4" />
-            Elegir archivo
-          </Button>
-        )}
+      {haySeleccion && (
+        <div className="overflow-hidden rounded-xl border border-primary/20 bg-card">
+          <div className="border-b border-border/70 bg-primary/5 px-3 py-2">
+            <p className="text-sm font-medium text-foreground">
+              {seleccionados.length === 1
+                ? 'Archivo listo para enviar'
+                : `${seleccionados.length} archivos listos para enviar`}
+            </p>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Revise el contenido. Tras confirmar no podrá cambiarlo hasta que su abogado lo revise.
+            </p>
+          </div>
 
-        {contadorLabel && (
-          <span className="text-xs text-muted-foreground">{contadorLabel}</span>
-        )}
-      </div>
-
-      {seleccionados.length > 0 && (
-        <div className="space-y-3 rounded-lg border border-border bg-background p-3">
-          <p className="text-xs text-muted-foreground">
-            Revise los archivos seleccionados. Pulse «Listo» solo cuando estén correctos; después no podrá
-            modificarlos hasta que su abogado los revise.
-          </p>
-          <ul className="space-y-2">
+          <ul className="divide-y divide-border">
             {seleccionados.map((file, index) => (
-              <li key={`${file.name}-${index}`} className="flex items-center justify-between gap-2 text-xs">
-                <span className="flex min-w-0 items-center gap-2">
-                  <FileText className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                  <span className="truncate">{file.name}</span>
+              <li
+                key={`${file.name}-${index}`}
+                className="flex items-center gap-3 px-3 py-2.5"
+              >
+                <FileText className="h-4 w-4 shrink-0 text-primary" />
+                <span className="min-w-0 flex-1 truncate text-sm text-foreground">
+                  {file.name}
                 </span>
-                <Button
+                <button
                   type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7 shrink-0"
                   disabled={uploading}
                   onClick={() => quitarArchivo(index)}
+                  className={cn(
+                    'inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full',
+                    'border border-red-200 bg-red-50 text-red-600 transition-colors',
+                    'hover:bg-red-100 hover:text-red-700',
+                    'disabled:pointer-events-none disabled:opacity-50',
+                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400',
+                  )}
+                  aria-label={`Quitar ${file.name}`}
+                  title="Quitar archivo"
                 >
-                  <X className="h-3.5 w-3.5" />
-                </Button>
+                  <X className="h-4 w-4" strokeWidth={2.5} />
+                </button>
               </li>
             ))}
           </ul>
 
-          <div className="flex flex-wrap items-center gap-2">
+          {multiple && seleccionados.length < limite && (
+            <div className="border-t border-border px-3 py-2">
+              <button
+                type="button"
+                disabled={uploading}
+                onClick={() => inputRef.current?.click()}
+                className="text-sm font-medium text-primary hover:underline disabled:opacity-50"
+              >
+                + Añadir otro archivo ({seleccionados.length}/{limite})
+              </button>
+            </div>
+          )}
+
+          <div className="border-t border-border bg-muted/30 p-3">
             <Button
               type="button"
               variant="default"
-              size="sm"
-              className="w-full sm:w-auto"
+              size="lg"
+              className="w-full"
               disabled={!puedeEnviar}
               onClick={enviar}
             >
               {uploading && suppressUploadingUi ? (
                 <>
                   <Check className="mr-2 h-4 w-4" />
-                  {seleccionados.length > 1
-                    ? `Listo — enviar ${seleccionados.length} archivos`
-                    : readyLabel || submitLabel}
+                  {etiquetaEnvio}
                 </>
               ) : uploading ? (
                 <>
@@ -217,29 +247,19 @@ export function DocumentoArchivoUploadControl({
               ) : (
                 <>
                   <Check className="mr-2 h-4 w-4" />
-                  {seleccionados.length > 1
-                    ? `Listo — enviar ${seleccionados.length} archivos`
-                    : readyLabel || submitLabel}
+                  {etiquetaEnvio}
                 </>
               )}
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              disabled={uploading}
-              onClick={() => {
-                setSeleccionados([]);
-                setErrorLocal(null);
-              }}
-            >
-              Volver a elegir archivos
             </Button>
           </div>
         </div>
       )}
 
-      {errorVisible && <p className="text-xs text-destructive">{errorVisible}</p>}
+      {errorVisible && (
+        <p className="text-sm text-destructive" role="alert">
+          {errorVisible}
+        </p>
+      )}
     </div>
   );
 }

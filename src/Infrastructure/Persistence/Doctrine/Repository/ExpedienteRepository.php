@@ -102,7 +102,7 @@ final class ExpedienteRepository implements ExpedienteRepositoryInterface
             new ExpedienteId($orm->getId()),
             $orm->getNumero(),
             $orm->getTitulo(),
-            EstadoExpediente::from($orm->getEstado()),
+            EstadoExpediente::fromStorage($orm->getEstado()),
             $orm->getFechaApertura(),
             $orm->getClientName(),
             $orm->getCaseReference(),

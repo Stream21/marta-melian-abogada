@@ -422,6 +422,7 @@ export function ClienteDatosRevisionPanel({
     nombre: string;
     campo?: string;
   } | null>(null);
+  const [duplicadoError, setDuplicadoError] = useState<string | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ['cliente', clienteId],
@@ -441,15 +442,21 @@ export function ClienteDatosRevisionPanel({
       void queryClient.invalidateQueries({ queryKey: ['contratacion', expedienteId] });
       setEditandoKey(null);
       setDuplicado(null);
+      setDuplicadoError(null);
     },
     onError: (error, variables) => {
       if (isClienteDuplicadoError(error) && !variables.permitirDuplicado) {
         const { permitirDuplicado: _, ...body } = variables;
+        setDuplicadoError(null);
         setDuplicado({
           body,
           nombre: error.clienteExistenteNombre ?? 'otro cliente',
           campo: error.campoDuplicado,
         });
+        return;
+      }
+      if (variables.permitirDuplicado) {
+        setDuplicadoError(error instanceof Error ? error.message : 'No se pudieron guardar los datos.');
       }
     },
   });
@@ -621,11 +628,11 @@ export function ClienteDatosRevisionPanel({
           </div>
           <div className="flex gap-1.5">
             <Badge variant={stats.tieneAnverso ? 'success' : 'warning'} className="text-[10px]">
-              Anverso {stats.tieneAnverso ? '✓' : '✗'}
+              Delantera {stats.tieneAnverso ? '✓' : '✗'}
             </Badge>
             {doc?.reversoUrl !== undefined && (
               <Badge variant={stats.tieneReverso ? 'success' : 'secondary'} className="text-[10px]">
-                Reverso {stats.tieneReverso ? '✓' : '—'}
+                Trasera {stats.tieneReverso ? '✓' : '—'}
               </Badge>
             )}
           </div>
@@ -633,23 +640,23 @@ export function ClienteDatosRevisionPanel({
         <div className="grid gap-3 p-3 sm:grid-cols-2">
           {doc?.anversoUrl ? (
             <div>
-              <p className="mb-2 text-xs font-medium text-muted-foreground">Anverso</p>
-              <DocumentoIdentidadPreview url={doc.anversoUrl} title="Anverso DNI/NIE" />
+              <p className="mb-2 text-xs font-medium text-muted-foreground">Delantera</p>
+              <DocumentoIdentidadPreview url={doc.anversoUrl} title="Delantera DNI/NIE" />
             </div>
           ) : (
             <div className="flex h-36 items-center justify-center rounded-lg border border-dashed border-amber-300 bg-amber-50/30 text-xs text-amber-800">
               <AlertCircle className="mr-1.5 h-4 w-4" />
-              Anverso no escaneado
+              Delantera no escaneada
             </div>
           )}
           {doc?.reversoUrl ? (
             <div>
-              <p className="mb-2 text-xs font-medium text-muted-foreground">Reverso</p>
-              <DocumentoIdentidadPreview url={doc.reversoUrl} title="Reverso DNI/NIE" />
+              <p className="mb-2 text-xs font-medium text-muted-foreground">Trasera</p>
+              <DocumentoIdentidadPreview url={doc.reversoUrl} title="Trasera DNI/NIE" />
             </div>
           ) : (
             <div className="flex h-36 items-center justify-center rounded-lg border border-dashed bg-muted/30 text-xs text-muted-foreground">
-              Reverso no aportado
+              Trasera no aportada
             </div>
           )}
         </div>
@@ -669,9 +676,14 @@ export function ClienteDatosRevisionPanel({
         clienteNombre={duplicado?.nombre ?? ''}
         campo={duplicado?.campo}
         loading={saveMutation.isPending}
-        onCancel={() => setDuplicado(null)}
+        error={duplicadoError}
+        onCancel={() => {
+          setDuplicado(null);
+          setDuplicadoError(null);
+        }}
         onConfirm={() => {
           if (!duplicado) return;
+          setDuplicadoError(null);
           saveMutation.mutate({ ...duplicado.body, permitirDuplicado: true });
         }}
         confirmLabel="Continuar con este cliente"

@@ -32,7 +32,7 @@ export function ClienteIdentidadEleccion({
             <div className="text-center">
               <img
                 src={identidadEdicion.anversoUrl}
-                alt="Documento registrado — anverso"
+                alt="Documento registrado — delantera"
                 className="h-20 w-32 rounded border object-contain bg-card"
               />
               <p className="mt-1 text-[10px] text-muted-foreground">Documento registrado</p>
@@ -42,10 +42,10 @@ export function ClienteIdentidadEleccion({
             <div className="text-center">
               <img
                 src={identidadEdicion.reversoUrl}
-                alt="Documento registrado — reverso"
+                alt="Documento registrado — trasera"
                 className="h-20 w-32 rounded border object-contain bg-card"
               />
-              <p className="mt-1 text-[10px] text-muted-foreground">Reverso registrado</p>
+              <p className="mt-1 text-[10px] text-muted-foreground">Trasera registrada</p>
             </div>
           )}
         </div>

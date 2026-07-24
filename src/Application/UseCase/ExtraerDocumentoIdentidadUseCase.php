@@ -23,11 +23,11 @@ final class ExtraerDocumentoIdentidadUseCase
             ?? throw new \InvalidArgumentException('Tipo de escaneo no válido. Use dni_nie o pasaporte.');
 
         if ('' === $anversoBinary) {
-            throw new \InvalidArgumentException('La imagen del anverso es obligatoria.');
+            throw new \InvalidArgumentException('La imagen de la delantera es obligatoria.');
         }
 
         if ($tipo->requiereReverso() && (null === $reversoBinary || '' === $reversoBinary)) {
-            throw new \InvalidArgumentException('La imagen del reverso es obligatoria para DNI/NIE.');
+            throw new \InvalidArgumentException('La imagen de la trasera es obligatoria para DNI/NIE.');
         }
 
         $anversoPath = $this->writeTemp($anversoBinary, 'anverso');

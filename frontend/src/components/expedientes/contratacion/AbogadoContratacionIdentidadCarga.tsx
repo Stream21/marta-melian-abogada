@@ -30,6 +30,7 @@ export function AbogadoContratacionIdentidadCarga({
     nombre: string;
     campo?: string;
   } | null>(null);
+  const [duplicadoError, setDuplicadoError] = useState<string | null>(null);
 
   const guardarMutation = useMutation({
     mutationFn: ({
@@ -54,6 +55,7 @@ export function AbogadoContratacionIdentidadCarga({
       void queryClient.invalidateQueries({ queryKey: ['contratacion', expedienteId] });
       void queryClient.invalidateQueries({ queryKey: ['cliente'] });
       setDuplicado(null);
+      setDuplicadoError(null);
       setPaso('cerrado');
       setArchivos(null);
       setDatosIniciales(null);
@@ -61,11 +63,16 @@ export function AbogadoContratacionIdentidadCarga({
     },
     onError: (error, variables) => {
       if (isClienteDuplicadoError(error) && !variables.permitirDuplicado) {
+        setDuplicadoError(null);
         setDuplicado({
           datos: variables.datos,
           nombre: error.clienteExistenteNombre ?? 'otro cliente',
           campo: error.campoDuplicado,
         });
+        return;
+      }
+      if (variables.permitirDuplicado) {
+        setDuplicadoError(error instanceof Error ? error.message : 'No se pudieron guardar los datos.');
       }
     },
   });
@@ -136,9 +143,14 @@ export function AbogadoContratacionIdentidadCarga({
         clienteNombre={duplicado?.nombre ?? ''}
         campo={duplicado?.campo}
         loading={guardarMutation.isPending}
-        onCancel={() => setDuplicado(null)}
+        error={duplicadoError}
+        onCancel={() => {
+          setDuplicado(null);
+          setDuplicadoError(null);
+        }}
         onConfirm={() => {
           if (!duplicado) return;
+          setDuplicadoError(null);
           guardarMutation.mutate({ datos: duplicado.datos, permitirDuplicado: true });
         }}
         confirmLabel="Continuar con este cliente"

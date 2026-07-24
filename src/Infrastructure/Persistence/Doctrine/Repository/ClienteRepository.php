@@ -10,6 +10,7 @@ use App\Domain\Entity\TipoEscaneoDocumentoIdentidad;
 use App\Domain\Repository\ClienteRepositoryInterface;
 use App\Domain\ValueObject\ClienteId;
 use App\Infrastructure\Persistence\Doctrine\Entity\ClienteOrm;
+use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Doctrine\ORM\EntityManagerInterface;
 
 final class ClienteRepository implements ClienteRepositoryInterface
@@ -34,7 +35,25 @@ final class ClienteRepository implements ClienteRepositoryInterface
             $this->entityManager->persist($orm);
         }
 
-        $this->entityManager->flush();
+        try {
+            $this->entityManager->flush();
+        } catch (\Throwable $e) {
+            $isUnique = $e instanceof UniqueConstraintViolationException
+                || $e->getPrevious() instanceof UniqueConstraintViolationException;
+            if (!$isUnique) {
+                throw $e;
+            }
+
+            // Evitar estado inconsistente del Unit of Work tras el fallo.
+            $this->entityManager->clear();
+
+            throw new \InvalidArgumentException(
+                'No se pudo guardar el cliente porque el teléfono ya está asignado a otro. '
+                . 'Confirme continuar con el cliente repetido o use el cliente existente.',
+                0,
+                $e,
+            );
+        }
     }
 
     public function findById(ClienteId $id): ?Cliente

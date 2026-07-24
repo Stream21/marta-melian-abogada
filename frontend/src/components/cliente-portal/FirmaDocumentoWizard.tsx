@@ -240,7 +240,9 @@ export function FirmaDocumentoWizard({
                             description="Use el dedo o el ratón. Se incorporará al PDF."
                             filename={`firma-${doc.tipo}.png`}
                             isSaving={firmarMutation.isPending}
-                            onSave={(file) => firmarMutation.mutate({ tipo: doc.tipo, file })}
+                            onSave={(file) =>
+                              firmarMutation.mutateAsync({ tipo: doc.tipo, file })
+                            }
                           />
                         </div>
                       )}

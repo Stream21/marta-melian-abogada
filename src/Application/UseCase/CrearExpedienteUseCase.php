@@ -23,7 +23,7 @@ final class CrearExpedienteUseCase
             ExpedienteId::generate(),
             $input->numero,
             $input->titulo,
-            EstadoExpediente::from($input->estado),
+            EstadoExpediente::fromStorage($input->estado),
             new \DateTimeImmutable('now'),
             $input->clientName,
             $input->caseReference,

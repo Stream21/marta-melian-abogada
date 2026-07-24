@@ -192,7 +192,7 @@ async function analizarReverso(canvas: HTMLCanvasElement): Promise<OcrAnalisisMa
   return {
     progreso: Math.max(10, progresoVisual >= 28 ? 22 : 10),
     datosLeidos: false,
-    mensaje: 'Coloque el reverso con la banda de caracteres (MRZ) abajo en el marco',
+    mensaje: 'Coloque la trasera con la banda de caracteres (MRZ) abajo en el marco',
     analizando: false,
   };
 }
@@ -253,7 +253,7 @@ async function analizarAnverso(canvas: HTMLCanvasElement): Promise<OcrAnalisisMa
     return {
       progreso: 20,
       datosLeidos: false,
-      mensaje: 'Está mostrando el reverso (banda MRZ). Gire a la cara con foto',
+      mensaje: 'Está mostrando la trasera (banda MRZ). Gire a la cara con foto',
       analizando: false,
     };
   }
@@ -262,7 +262,7 @@ async function analizarAnverso(canvas: HTMLCanvasElement): Promise<OcrAnalisisMa
     return {
       progreso: 100,
       datosLeidos: true,
-      mensaje: 'Datos del anverso leídos correctamente',
+      mensaje: 'Datos de la delantera leídos correctamente',
       analizando: false,
     };
   }
@@ -281,7 +281,7 @@ async function analizarAnverso(canvas: HTMLCanvasElement): Promise<OcrAnalisisMa
     return {
       progreso: 40,
       datosLeidos: false,
-      mensaje: 'Leyendo anverso… mantenga el documento quieto',
+      mensaje: 'Leyendo la delantera… mantenga el documento quieto',
       analizando: false,
     };
   }
@@ -289,7 +289,7 @@ async function analizarAnverso(canvas: HTMLCanvasElement): Promise<OcrAnalisisMa
   return {
     progreso: 12,
     datosLeidos: false,
-    mensaje: 'Coloque el anverso (cara con foto) dentro del marco',
+    mensaje: 'Coloque la delantera (cara con foto) dentro del marco',
     analizando: false,
   };
 }

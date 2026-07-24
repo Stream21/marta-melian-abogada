@@ -135,7 +135,11 @@ export function ImagenDocumentoCaptura({
   };
 
   const etiquetaLadoCorto =
-    ladoCamara === 'reverso' ? 'reverso' : ladoCamara === 'pasaporte' ? 'pasaporte' : 'anverso';
+    ladoCamara === 'reverso'
+      ? 'Trasera'
+      : ladoCamara === 'pasaporte'
+        ? 'Pasaporte'
+        : 'Delantera';
 
   const aspectRatioCaptura =
     ladoCamara === 'pasaporte' ? PASAPORTE_ASPECT_RATIO : ID1_ASPECT_RATIO;

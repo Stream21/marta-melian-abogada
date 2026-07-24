@@ -17,7 +17,8 @@ final class GuardarDocumentosRequeridosUseCase
 {
     /** Formato de entrega en plataformas; los uploads se convierten a PDF en runtime. */
     private const FORMATO_ENTREGA = ['pdf'];
-    private const MAX_IMAGENES_CONJUNTO = 50;
+    private const MIN_IMAGENES_CONJUNTO = 1;
+    private const MAX_IMAGENES_CONJUNTO = 100;
 
     public function __construct(
         private TramiteDocumentoRequeridoRepositoryInterface $repository,
@@ -118,17 +119,12 @@ final class GuardarDocumentosRequeridosUseCase
         }
 
         $maxImagenes = (int) $raw;
-        if ($maxImagenes < 2) {
-            throw new \InvalidArgumentException(
-                sprintf('El conjunto del documento %d debe permitir al menos 2 archivos.', $index),
-            );
-        }
-
-        if ($maxImagenes > self::MAX_IMAGENES_CONJUNTO) {
+        if ($maxImagenes < self::MIN_IMAGENES_CONJUNTO || $maxImagenes > self::MAX_IMAGENES_CONJUNTO) {
             throw new \InvalidArgumentException(
                 sprintf(
-                    'El documento %d no puede superar %d archivos.',
+                    'El conjunto del documento %d debe permitir entre %d y %d archivos.',
                     $index,
+                    self::MIN_IMAGENES_CONJUNTO,
                     self::MAX_IMAGENES_CONJUNTO,
                 ),
             );

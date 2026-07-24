@@ -30,6 +30,7 @@ final class ExpedienteResponseMapper
             numero: $expediente->numero(),
             titulo: $expediente->titulo(),
             estado: $expediente->estado()->value,
+            estadoLabel: $expediente->estado()->label(),
             fechaApertura: $expediente->fechaApertura()->format(\DateTimeInterface::ATOM),
             clientName: $expediente->clientName(),
             caseReference: $expediente->caseReference(),

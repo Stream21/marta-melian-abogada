@@ -148,10 +148,6 @@ services:
         arguments:
             $frontendBaseUrl: '%env(FRONTEND_BASE_URL)%'
 
-    App\Application\UseCase\GenerarPdfConjuntoRequerimientosUseCase:
-        arguments:
-            $projectDir: '%kernel.project_dir%'
-
     # $projectDir solo en DocumentoUploadNormalizer (no en los UseCase de subida).
     App\Application\Service\DocumentoEntregaArchivosService:
         arguments:

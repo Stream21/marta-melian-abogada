@@ -36,6 +36,15 @@ final class ObtenerAccesoExpedienteUseCase
             throw new \InvalidArgumentException('Enlace de acceso no válido o expirado.');
         }
 
+        if (!$expediente->estado()->isOperativo()) {
+            throw new \InvalidArgumentException(
+                sprintf(
+                    'Este expediente está %s y no admite acceso del cliente. Contacte con su abogado.',
+                    strtolower($expediente->estado()->label()),
+                ),
+            );
+        }
+
         $tramiteNombre = '';
         if (null !== $expediente->tramiteId()) {
             $tramite = $this->tramiteRepository->findById(new TramiteId($expediente->tramiteId()));

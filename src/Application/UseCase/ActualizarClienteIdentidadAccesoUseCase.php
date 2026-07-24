@@ -239,7 +239,7 @@ final class ActualizarClienteIdentidadAccesoUseCase
             $tieneReverso = (null !== $reversoBinary && '' !== $reversoBinary)
                 || (null !== $cliente->documentoIdentidadReversoPath() && '' !== $cliente->documentoIdentidadReversoPath());
             if (!$tieneReverso) {
-                throw new \InvalidArgumentException('El reverso del documento es obligatorio para DNI/NIE.');
+                throw new \InvalidArgumentException('La trasera del documento es obligatoria para DNI/NIE.');
             }
         }
     }

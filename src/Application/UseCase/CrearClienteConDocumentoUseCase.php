@@ -31,11 +31,11 @@ final class CrearClienteConDocumentoUseCase
             ?? throw new \InvalidArgumentException('Tipo de escaneo no válido.');
 
         if ('' === $anversoBinary) {
-            throw new \InvalidArgumentException('El documento de identidad (anverso) es obligatorio.');
+            throw new \InvalidArgumentException('El documento de identidad (delantera) es obligatorio.');
         }
 
         if ($tipo->requiereReverso() && (null === $reversoBinary || '' === $reversoBinary)) {
-            throw new \InvalidArgumentException('El reverso del documento es obligatorio para DNI/NIE.');
+            throw new \InvalidArgumentException('La trasera del documento es obligatoria para DNI/NIE.');
         }
 
         $anversoTemp = $this->writeTemp($anversoBinary, 'anverso');

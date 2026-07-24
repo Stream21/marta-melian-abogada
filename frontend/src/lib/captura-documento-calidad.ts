@@ -446,7 +446,7 @@ function mensajeEstado(input: {
   if (!input.textoLegible) {
     return input.lado === 'reverso' || input.lado === 'pasaporte'
       ? 'Asegúrese de que la banda MRZ (abajo) se lea con claridad'
-      : 'Enfoque los datos y la foto del anverso';
+      : 'Enfoque los datos y la foto de la delantera';
   }
   return 'Casi listo — mantenga quieto';
 }

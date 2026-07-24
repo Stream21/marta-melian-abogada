@@ -36,12 +36,17 @@ export function MultiSelectFilter({
   };
 
   const hasSelection = values.length > 0;
+  const selectedLabels = values.map(
+    (value) => options.find((o) => o.value === value)?.label ?? value,
+  );
   const displayText =
     values.length === 0
       ? (emptyLabel ?? label)
       : values.length === 1
-        ? (options.find((o) => o.value === values[0])?.label ?? values[0])
-        : `${label} (${values.length})`;
+        ? `${label}: ${selectedLabels[0]}`
+        : values.length <= 2
+          ? `${label}: ${selectedLabels.join(', ')}`
+          : `${label}: ${selectedLabels.length} seleccionados`;
 
   return (
     <div ref={ref} className="relative">
@@ -50,8 +55,9 @@ export function MultiSelectFilter({
         onClick={() => setOpen((prev) => !prev)}
         aria-label={label}
         aria-expanded={open}
+        title={hasSelection ? `${label}: ${selectedLabels.join(', ')}` : (emptyLabel ?? label)}
         className={cn(
-          'flex h-9 min-w-[140px] items-center gap-2 rounded-lg border px-3 text-sm transition-all focus:outline-none focus:ring-1 focus:ring-ring',
+          'flex h-9 min-w-[140px] max-w-[220px] items-center gap-2 rounded-lg border px-3 text-sm transition-all focus:outline-none focus:ring-1 focus:ring-ring',
           hasSelection
             ? 'border-primary bg-primary/5 font-medium text-primary'
             : 'border-border bg-muted/50 text-muted-foreground',
@@ -68,6 +74,9 @@ export function MultiSelectFilter({
 
       {open && (
         <div className="absolute left-0 top-full z-30 mt-1 min-w-[220px] rounded-lg border bg-card p-2 shadow-lg">
+          <p className="px-2 pb-1.5 pt-0.5 text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
+            {label}
+          </p>
           {options.map((opt) => (
             <label
               key={opt.value}

@@ -53,8 +53,8 @@ export function ContratacionRevisionModal({
   const [firmasARefirmar, setFirmasARefirmar] = useState<string[]>([]);
 
   const MOTIVOS_DATOS_CLIENTE: { id: string; label: string }[] = [
-    { id: 'documento_anverso', label: 'Nueva foto del anverso del documento' },
-    { id: 'documento_reverso', label: 'Nueva foto del reverso (MRZ)' },
+    { id: 'documento_anverso', label: 'Nueva foto de la delantera del documento' },
+    { id: 'documento_reverso', label: 'Nueva foto de la trasera (MRZ)' },
     { id: 'documento_completo', label: 'Actualizar documento completo' },
     { id: 'documentacion_adicional', label: 'Documentación adicional del trámite' },
   ];

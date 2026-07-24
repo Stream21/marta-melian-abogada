@@ -231,7 +231,7 @@ final class ContratacionController extends AbstractController
         $reversoFile = $request->files->get('reverso');
 
         if (!is_object($anversoFile) || !method_exists($anversoFile, 'getContent')) {
-            throw new \InvalidArgumentException('Debe adjuntar la imagen del anverso del documento.');
+            throw new \InvalidArgumentException('Debe adjuntar la imagen de la delantera del documento.');
         }
 
         $anverso = (string) $anversoFile->getContent();

@@ -63,8 +63,8 @@ export function ClienteDocumentoIdentidadPanel({ cliente }: ClienteDocumentoIden
       </div>
 
       <div className="grid gap-4 p-6 md:grid-cols-2">
-        <ImagenDocumento label={doc.tipoEscaneo === 'pasaporte' ? 'Página de datos' : 'Anverso'} url={anversoUrl} />
-        {doc.tieneReverso && <ImagenDocumento label="Reverso" url={reversoUrl} />}
+        <ImagenDocumento label={doc.tipoEscaneo === 'pasaporte' ? 'Página de datos' : 'Delantera'} url={anversoUrl} />
+        {doc.tieneReverso && <ImagenDocumento label="Trasera" url={reversoUrl} />}
       </div>
     </div>
   );

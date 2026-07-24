@@ -10,7 +10,6 @@ use App\Application\UseCase\AsignarDocumentoRequerimientoAlAbogadoUseCase;
 use App\Application\UseCase\AvanzarTramitacionUseCase;
 use App\Application\UseCase\DerivarDocumentoRequerimientoAlClienteUseCase;
 use App\Application\UseCase\DevolverDocumentoRequerimientosUseCase;
-use App\Application\UseCase\GenerarPdfConjuntoRequerimientosUseCase;
 use App\Application\UseCase\ObtenerRequerimientosExpedienteUseCase;
 use App\Application\UseCase\SubirDocumentoRequerimientosAbogadoUseCase;
 use App\Application\UseCase\ValidarDocumentoRequerimientosUseCase;
@@ -40,7 +39,6 @@ final class RequerimientosController extends AbstractController
         private DerivarDocumentoRequerimientoAlClienteUseCase $derivarDocumentoCliente,
         private SubirDocumentoRequerimientosAbogadoUseCase $subirDocumentoAbogado,
         private AvanzarTramitacionUseCase $avanzarTramitacion,
-        private GenerarPdfConjuntoRequerimientosUseCase $generarPdfConjunto,
         private ExpedienteDocumentoRepositoryInterface $documentoEntregadoRepository,
         private ExpedienteFileStoragePort $fileStorage,
         private UploadedFileMimeDetector $mimeDetector,
@@ -185,36 +183,6 @@ final class RequerimientosController extends AbstractController
             }
 
             return SafeJsonResponse::message($message, Response::HTTP_BAD_REQUEST);
-        }
-    }
-
-    #[Route(path: '/pdf-conjunto', name: 'pdf_conjunto', methods: ['POST'])]
-    public function pdfConjunto(string $id, Request $request): Response
-    {
-        $data = json_decode($request->getContent(), true) ?? [];
-        $archivoIds = $data['archivoIds'] ?? [];
-        $documentoIds = $data['documentoIds'] ?? [];
-        if (!is_array($archivoIds)) {
-            return new JsonResponse(['message' => 'archivoIds debe ser un array.'], Response::HTTP_BAD_REQUEST);
-        }
-        if (!is_array($documentoIds)) {
-            return new JsonResponse(['message' => 'documentoIds debe ser un array.'], Response::HTTP_BAD_REQUEST);
-        }
-
-        $archivoIds = array_values(array_map(static fn ($v) => (string) $v, $archivoIds));
-        $documentoIds = array_values(array_map(static fn ($v) => (string) $v, $documentoIds));
-
-        try {
-            $result = ($this->generarPdfConjunto)($id, $documentoIds, $archivoIds);
-
-            return new Response($result['content'], Response::HTTP_OK, [
-                'Content-Type' => 'application/pdf',
-                'Content-Disposition' => sprintf('attachment; filename="%s"', $result['filename']),
-            ]);
-        } catch (\InvalidArgumentException $e) {
-            return new JsonResponse(['message' => $e->getMessage()], Response::HTTP_BAD_REQUEST);
-        } catch (\RuntimeException $e) {
-            return new JsonResponse(['message' => $e->getMessage()], Response::HTTP_BAD_REQUEST);
         }
     }
 

@@ -147,6 +147,8 @@ export function DocumentoPdfPreview({
   }, [open, previewUrl]);
 
   const canClose = !requireFullRead || scrollComplete || fullyRead;
+  const needsScrollCue =
+    requireFullRead && !scrollComplete && !loading && !rendering && !error && pageCount > 0;
 
   const handleOpenChange = (next: boolean) => {
     if (!next && open && !canClose) return;
@@ -172,9 +174,9 @@ export function DocumentoPdfPreview({
         </Button>
       </DialogTrigger>
       {fullyRead && requireFullRead && (
-        <p className="mt-2 flex items-center gap-1.5 text-xs font-medium text-emerald-700">
-          <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
-          Documento revisado
+        <p className="mt-2 flex items-center gap-1.5 text-sm font-medium text-emerald-700">
+          <CheckCircle2 className="h-4 w-4 shrink-0" />
+          Documento revisado hasta el final
         </p>
       )}
       <DialogContent
@@ -191,18 +193,16 @@ export function DocumentoPdfPreview({
       >
         <DialogHeader>
           <DialogTitle>{label}</DialogTitle>
-          {requireFullRead && !scrollComplete ? (
-            <DialogDescription>
-              Desplácese hasta el final o use «Ir al final» para continuar.
-            </DialogDescription>
-          ) : (
-            <DialogDescription className="sr-only">Vista previa del documento</DialogDescription>
-          )}
+          <DialogDescription className="sr-only">
+            {requireFullRead && !scrollComplete
+              ? 'Desplácese hasta el final del documento para continuar.'
+              : 'Vista previa del documento'}
+          </DialogDescription>
         </DialogHeader>
 
         <div
           ref={scrollRef}
-          className="min-h-0 flex-1 overflow-y-auto rounded-lg border bg-muted/30 p-3"
+          className="min-h-0 flex-1 overflow-y-auto rounded-lg border border-border bg-muted/30 p-3"
           onScroll={tryDetectScrollEnd}
         >
           {(loading || rendering) && (
@@ -219,18 +219,26 @@ export function DocumentoPdfPreview({
           <div ref={pagesRef} className={cn((loading || rendering || error) && 'hidden')} />
         </div>
 
-        {pageCount > 0 && !scrollComplete && requireFullRead && !loading && !rendering && (
-          <Button type="button" variant="outline" className="w-full" onClick={scrollToEnd}>
-            <ChevronsDown className="mr-2 h-4 w-4" />
+        {needsScrollCue && (
+          <Button
+            type="button"
+            size="lg"
+            className="w-full gap-2 bg-amber-500 text-amber-950 hover:bg-amber-400 focus-visible:ring-amber-500"
+            onClick={scrollToEnd}
+          >
+            <ChevronsDown className="h-5 w-5" />
             Ir al final del documento
           </Button>
         )}
 
         {scrollComplete && requireFullRead && (
-          <p className="flex items-center gap-2 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
-            <CheckCircle2 className="h-4 w-4 shrink-0" />
-            Documento revisado. Ya puede continuar.
-          </p>
+          <div
+            className="flex items-center gap-3 rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-3 text-emerald-900"
+            role="status"
+          >
+            <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-600" />
+            <p className="text-sm font-medium">Documento revisado. Ya puede continuar.</p>
+          </div>
         )}
 
         <DialogFooter>
@@ -241,7 +249,7 @@ export function DocumentoPdfPreview({
             className="w-full sm:w-auto"
             onClick={() => setOpen(false)}
           >
-            {canClose ? 'Listo' : 'Lea hasta el final para continuar'}
+            Listo
           </Button>
         </DialogFooter>
       </DialogContent>

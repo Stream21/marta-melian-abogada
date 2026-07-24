@@ -10,7 +10,7 @@ interface DocumentoLadoGuiaProps {
 }
 
 const TITULO: Record<LadoGuia, string> = {
-  anverso: 'Cara frontal · con foto',
+  anverso: 'Cara delantera · con foto',
   reverso: 'Cara trasera · banda inferior',
   pasaporte: 'Página de datos del pasaporte',
 };
@@ -38,12 +38,12 @@ function GuiaTarjetaDosCaras({ activa }: { activa: 'anverso' | 'reverso' }) {
       <CaraMini
         tipo="anverso"
         activa={activa === 'anverso'}
-        etiqueta="Anverso"
+        etiqueta="Delantera"
       />
       <CaraMini
         tipo="reverso"
         activa={activa === 'reverso'}
-        etiqueta="Reverso"
+        etiqueta="Trasera"
       />
     </div>
   );

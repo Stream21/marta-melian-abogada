@@ -153,6 +153,7 @@ export function ClienteIdentidadOnboarding({
     nombre: string;
     campo?: string;
   } | null>(null);
+  const [duplicadoError, setDuplicadoError] = useState<string | null>(null);
 
   const guardarAccesoMutation = useMutation({
     mutationFn: (payload: {
@@ -173,10 +174,12 @@ export function ClienteIdentidadOnboarding({
       }),
     onSuccess: (data) => {
       setDuplicado(null);
+      setDuplicadoError(null);
       onCompletado?.(data);
     },
     onError: (error, variables) => {
       if (isClienteDuplicadoError(error) && !variables.permitirDuplicado) {
+        setDuplicadoError(null);
         setDuplicado({
           archivos: variables.archivos,
           datos: variables.datos,
@@ -184,6 +187,10 @@ export function ClienteIdentidadOnboarding({
           nombre: error.clienteExistenteNombre ?? 'otro cliente',
           campo: error.campoDuplicado,
         });
+        return;
+      }
+      if (variables.permitirDuplicado) {
+        setDuplicadoError(error instanceof Error ? error.message : 'No se pudieron guardar los datos.');
       }
     },
   });
@@ -294,9 +301,9 @@ export function ClienteIdentidadOnboarding({
             <div className="rounded-xl border border-primary/25 bg-primary/5 px-4 py-3 text-sm">
               <p className="font-semibold text-foreground">
                 {analisis.ladoDocumento === 'anverso'
-                  ? 'Fotografie de nuevo el anverso'
+                  ? 'Fotografie de nuevo la delantera'
                   : analisis.ladoDocumento === 'reverso'
-                    ? 'Fotografie de nuevo el reverso'
+                    ? 'Fotografie de nuevo la trasera'
                     : 'Vuelva a escanear su documento'}
               </p>
               <p className="mt-1 text-xs text-muted-foreground">
@@ -372,9 +379,14 @@ export function ClienteIdentidadOnboarding({
         clienteNombre={duplicado?.nombre ?? ''}
         campo={duplicado?.campo}
         loading={guardarAccesoMutation.isPending}
-        onCancel={() => setDuplicado(null)}
+        error={duplicadoError}
+        onCancel={() => {
+          setDuplicado(null);
+          setDuplicadoError(null);
+        }}
         onConfirm={() => {
           if (!duplicado) return;
+          setDuplicadoError(null);
           guardarAccesoMutation.mutate({ ...duplicado, permitirDuplicado: true });
         }}
         confirmLabel="Continuar de todos modos"

@@ -202,7 +202,39 @@ El `.env` no está en Git → `git pull` no lo borra.
 | HTTPS caído | `systemctl status caddy` y `journalctl -u caddy -n 50` |
 | UI vieja tras deploy | Confirmar que `deploy-staging.sh` terminó el build; hard refresh (Ctrl+F5) |
 | Enlaces WhatsApp con IP antigua | Revisar `FRONTEND_BASE_URL` en `.env` del VPS |
+| Portal cliente: «enlace no válido» + error Proxies | Caché Doctrine no escribible por `www-data` tras `cache:clear` como root. Ver abajo. |
+| Logo/sello despacho: «public/storage/despacho no tiene permisos» | Storage/var creados como root. Ver abajo. |
 | Migración falla | Ver log; no forzar a ciegas. Revisar estado: `php bin/console doctrine:migrations:status` |
+
+### Directorios de escritura como root (`www-data`)
+
+Si el código o los volúmenes quedan en `root` (deploy/`cache:clear`/`mkdir` como root), php-fpm no puede escribir. Síntomas típicos:
+
+- `Your proxy directory ".../Proxies" must be writable`
+- `El directorio public/storage/despacho no tiene permisos de escritura para el servidor.`
+- Fallos al subir documentos de cliente (`var/clientes`, etc.)
+
+**Arreglo inmediato (no hace falta redeploy completo):**
+
+```bash
+cd /opt/bufete-app
+docker compose -f docker-compose.yml -f docker-compose.staging.yml exec -u root php sh -c \
+  'mkdir -p /app/public/storage/despacho \
+            /app/var/cache/prod/doctrine/orm/Proxies /app/var/log \
+            /app/var/clientes /app/var/expedientes /app/var/documentos/convertidos \
+   && chown -R www-data:www-data \
+        /app/public/storage \
+        /app/var/cache /app/var/log \
+        /app/var/clientes /app/var/expedientes /app/var/documentos \
+   && chmod -R ug+rwX \
+        /app/public/storage \
+        /app/var/cache /app/var/log \
+        /app/var/clientes /app/var/expedientes /app/var/documentos'
+```
+
+No hace falta `chown` de todo `/opt/bufete-app` (el código puede seguir en root). Solo las carpetas de escritura en runtime.
+
+`deploy-staging.sh` y el entrypoint de PHP ya aplican esto tras el deploy / al arrancar el contenedor.
 
 Logs útiles:
 

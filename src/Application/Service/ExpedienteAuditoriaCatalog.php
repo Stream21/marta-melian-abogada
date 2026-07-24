@@ -37,7 +37,7 @@ final class ExpedienteAuditoriaCatalog
             return 'comunicacion';
         }
 
-        if ('fase_completada' === $tipo || str_contains($tipo, 'fase_')) {
+        if ('fase_completada' === $tipo || str_contains($tipo, 'fase_') || str_starts_with($tipo, 'expediente_')) {
             return 'estado';
         }
 
@@ -89,6 +89,10 @@ final class ExpedienteAuditoriaCatalog
             'documento_requerimientos_validado' => 'Documento validado (requerimientos)',
             'documento_requerimientos_devuelto' => 'Documento devuelto (requerimientos)',
             'documento_requerido_anadido' => 'Documento requerido añadido',
+            'expediente_cancelado' => 'Expediente cancelado',
+            'expediente_reabierto' => 'Expediente reabierto',
+            'expediente_archivado' => 'Expediente archivado',
+            'expediente_finalizado' => 'Expediente archivado',
             default => ucfirst(str_replace('_', ' ', $tipo)),
         };
     }

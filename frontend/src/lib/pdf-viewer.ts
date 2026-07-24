@@ -1,6 +1,7 @@
 import * as pdfjsLib from 'pdfjs-dist';
 import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 
+// Asset hasheado por Vite. Nginx debe servir /assets/*.mjs como JS (no index.html).
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
 
 const RENDER_SCALE = 1.4;

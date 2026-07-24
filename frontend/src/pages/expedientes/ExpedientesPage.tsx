@@ -17,7 +17,7 @@ export function ExpedientesPage() {
     <PageShell>
       <PageHeader
         title="Expedientes"
-        subtitle="Listado de expedientes activos"
+        subtitle="Listado de expedientes (abiertos, cancelados o archivados)"
         actions={
           <Button asChild>
             <Link to="/expedientes/nuevo">

@@ -90,7 +90,7 @@ final class LoadMocksCommand extends Command
             [
                 'numero' => 'EXP-2024-003',
                 'titulo' => 'Divorcio de mutuo acuerdo - Familia Ruiz',
-                'estado' => EstadoExpediente::Cerrado,
+                'estado' => EstadoExpediente::Archivado,
                 'clientName' => 'Antonio Ruiz y Carmen Fernández',
                 'caseReference' => 'Procedimiento 456/2024',
                 'folderPath' => 'expedientes/2024/EXP-003',
@@ -108,7 +108,7 @@ final class LoadMocksCommand extends Command
             [
                 'numero' => 'EXP-2023-012',
                 'titulo' => 'Arrendamiento comercial - Local Calle Mayor',
-                'estado' => EstadoExpediente::Archivado,
+                'estado' => EstadoExpediente::Cancelado,
                 'clientName' => 'Comercial Calle Mayor S.L.',
                 'caseReference' => 'Arrendamiento 2023/12',
                 'folderPath' => 'expedientes/2023/EXP-012',

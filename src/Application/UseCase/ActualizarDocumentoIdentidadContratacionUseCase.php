@@ -78,11 +78,11 @@ final class ActualizarDocumentoIdentidadContratacionUseCase
             ?? throw new \InvalidArgumentException('Tipo de escaneo no válido.');
 
         if ('' === $anversoBinary) {
-            throw new \InvalidArgumentException('Debe adjuntar la imagen del anverso del documento.');
+            throw new \InvalidArgumentException('Debe adjuntar la imagen de la delantera del documento.');
         }
 
         if ($tipo->requiereReverso() && (null === $reversoBinary || '' === $reversoBinary)) {
-            throw new \InvalidArgumentException('El reverso del documento es obligatorio para DNI/NIE.');
+            throw new \InvalidArgumentException('La trasera del documento es obligatoria para DNI/NIE.');
         }
 
         $cliente = $this->clienteRepository->findById(new ClienteId($clienteId));

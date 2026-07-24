@@ -15,6 +15,8 @@ interface ClienteDuplicadoConfirmDialogProps {
   clienteNombre: string;
   campo?: CampoDuplicadoCliente | string;
   loading?: boolean;
+  /** Error de la confirmación (p. ej. al reintentar con permitirDuplicado). */
+  error?: string | null;
   onCancel: () => void;
   onConfirm: () => void;
   /** Texto del botón de confirmación */
@@ -36,6 +38,7 @@ export function ClienteDuplicadoConfirmDialog({
   clienteNombre,
   campo,
   loading = false,
+  error = null,
   onCancel,
   onConfirm,
   confirmLabel = 'Continuar de todos modos',
@@ -50,7 +53,7 @@ export function ClienteDuplicadoConfirmDialog({
           <DialogDescription asChild>
             <div className="space-y-2 text-sm text-muted-foreground">
               <p>
-                Ya existe el cliente <strong className="text-foreground">{clienteNombre}</strong> con el
+                Ya existe el cliente <strong className="text-foreground">{clienteNombre || 'otro cliente'}</strong> con el
                 mismo {queCoincide}.
               </p>
               {campo === 'telefono' && (
@@ -63,6 +66,11 @@ export function ClienteDuplicadoConfirmDialog({
             </div>
           </DialogDescription>
         </DialogHeader>
+        {error && (
+          <p className="text-sm text-destructive" role="alert">
+            {error}
+          </p>
+        )}
         <DialogFooter>
           <Button type="button" variant="outline" onClick={onCancel} disabled={loading}>
             Cancelar
