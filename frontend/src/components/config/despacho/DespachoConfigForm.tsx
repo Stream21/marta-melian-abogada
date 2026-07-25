@@ -354,7 +354,9 @@ export function DespachoConfigForm() {
                   isSaving={selloMutation.isPending}
                   disabled={isPending}
                   filename="firma-letrada.png"
-                  onSave={(file) => selloMutation.mutateAsync(file)}
+                  onSave={async (file) => {
+                    await selloMutation.mutateAsync(file);
+                  }}
                 />
               </div>
             </DespachoConfigSection>
