@@ -6,6 +6,8 @@ namespace App\Application\UseCase;
 
 use App\Application\Service\ContratacionAccesoPresenter;
 use App\Application\Service\RequerimientosAccesoPresenter;
+use App\Application\Service\ResolucionAccesoPresenter;
+use App\Application\Service\TramitacionAccesoPresenter;
 use App\Domain\Entity\FaseNegocioExpediente;
 use App\Domain\Repository\ExpedienteRepositoryInterface;
 use App\Domain\Repository\ServicioRepositoryInterface;
@@ -23,6 +25,8 @@ final class ObtenerAccesoExpedienteUseCase
         private InicializarRequerimientosUseCase $inicializarRequerimientos,
         private ContratacionAccesoPresenter $presenter,
         private RequerimientosAccesoPresenter $requerimientosPresenter,
+        private TramitacionAccesoPresenter $tramitacionPresenter,
+        private ResolucionAccesoPresenter $resolucionPresenter,
     ) {
     }
 
@@ -68,6 +72,8 @@ final class ObtenerAccesoExpedienteUseCase
 
         $vista = $this->presenter->present($expediente, $token);
         $requerimientos = $this->requerimientosPresenter->present($expediente);
+        $tramitacion = $this->tramitacionPresenter->present($expediente);
+        $resolucion = $this->resolucionPresenter->present($expediente);
 
         return [
             'expedienteNumero' => $expediente->numero(),
@@ -77,6 +83,8 @@ final class ObtenerAccesoExpedienteUseCase
             'faseNegocioLabel' => $expediente->faseNegocio()->label(),
             'estadoFase' => $expediente->estadoFase()->value,
             'estadoFaseLabel' => $expediente->estadoFase()->label(),
+            'subfaseTramitacion' => $expediente->subfaseTramitacion()?->value,
+            'subfaseTramitacionLabel' => $expediente->subfaseTramitacion()?->label(),
             'fechaVencimientoFase' => $expediente->fechaVencimientoFase()?->format('Y-m-d'),
             'honorariosAcordados' => $expediente->honorariosAcordados(),
             'metodoPago' => $expediente->metodoPago()->value,
@@ -84,6 +92,8 @@ final class ObtenerAccesoExpedienteUseCase
             'numCuotas' => $expediente->numCuotas(),
             ...$vista,
             'requerimientos' => $requerimientos,
+            'tramitacion' => $tramitacion,
+            'resolucion' => $resolucion,
         ];
     }
 }

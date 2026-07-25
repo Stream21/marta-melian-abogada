@@ -5,7 +5,8 @@ import { api } from '@/api/client';
 import type { ExpedienteNotificacionSearch } from '@/lib/notificacion-destino';
 import { ContratacionGestionPanel } from '@/components/expedientes/contratacion/ContratacionGestionPanel';
 import { RequerimientosGestionPanel } from '@/components/expedientes/requerimientos/RequerimientosGestionPanel';
-import { TramitacionEnConstruccionPanel } from '@/components/expedientes/tramitacion/TramitacionEnConstruccionPanel';
+import { TramitacionPanel } from '@/components/expedientes/tramitacion/TramitacionPanel';
+import { ResolucionPanel } from '@/components/expedientes/resolucion/ResolucionPanel';
 import { ExpedienteEscritosPanel } from '@/components/expedientes/escritos/ExpedienteEscritosPanel';
 import { ExpedienteFacturacionPanel } from '@/components/expedientes/ExpedienteFacturacionPanel';
 import { ExpedienteDocumentacionPanel } from '@/components/expedientes/ExpedienteDocumentacionPanel';
@@ -83,8 +84,17 @@ export function ExpedienteDetailPage({ expedienteId, notificacionSearch }: Exped
                 {FASE_LABELS[expediente.faseNegocio] ?? expediente.faseNegocio}
               </Badge>
             )}
-            {expediente.estadoFase && (
-              <Badge variant="secondary">{expediente.estadoFase.replace(/_/g, ' ')}</Badge>
+            {expediente.faseNegocio === 'tramitacion' && expediente.actorBandejaTramitacion && (
+              <Badge variant={expediente.actorBandejaTramitacion === 'despacho' ? 'warning' : 'info'}>
+                {expediente.actorBandejaTramitacion === 'despacho' ? 'En despacho' : 'En Mercurio'}
+              </Badge>
+            )}
+            {expediente.faseNegocio === 'tramitacion' && expediente.subfaseTramitacionLabel ? (
+              <Badge variant="secondary">{expediente.subfaseTramitacionLabel}</Badge>
+            ) : (
+              expediente.estadoFase && (
+                <Badge variant="secondary">{expediente.estadoFase.replace(/_/g, ' ')}</Badge>
+              )
             )}
             {expediente.honorariosAcordados != null && expediente.honorariosAcordados > 0 && (
               <span className="text-sm text-muted-foreground">
@@ -157,10 +167,9 @@ export function ExpedienteDetailPage({ expedienteId, notificacionSearch }: Exped
               onFocusConsumed={limpiarNotificacionSearch}
             />
           ) : expediente?.faseNegocio === 'tramitacion' ? (
-            <TramitacionEnConstruccionPanel
-              expedienteId={expedienteId}
-              numero={expediente.numero}
-            />
+            <TramitacionPanel expedienteId={expedienteId} numero={expediente.numero} />
+          ) : expediente?.faseNegocio === 'resolucion' ? (
+            <ResolucionPanel expedienteId={expedienteId} numero={expediente.numero} />
           ) : expediente ? (
             <StubTab label="Gestión de Fases" />
           ) : (

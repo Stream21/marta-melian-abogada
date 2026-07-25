@@ -54,6 +54,9 @@ class ExpedienteOrm
     #[ORM\Column(type: Types::STRING, length: 30, options: ['default' => 'pendiente_cliente'])]
     private string $estadoFase = 'pendiente_cliente';
 
+    #[ORM\Column(type: Types::STRING, length: 40, nullable: true)]
+    private ?string $subfaseTramitacion = null;
+
     #[ORM\Column(type: Types::DECIMAL, precision: 10, scale: 2, options: ['default' => '0'])]
     private string $honorariosAcordados = '0';
 
@@ -220,6 +223,16 @@ class ExpedienteOrm
     public function setEstadoFase(string $estadoFase): void
     {
         $this->estadoFase = $estadoFase;
+    }
+
+    public function getSubfaseTramitacion(): ?string
+    {
+        return $this->subfaseTramitacion;
+    }
+
+    public function setSubfaseTramitacion(?string $subfaseTramitacion): void
+    {
+        $this->subfaseTramitacion = $subfaseTramitacion;
     }
 
     public function getHonorariosAcordados(): string

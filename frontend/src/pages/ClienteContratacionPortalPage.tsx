@@ -11,6 +11,8 @@ import {
 import { api, type AccesoExpedienteResponse, type AccesoPasoResponse } from '@/api/client';
 import { DocumentoUploadPanel } from '@/components/cliente-portal/DocumentoUploadPanel';
 import { RequerimientosClientePortal } from '@/components/cliente-portal/RequerimientosClientePortal';
+import { TramitacionClientePortal } from '@/components/cliente-portal/TramitacionClientePortal';
+import { ResolucionClientePortal } from '@/components/cliente-portal/ResolucionClientePortal';
 import { FirmaDocumentoWizard } from '@/components/cliente-portal/FirmaDocumentoWizard';
 import { PortalClienteShell } from '@/components/cliente-portal/PortalClienteShell';
 import { PortalClienteBrandingHero } from '@/components/cliente-portal/PortalClienteBrandingHero';
@@ -41,7 +43,12 @@ export function ClienteContratacionPortalPage({ token }: ClienteContratacionPort
     retry: false,
     refetchInterval: (query) => {
       const fase = query.state.data?.faseNegocio;
-      return fase === 'contratacion' || fase === 'requerimientos' ? 8000 : false;
+      return fase === 'contratacion' ||
+        fase === 'requerimientos' ||
+        fase === 'tramitacion' ||
+        fase === 'resolucion'
+        ? 8000
+        : false;
     },
   });
 
@@ -98,6 +105,22 @@ export function ClienteContratacionPortalPage({ token }: ClienteContratacionPort
     return (
       <PortalClienteShell data={data}>
         <RequerimientosClientePortal token={token} data={data} />
+      </PortalClienteShell>
+    );
+  }
+
+  if (data.faseNegocio === 'tramitacion') {
+    return (
+      <PortalClienteShell data={data}>
+        <TramitacionClientePortal token={token} data={data} />
+      </PortalClienteShell>
+    );
+  }
+
+  if (data.faseNegocio === 'resolucion') {
+    return (
+      <PortalClienteShell data={data}>
+        <ResolucionClientePortal data={data} />
       </PortalClienteShell>
     );
   }

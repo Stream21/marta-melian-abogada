@@ -10,6 +10,7 @@ use App\Domain\Entity\ActorHitoExpediente;
 use App\Domain\Entity\EstadoFaseExpediente;
 use App\Domain\Entity\ExpedienteHito;
 use App\Domain\Entity\FaseNegocioExpediente;
+use App\Domain\Entity\SubfaseTramitacion;
 use App\Domain\Repository\ContratacionRepositoryInterface;
 use App\Domain\Repository\ExpedienteDocumentoRepositoryInterface;
 use App\Domain\Repository\ExpedienteDocumentoRequeridoRepositoryInterface;
@@ -59,7 +60,8 @@ final class AvanzarTramitacionUseCase
 
         $this->expedienteRepository->save(
             $expediente
-                ->withFaseNegocio(FaseNegocioExpediente::Tramitacion, EstadoFaseExpediente::PendienteCliente)
+                ->withFaseNegocio(FaseNegocioExpediente::Tramitacion, EstadoFaseExpediente::Completada)
+                ->withSubfaseTramitacion(SubfaseTramitacion::PreparacionPresentacion)
                 ->touchEstadoCambio(),
         );
 

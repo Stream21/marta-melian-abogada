@@ -786,6 +786,162 @@ export const api = {
   documentacionIdentidadUrl: (expedienteId: string, lado: 'anverso' | 'reverso') =>
     `/api/expedientes/${encodeURIComponent(expedienteId)}/documentacion/identidad/${lado}`,
 
+  getTramitacion: (expedienteId: string) =>
+    request<TramitacionResponse>(
+      '/api/expedientes/' + encodeURIComponent(expedienteId) + '/tramitacion',
+    ),
+
+  registrarPresentacionTelematica: (
+    expedienteId: string,
+    body: {
+      presentacion: File;
+      justificante: File;
+      fechaPresentacion: string;
+    },
+  ) => {
+    const formData = new FormData();
+    formData.append('presentacion', body.presentacion);
+    formData.append('justificante', body.justificante);
+    formData.append('fechaPresentacion', body.fechaPresentacion);
+    return multipartRequest<TramitacionResponse>(
+      '/api/expedientes/' + encodeURIComponent(expedienteId) + '/tramitacion/presentacion',
+      formData,
+    );
+  },
+
+  registrarSeguimientoExtranjeria: (expedienteId: string, numeroExpedienteExtranjeria: string) =>
+    request<TramitacionResponse>(
+      '/api/expedientes/' + encodeURIComponent(expedienteId) + '/tramitacion/seguimiento',
+      {
+        method: 'PATCH',
+        body: JSON.stringify({ numeroExpedienteExtranjeria }),
+      },
+    ),
+
+  agregarRequerimientoMercurio: (
+    expedienteId: string,
+    body: {
+      tipo: 'documento' | 'escrito';
+      destino: 'cliente' | 'despacho';
+      nombre: string;
+      descripcion?: string;
+    },
+  ) =>
+    request<TramitacionResponse & { id: string }>(
+      '/api/expedientes/' + encodeURIComponent(expedienteId) + '/tramitacion/requerimientos',
+      { method: 'POST', body: JSON.stringify(body) },
+    ),
+
+  subirArchivoRequerimientoMercurio: (expedienteId: string, reqId: string, archivo: File) => {
+    const formData = new FormData();
+    formData.append('archivo', archivo);
+    return multipartRequest<TramitacionResponse>(
+      '/api/expedientes/' +
+        encodeURIComponent(expedienteId) +
+        '/tramitacion/requerimientos/' +
+        encodeURIComponent(reqId) +
+        '/archivo',
+      formData,
+    );
+  },
+
+  presentarRequerimientoMercurio: (
+    expedienteId: string,
+    reqId: string,
+    justificante: File,
+    archivo?: File | null,
+  ) => {
+    const formData = new FormData();
+    formData.append('justificante', justificante);
+    if (archivo) formData.append('archivo', archivo);
+    return multipartRequest<TramitacionResponse>(
+      '/api/expedientes/' +
+        encodeURIComponent(expedienteId) +
+        '/tramitacion/requerimientos/' +
+        encodeURIComponent(reqId) +
+        '/presentar',
+      formData,
+    );
+  },
+
+  vincularEscritoRequerimientoMercurio: (expedienteId: string, reqId: string, escritoId: string) =>
+    request<TramitacionResponse>(
+      '/api/expedientes/' +
+        encodeURIComponent(expedienteId) +
+        '/tramitacion/requerimientos/' +
+        encodeURIComponent(reqId) +
+        '/escrito',
+      { method: 'POST', body: JSON.stringify({ escritoId }) },
+    ),
+
+  avanzarResolucion: (expedienteId: string) =>
+    request<{ message: string }>(
+      '/api/expedientes/' + encodeURIComponent(expedienteId) + '/tramitacion/avanzar-resolucion',
+      { method: 'POST' },
+    ),
+
+  getResolucion: (expedienteId: string) =>
+    request<ResolucionResponse>(
+      '/api/expedientes/' + encodeURIComponent(expedienteId) + '/resolucion',
+    ),
+
+  registrarResolucion: (
+    expedienteId: string,
+    body: { resolucion: File; outcome: 'concedida' | 'denegada'; fechaNotificacion: string },
+  ) => {
+    const formData = new FormData();
+    formData.append('resolucion', body.resolucion);
+    formData.append('outcome', body.outcome);
+    formData.append('fechaNotificacion', body.fechaNotificacion);
+    return multipartRequest<ResolucionResponse>(
+      '/api/expedientes/' + encodeURIComponent(expedienteId) + '/resolucion',
+      formData,
+    );
+  },
+
+  actualizarGestionesResolucion: (
+    expedienteId: string,
+    gestiones: Array<{ id: string; hecho: boolean }>,
+  ) =>
+    request<ResolucionResponse>(
+      '/api/expedientes/' + encodeURIComponent(expedienteId) + '/resolucion/gestiones',
+      { method: 'PATCH', body: JSON.stringify({ gestiones }) },
+    ),
+
+  programarRecordatorioFuturo: (
+    expedienteId: string,
+    body: { fecha: string; servicioId: string; tramiteId: string },
+  ) =>
+    request<ResolucionResponse>(
+      '/api/expedientes/' + encodeURIComponent(expedienteId) + '/resolucion/recordatorio',
+      { method: 'POST', body: JSON.stringify(body) },
+    ),
+
+  archivarExpedienteResolucion: (expedienteId: string) =>
+    request<{ message: string }>(
+      '/api/expedientes/' + encodeURIComponent(expedienteId) + '/resolucion/archivar',
+      { method: 'POST' },
+    ),
+
+  resolucionArchivoUrl: (expedienteId: string) =>
+    `/api/expedientes/${encodeURIComponent(expedienteId)}/resolucion/archivo`,
+
+  tramitacionPresentacionArchivoUrl: (expedienteId: string, tipo: 'presentacion' | 'justificante') =>
+    `/api/expedientes/${encodeURIComponent(expedienteId)}/tramitacion/presentacion/archivo/${tipo}`,
+
+  subirArchivoRequerimientoMercurioPortal: (token: string, reqId: string, archivo: File) => {
+    const formData = new FormData();
+    formData.append('archivo', archivo);
+    return publicMultipartRequest<AccesoExpedienteResponse>(
+      '/api/acceso/' +
+        encodeURIComponent(token) +
+        '/tramitacion/requerimientos/' +
+        encodeURIComponent(reqId) +
+        '/archivo',
+      formData,
+    );
+  },
+
   descargarZipDocumentacion: async (
     expedienteId: string,
     itemIds: string[],
@@ -1323,6 +1479,9 @@ export interface ExpedienteResponse {
   servicioId?: string | null;
   faseNegocio?: FaseNegocio;
   estadoFase?: string;
+  subfaseTramitacion?: string | null;
+  subfaseTramitacionLabel?: string | null;
+  actorBandejaTramitacion?: 'despacho' | 'mercurio' | string | null;
   honorariosAcordados?: number;
   metodoPago?: MetodoPago;
   planPago?: PlanPago;
@@ -1446,6 +1605,8 @@ export interface AccesoExpedienteResponse {
   faseNegocioLabel: string;
   estadoFase: string;
   estadoFaseLabel: string;
+  subfaseTramitacion?: string | null;
+  subfaseTramitacionLabel?: string | null;
   fechaVencimientoFase?: string | null;
   honorariosAcordados: number;
   metodoPago?: MetodoPago;
@@ -1465,6 +1626,133 @@ export interface AccesoExpedienteResponse {
   despachoSubtitulo?: string | null;
   firmas?: AccesoFirmasConfigResponse;
   requerimientos?: AccesoRequerimientosResponse | null;
+  tramitacion?: AccesoTramitacionResponse | null;
+  resolucion?: AccesoResolucionResponse | null;
+}
+
+export interface AccesoTramitacionRequerimientoResponse {
+  id: string;
+  tipo: string;
+  tipoLabel: string;
+  nombre: string;
+  descripcion: string;
+  estado: string;
+  estadoLabel: string;
+  tieneArchivo: boolean;
+  puedeSubir: boolean;
+}
+
+export interface AccesoTramitacionResponse {
+  subfase?: string | null;
+  subfaseLabel?: string | null;
+  actorBandeja?: string | null;
+  estadoCliente: string;
+  estadoClienteLabel: string;
+  fechaPresentacion?: string | null;
+  numeroExpedienteExtranjeria?: string | null;
+  instruccionesSeguimiento?: {
+    webUrl: string;
+    sms?: string | null;
+    smsTelefono?: string;
+    texto: string;
+    numeroExpedienteExtranjeria?: string | null;
+  } | null;
+  requerimientosCliente: AccesoTramitacionRequerimientoResponse[];
+}
+
+export interface TramitacionRequerimientoResponse {
+  id: string;
+  tipo: string;
+  tipoLabel: string;
+  destino: string;
+  destinoLabel: string;
+  nombre: string;
+  descripcion: string;
+  estado: string;
+  estadoLabel: string;
+  tieneArchivo: boolean;
+  archivoNombre?: string | null;
+  tieneJustificante: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TramitacionResponse {
+  expedienteId: string;
+  numero: string;
+  faseNegocio: string;
+  subfase?: string | null;
+  subfaseLabel?: string | null;
+  actorBandeja: 'despacho' | 'mercurio' | string;
+  actorBandejaLabel: string;
+  plataforma: string;
+  plataformaLabel: string;
+  flujoSoportado: boolean;
+  presentacion: {
+    id: string;
+    fechaPresentacion: string;
+    numeroExpedienteExtranjeria?: string | null;
+    tienePresentacion: boolean;
+    tieneJustificante: boolean;
+  } | null;
+  requerimientos: TramitacionRequerimientoResponse[];
+  puedeAvanzarResolucion: boolean;
+  accessUrl?: string | null;
+}
+
+export interface GestionPostResolucionResponse {
+  id: string;
+  titulo: string;
+  descripcion: string;
+  url?: string | null;
+  hecho: boolean;
+  orden: number;
+}
+
+export interface ResolucionResponse {
+  expedienteId: string;
+  numero: string;
+  faseNegocio: string;
+  estado: string;
+  estadoLabel: string;
+  tramiteNombre?: string | null;
+  resolucion: {
+    id: string;
+    outcome: 'concedida' | 'denegada' | string;
+    outcomeLabel: string;
+    fechaNotificacion: string;
+    gestiones: GestionPostResolucionResponse[];
+    gestionesCompletas: boolean;
+  } | null;
+  recordatorio: {
+    id: string;
+    fecha: string;
+    motivo: string;
+    servicioId?: string | null;
+    tramiteId?: string | null;
+    servicioNombre?: string | null;
+    tramiteNombre?: string | null;
+    notificado: boolean;
+  } | null;
+  puedeArchivar: boolean;
+  accessUrl?: string | null;
+}
+
+export interface AccesoResolucionResponse {
+  estadoCliente: string;
+  estadoClienteLabel: string;
+  resolucion: {
+    outcome: string;
+    outcomeLabel: string;
+    fechaNotificacion: string;
+    gestiones: GestionPostResolucionResponse[];
+  } | null;
+  recordatorio?: {
+    fecha: string;
+    motivo: string;
+    servicioNombre?: string | null;
+    tramiteNombre?: string | null;
+  } | null;
 }
 
 export interface RequerimientoDocumentoArchivoResponse {

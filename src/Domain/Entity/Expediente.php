@@ -33,6 +33,7 @@ final readonly class Expediente
         private ?\DateTimeImmutable $fechaFirmaContrato = null,
         /** @var list<array{numero: int, importe: float, fechaVencimiento: string, estado: string}>|null */
         private ?array $calendarioPagos = null,
+        private ?SubfaseTramitacion $subfaseTramitacion = null,
     ) {
     }
 
@@ -104,6 +105,11 @@ final readonly class Expediente
     public function estadoFase(): EstadoFaseExpediente
     {
         return $this->estadoFase;
+    }
+
+    public function subfaseTramitacion(): ?SubfaseTramitacion
+    {
+        return $this->subfaseTramitacion;
     }
 
     public function honorariosAcordados(): float
@@ -201,6 +207,14 @@ final readonly class Expediente
         return $this->rebuild(faseNegocio: $faseNegocio, estadoFase: $estadoFase);
     }
 
+    public function withSubfaseTramitacion(?SubfaseTramitacion $subfaseTramitacion): self
+    {
+        return $this->rebuild(
+            subfaseTramitacion: $subfaseTramitacion,
+            subfaseTramitacionProvided: true,
+        );
+    }
+
     public function withPaymentStatus(string $paymentStatus): self
     {
         return $this->rebuild(paymentStatus: $paymentStatus);
@@ -279,6 +293,8 @@ final readonly class Expediente
         ?\DateTimeImmutable $fechaFirmaContrato = null,
         ?array $calendarioPagos = null,
         bool $calendarioPagosProvided = false,
+        ?SubfaseTramitacion $subfaseTramitacion = null,
+        bool $subfaseTramitacionProvided = false,
     ): self {
         return new self(
             $this->id,
@@ -304,6 +320,7 @@ final readonly class Expediente
             $fechaUltimoCambioEstado ?? $this->fechaUltimoCambioEstado,
             $fechaFirmaContrato ?? $this->fechaFirmaContrato,
             $calendarioPagosProvided ? $calendarioPagos : $this->calendarioPagos,
+            $subfaseTramitacionProvided ? $subfaseTramitacion : $this->subfaseTramitacion,
         );
     }
 

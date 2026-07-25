@@ -19,6 +19,7 @@ use App\Application\UseCase\ObtenerAccesoExpedienteUseCase;
 use App\Application\UseCase\RegistrarFirmaDocumentoUseCase;
 use App\Application\UseCase\SubirDocumentoContratacionUseCase;
 use App\Application\UseCase\SubirDocumentoRequerimientosUseCase;
+use App\Application\UseCase\SubirArchivoRequerimientoMercurioUseCase;
 use App\Application\UseCase\VerificarOtpFirmaAccesoUseCase;
 use App\Domain\Entity\TipoEscrito;
 use App\Domain\Repository\ClienteRepositoryInterface;
@@ -58,6 +59,7 @@ final class AccesoController extends AbstractController
         private ReutilizarDocumentoIdentidadAccesoUseCase $reutilizarDocumentoIdentidad,
         private SubirDocumentoContratacionUseCase $subirDocumento,
         private SubirDocumentoRequerimientosUseCase $subirDocumentoRequerimientos,
+        private SubirArchivoRequerimientoMercurioUseCase $subirArchivoRequerimientoMercurio,
         private RegistrarFirmaDocumentoUseCase $registrarFirma,
         private EnviarOtpFirmaAccesoUseCase $enviarOtpFirma,
         private VerificarOtpFirmaAccesoUseCase $verificarOtpFirma,
@@ -139,6 +141,38 @@ final class AccesoController extends AbstractController
             }
 
             return SafeJsonResponse::message($message, Response::HTTP_BAD_REQUEST);
+        }
+    }
+
+    #[Route(path: '/{token}/tramitacion/requerimientos/{reqId}/archivo', name: 'tramitacion_req_archivo', methods: ['POST'])]
+    public function subirArchivoRequerimientoMercurio(string $token, string $reqId, Request $request): JsonResponse
+    {
+        $expediente = $this->expedienteRepository->findByAccessToken($token);
+        if (null === $expediente) {
+            return new JsonResponse(['message' => 'Enlace no válido.'], Response::HTTP_NOT_FOUND);
+        }
+
+        $file = $request->files->get('archivo') ?? $request->files->get('file');
+        if (!is_object($file) || !method_exists($file, 'getContent')) {
+            return new JsonResponse(['message' => 'Debe adjuntar un archivo.'], Response::HTTP_BAD_REQUEST);
+        }
+
+        try {
+            ($this->subirArchivoRequerimientoMercurio)(
+                $expediente->id()->value(),
+                $reqId,
+                [
+                    'content' => (string) $file->getContent(),
+                    'filename' => method_exists($file, 'getClientOriginalName')
+                        ? (string) $file->getClientOriginalName()
+                        : 'documento.pdf',
+                ],
+                true,
+            );
+
+            return new SafeJsonResponse(($this->obtenerAcceso)($token));
+        } catch (\InvalidArgumentException|\RuntimeException $e) {
+            return SafeJsonResponse::message($e->getMessage(), Response::HTTP_BAD_REQUEST);
         }
     }
 

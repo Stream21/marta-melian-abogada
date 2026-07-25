@@ -10,6 +10,7 @@ use App\Domain\Entity\Expediente;
 use App\Domain\Entity\FaseNegocioExpediente;
 use App\Domain\Entity\MetodoPagoExpediente;
 use App\Domain\Entity\PlanPagoExpediente;
+use App\Domain\Entity\SubfaseTramitacion;
 use App\Domain\Repository\ExpedienteRepositoryInterface;
 use App\Domain\ValueObject\ClienteId;
 use App\Domain\ValueObject\ExpedienteId;
@@ -122,6 +123,7 @@ final class ExpedienteRepository implements ExpedienteRepositoryInterface
             $orm->getFechaUltimoCambioEstado(),
             $orm->getFechaFirmaContrato(),
             $this->normalizarCalendarioPagos($orm->getCalendarioPagos()),
+            SubfaseTramitacion::fromString($orm->getSubfaseTramitacion()),
         );
     }
 
@@ -176,6 +178,7 @@ final class ExpedienteRepository implements ExpedienteRepositoryInterface
         $orm->setServicioId($expediente->servicioId());
         $orm->setFaseNegocio($expediente->faseNegocio()->value);
         $orm->setEstadoFase($expediente->estadoFase()->value);
+        $orm->setSubfaseTramitacion($expediente->subfaseTramitacion()?->value);
         $orm->setHonorariosAcordados(number_format($expediente->honorariosAcordados(), 2, '.', ''));
         $orm->setMetodoPago($expediente->metodoPago()->value);
         $orm->setPlanPago($expediente->planPago()->value);

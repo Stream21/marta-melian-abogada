@@ -24,7 +24,71 @@ export function ExpedienteGestionToolbarActions({
   if (faseNegocio === 'requerimientos') {
     return <RequerimientosToolbarActions expedienteId={expedienteId} />;
   }
+  if (faseNegocio === 'tramitacion') {
+    return <TramitacionToolbarActions expedienteId={expedienteId} />;
+  }
+  if (faseNegocio === 'resolucion') {
+    return <ResolucionToolbarActions expedienteId={expedienteId} />;
+  }
   return null;
+}
+
+function ResolucionToolbarActions({ expedienteId }: { expedienteId: string }) {
+  const { data } = useQuery({
+    queryKey: ['resolucion', expedienteId],
+    queryFn: () => api.getResolucion(expedienteId),
+    refetchInterval: 10000,
+  });
+
+  if (!data?.accessUrl) {
+    return null;
+  }
+
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <EnlaceClienteModal expedienteId={expedienteId} accessUrl={data.accessUrl} />
+    </div>
+  );
+}
+
+function TramitacionToolbarActions({ expedienteId }: { expedienteId: string }) {
+  const queryClient = useQueryClient();
+  const { data } = useQuery({
+    queryKey: ['tramitacion', expedienteId],
+    queryFn: () => api.getTramitacion(expedienteId),
+    refetchInterval: 10000,
+  });
+
+  const avanzarMutation = useMutation({
+    mutationFn: () => api.avanzarResolucion(expedienteId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['tramitacion', expedienteId] });
+      void queryClient.invalidateQueries({ queryKey: ['expediente', expedienteId] });
+      void queryClient.invalidateQueries({ queryKey: ['expedientes'] });
+    },
+  });
+
+  if (!data) {
+    return null;
+  }
+
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      {data.accessUrl && (
+        <EnlaceClienteModal expedienteId={expedienteId} accessUrl={data.accessUrl} />
+      )}
+      <Button
+        size="sm"
+        disabled={!data.puedeAvanzarResolucion || avanzarMutation.isPending}
+        onClick={() => avanzarMutation.mutate()}
+      >
+        {avanzarMutation.isPending ? 'Avanzando…' : 'Pasar a Fase 4'}
+      </Button>
+      {avanzarMutation.error && (
+        <p className="text-sm text-destructive">{avanzarMutation.error.message}</p>
+      )}
+    </div>
+  );
 }
 
 function ContratacionToolbarActions({ expedienteId }: { expedienteId: string }) {

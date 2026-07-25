@@ -31,6 +31,10 @@ services:
     App\Domain\Repository\ExpedienteEscritoRepositoryInterface: '@App\Infrastructure\Persistence\Doctrine\Repository\ExpedienteEscritoRepository'
     App\Domain\Repository\ExpedienteFirmaRepositoryInterface: '@App\Infrastructure\Persistence\Doctrine\Repository\ExpedienteFirmaRepository'
     App\Domain\Repository\FirmaOtpRepositoryInterface: '@App\Infrastructure\Persistence\Doctrine\Repository\FirmaOtpRepository'
+    App\Domain\Repository\ExpedientePresentacionTelematicaRepositoryInterface: '@App\Infrastructure\Persistence\Doctrine\Repository\ExpedientePresentacionTelematicaRepository'
+    App\Domain\Repository\ExpedienteRequerimientoMercurioRepositoryInterface: '@App\Infrastructure\Persistence\Doctrine\Repository\ExpedienteRequerimientoMercurioRepository'
+    App\Domain\Repository\ExpedienteResolucionRepositoryInterface: '@App\Infrastructure\Persistence\Doctrine\Repository\ExpedienteResolucionRepository'
+    App\Domain\Repository\ExpedienteRecordatorioFuturoRepositoryInterface: '@App\Infrastructure\Persistence\Doctrine\Repository\ExpedienteRecordatorioFuturoRepository'
     App\Application\Port\DespachoFileStoragePort: '@App\Infrastructure\Storage\DespachoFileStorage'
     App\Application\Port\HoldedPort: '@App\Infrastructure\ApiClient\HoldedService'
     App\Application\Port\StripePort: '@App\Infrastructure\ApiClient\StripeService'
@@ -124,6 +128,14 @@ services:
         arguments:
             $frontendBaseUrl: '%env(FRONTEND_BASE_URL)%'
 
+    App\Application\Service\NotificarTramitacionClienteService:
+        arguments:
+            $frontendBaseUrl: '%env(FRONTEND_BASE_URL)%'
+
+    App\Application\Service\NotificarResolucionClienteService:
+        arguments:
+            $frontendBaseUrl: '%env(FRONTEND_BASE_URL)%'
+
     App\Application\Service\NotificarExpedienteClienteService:
         arguments:
             $frontendBaseUrl: '%env(FRONTEND_BASE_URL)%'
@@ -145,6 +157,14 @@ services:
             $frontendBaseUrl: '%env(FRONTEND_BASE_URL)%'
 
     App\Application\UseCase\ObtenerRequerimientosExpedienteUseCase:
+        arguments:
+            $frontendBaseUrl: '%env(FRONTEND_BASE_URL)%'
+
+    App\Application\UseCase\ObtenerTramitacionExpedienteUseCase:
+        arguments:
+            $frontendBaseUrl: '%env(FRONTEND_BASE_URL)%'
+
+    App\Application\UseCase\ObtenerResolucionExpedienteUseCase:
         arguments:
             $frontendBaseUrl: '%env(FRONTEND_BASE_URL)%'
 

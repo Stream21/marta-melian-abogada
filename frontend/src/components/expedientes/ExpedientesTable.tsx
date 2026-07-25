@@ -84,12 +84,22 @@ export function ExpedientesTable({ data, isLoading, isFetching, onRefresh }: Exp
       {
         accessorKey: 'faseNegocio',
         header: 'Fase',
-        cell: ({ row }) =>
-          row.original.faseNegocio ? (
-            <Badge variant="info">{labelFaseNegocio(row.original.faseNegocio)}</Badge>
-          ) : (
-            <span className="text-muted-foreground">—</span>
-          ),
+        cell: ({ row }) => (
+          <div className="flex flex-wrap items-center gap-1.5">
+            {row.original.faseNegocio ? (
+              <Badge variant="info">{labelFaseNegocio(row.original.faseNegocio)}</Badge>
+            ) : (
+              <span className="text-muted-foreground">—</span>
+            )}
+            {row.original.faseNegocio === 'tramitacion' && row.original.actorBandejaTramitacion && (
+              <Badge
+                variant={row.original.actorBandejaTramitacion === 'despacho' ? 'warning' : 'secondary'}
+              >
+                {row.original.actorBandejaTramitacion === 'despacho' ? 'Despacho' : 'Mercurio'}
+              </Badge>
+            )}
+          </div>
+        ),
       },
       {
         accessorKey: 'avisosPendientes',

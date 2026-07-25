@@ -12,6 +12,18 @@ final class ExpedienteAuditoriaCatalog
             return 'requerimientos';
         }
 
+        if (str_contains($tipo, 'presentacion_telematica') || str_contains($tipo, 'seguimiento_extranjeria') || str_contains($tipo, 'requerimiento_mercurio') || 'fase_tramitacion_iniciada' === $tipo || 'fase_resolucion_iniciada' === $tipo) {
+            return 'tramitacion';
+        }
+
+        if (
+            str_contains($tipo, 'resolucion')
+            || str_contains($tipo, 'recordatorio_futuro')
+            || 'expediente_archivado' === $tipo
+        ) {
+            return 'resolucion';
+        }
+
         if (str_starts_with($tipo, 'paso_') || in_array($tipo, [
             'contratacion_iniciada',
             'condiciones_pago_actualizadas',
@@ -49,6 +61,8 @@ final class ExpedienteAuditoriaCatalog
         return match ($categoria) {
             'contratacion' => 'Contratación',
             'requerimientos' => 'Requerimientos',
+            'tramitacion' => 'Tramitación',
+            'resolucion' => 'Resolución',
             'comunicacion' => 'Comunicación',
             'pago' => 'Pago',
             'documento' => 'Documento',
@@ -85,6 +99,17 @@ final class ExpedienteAuditoriaCatalog
             'notificacion_alta_expediente' => 'Alta expediente notificada',
             'notificacion_enlace_enviado' => 'Enlace enviado al cliente',
             'fase_requerimientos_iniciada' => 'Inicio requerimientos',
+            'fase_tramitacion_iniciada' => 'Inicio tramitación',
+            'fase_resolucion_iniciada' => 'Inicio resolución',
+            'resolucion_registrada' => 'Resolución registrada',
+            'resolucion_gestiones_actualizadas' => 'Gestiones post-resolución',
+            'recordatorio_futuro_programado' => 'Recordatorio futuro programado',
+            'expediente_archivado' => 'Expediente archivado',
+            'presentacion_telematica_registrada' => 'Presentación telemática',
+            'seguimiento_extranjeria_asignado' => 'Seguimiento extranjería',
+            'requerimiento_mercurio_anadido' => 'Requerimiento Mercurio añadido',
+            'requerimiento_mercurio_archivo' => 'Archivo requerimiento Mercurio',
+            'requerimiento_mercurio_presentado' => 'Requerimiento Mercurio presentado',
             'documento_requerimientos_subido' => 'Documento subido (requerimientos)',
             'documento_requerimientos_validado' => 'Documento validado (requerimientos)',
             'documento_requerimientos_devuelto' => 'Documento devuelto (requerimientos)',
