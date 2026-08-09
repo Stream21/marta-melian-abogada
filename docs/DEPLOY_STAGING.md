@@ -201,6 +201,7 @@ El `.env` no está en Git → `git pull` no lo borra.
 | Puerto 8080/8088 ocupado | Staging usa `127.0.0.1:8088`; Caddy apunta ahí |
 | HTTPS caído | `systemctl status caddy` y `journalctl -u caddy -n 50` |
 | UI vieja tras deploy | Confirmar que `deploy-staging.sh` terminó el build; hard refresh (Ctrl+F5) |
+| Vista previa PDF: `Failed to fetch dynamically imported module` / `pdf.worker…mjs` | El `.mjs` se sirve como `octet-stream` o el SPA devuelve `index.html`. Tras `git pull`, recrear nginx: `docker compose -f docker-compose.yml -f docker-compose.staging.yml up -d nginx` (o `deploy-staging.sh`). Comprobar: `curl -sSI https://app…/assets/pdf.worker…mjs` → `content-type: text/javascript` |
 | Enlaces WhatsApp con IP antigua | Revisar `FRONTEND_BASE_URL` en `.env` del VPS |
 | Portal cliente: «enlace no válido» + error Proxies | Caché Doctrine no escribible por `www-data` tras `cache:clear` como root. Ver abajo. |
 | Logo/sello despacho: «public/storage/despacho no tiene permisos» | Storage/var creados como root. Ver abajo. |

@@ -1,12 +1,36 @@
 import * as pdfjsLib from 'pdfjs-dist';
-import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
+import pdfjsWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 
-// Asset hasheado por Vite. Nginx debe servir /assets/*.mjs como JS (no index.html).
-pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
+/**
+ * pdf.js carga el worker con import(). Si nginx sirve el .mjs como
+ * application/octet-stream, el navegador falla con "Failed to fetch dynamically
+ * imported module". Re-empaquetamos el worker en un Blob con MIME JS.
+ */
+let workerReady: Promise<void> | null = null;
+
+function ensurePdfWorker(): Promise<void> {
+  if (!workerReady) {
+    workerReady = (async () => {
+      const response = await fetch(pdfjsWorkerUrl);
+      if (!response.ok) {
+        throw new Error('No se pudo inicializar el visor PDF.');
+      }
+      const code = await response.text();
+      const blob = new Blob([code], { type: 'text/javascript' });
+      pdfjsLib.GlobalWorkerOptions.workerSrc = URL.createObjectURL(blob);
+    })().catch((err: unknown) => {
+      workerReady = null;
+      throw err;
+    });
+  }
+  return workerReady;
+}
 
 const RENDER_SCALE = 1.4;
 
 export async function renderPdfPages(container: HTMLElement, blobUrl: string): Promise<number> {
+  await ensurePdfWorker();
+
   const loadingTask = pdfjsLib.getDocument(blobUrl);
   const pdf = await loadingTask.promise;
   container.replaceChildren();
