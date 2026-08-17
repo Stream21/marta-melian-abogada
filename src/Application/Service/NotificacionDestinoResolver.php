@@ -14,7 +14,7 @@ final class NotificacionDestinoResolver
             return true;
         }
 
-        return 'holded_sync_fallido' === $tipo;
+        return in_array($tipo, ['holded_sync_fallido', 'pago_stripe_completado'], true);
     }
 
     /**
@@ -30,7 +30,7 @@ final class NotificacionDestinoResolver
             'documento_requerimientos_devuelto',
         ], true);
 
-        if ('holded_sync_fallido' === $tipo) {
+        if ('holded_sync_fallido' === $tipo || 'pago_stripe_completado' === $tipo) {
             return [
                 'tab' => 'facturacion',
                 'hitoId' => $hitoId,

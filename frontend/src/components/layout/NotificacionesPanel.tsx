@@ -41,6 +41,9 @@ function notificacionVisual(n: NotificacionResponse) {
   if (n.tipo.includes('holded_sync')) {
     return { icon: AlertTriangle, iconBg: 'bg-amber-100', iconColor: 'text-amber-700' };
   }
+  if (n.tipo.includes('pago') || n.tipo.includes('stripe')) {
+    return { icon: CheckCircle, iconBg: 'bg-emerald-100', iconColor: 'text-emerald-700' };
+  }
   if (n.tipo.includes('requerimientos')) {
     return { icon: FileText, iconBg: 'bg-violet-100', iconColor: 'text-violet-700' };
   }
