@@ -99,6 +99,13 @@ main { position: relative; z-index: 1; }
 .legal-table td { border: 1px solid #c5d0de; padding: 5px 7px; vertical-align: top; text-align: left; }
 .legal-table-label { width: 26%; font-weight: bold; background: #f0f4f8; color: #2c3e6b; }
 .legal-table-value { background: #ffffff; }
+.columns-row {
+  display: table;
+  width: 100%;
+  margin-top: 12px;
+}
+/* Solo firmas: evitar partir la fila. En texto largo (p. ej. ESTIPULACIONES)
+   page-break-inside:avoid provoca páginas en blanco con Dompdf. */
 .signature-row {
   display: table;
   width: 100%;
@@ -122,9 +129,11 @@ main { position: relative; z-index: 1; }
   font-size: 10pt;
   margin-top: 6px;
 }
+.columns-row-single .column-cell,
 .signature-row-single .column-cell {
   display: block;
   width: 100%;
+  padding: 0;
 }
 .signature-area {
   position: relative;
@@ -319,6 +328,7 @@ HTML;
 
         $children = is_array($bloque['children'] ?? null) ? $bloque['children'] : [];
         $cells = '';
+        $hasSignature = false;
 
         for ($slot = 0; $slot < $columnCount; ++$slot) {
             $child = $children[$slot] ?? null;
@@ -327,10 +337,19 @@ HTML;
                 continue;
             }
 
+            $childType = (string) ($child['type'] ?? '');
+            if ('signature_client' === $childType || 'signature_lawyer' === $childType) {
+                $hasSignature = true;
+            }
+
             $cells .= '<div class="column-cell">' . $this->renderColumnSlot($child, $variables, $selloUri, $logoUri) . '</div>';
         }
 
-        $rowClass = 1 === $columnCount ? 'signature-row signature-row-single' : 'signature-row';
+        if ($hasSignature) {
+            $rowClass = 1 === $columnCount ? 'signature-row signature-row-single' : 'signature-row';
+        } else {
+            $rowClass = 1 === $columnCount ? 'columns-row columns-row-single' : 'columns-row';
+        }
 
         return '<div class="' . $rowClass . '">' . $cells . '</div>';
     }
