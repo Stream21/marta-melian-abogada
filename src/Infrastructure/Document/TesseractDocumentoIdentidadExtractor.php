@@ -6,6 +6,8 @@ namespace App\Infrastructure\Document;
 
 use App\Application\Port\DocumentoIdentidadExtractorPort;
 use App\Domain\Entity\TipoEscaneoDocumentoIdentidad;
+use App\Infrastructure\Document\Mrz\MrzResult;
+use App\Infrastructure\Document\Mrz\NumeroDocumentoEspanol;
 
 /**
  * Extracción OCR con Tesseract + parser MRZ y campos visibles del reverso DNI/NIE.
@@ -26,31 +28,45 @@ final class TesseractDocumentoIdentidadExtractor implements DocumentoIdentidadEx
         }
 
         $tipo = TipoEscaneoDocumentoIdentidad::tryFrom($tipoEscaneo) ?? TipoEscaneoDocumentoIdentidad::DniNie;
-        $tipoDocumento = $tipo === TipoEscaneoDocumentoIdentidad::Pasaporte ? 'PASAPORTE' : 'DNI';
+        $esPasaporte = $tipo === TipoEscaneoDocumentoIdentidad::Pasaporte;
+        $tipoDocumento = $esPasaporte ? 'PASAPORTE' : 'DNI';
+
+        // La MRZ está en el reverso del DNI/NIE, pero en la propia página de datos del pasaporte.
+        $paginaMrz = $esPasaporte ? $anversoPath : $reversoPath;
+        $lineasMrz = $esPasaporte ? 2 : 3;
 
         $reversoTexto = '';
         $reversoMrz = '';
-        if (null !== $reversoPath && is_file($reversoPath)) {
-            $reversoTexto = $this->ocrGeneral($reversoPath);
-            $reversoMrz = $this->ocrBandaMrz($reversoPath);
+        if (null !== $paginaMrz && is_file($paginaMrz)) {
+            $reversoTexto = $this->ocrGeneral($paginaMrz);
+            $reversoMrz = $this->ocrBandaMrz($paginaMrz, $lineasMrz, $esPasaporte);
         }
 
-        $anversoTexto = is_file($anversoPath) ? $this->ocrGeneral($anversoPath) : '';
+        $anversoTexto = !$esPasaporte && is_file($anversoPath) ? $this->ocrGeneral($anversoPath) : $reversoTexto;
         $reversoCombinado = trim($reversoTexto . "\n" . $reversoMrz);
 
         $resultado = $this->fallback->vacio($tipoDocumento, false);
 
-        if ('' !== $reversoTexto) {
+        if (!$esPasaporte && '' !== $reversoTexto) {
             $resultado = $this->fusionar($resultado, $this->reversoParser->parseFromText($reversoTexto));
         }
 
-        $mrz = $this->mrzParser->parseFromText($reversoCombinado);
-        if (null === $mrz && '' !== $reversoMrz) {
-            $mrz = $this->mrzParser->parseFromText($reversoMrz);
+        $lectura = $this->mejorLecturaMrz([$reversoMrz, $reversoCombinado, $anversoTexto]);
+
+        // El cliente puede haber invertido las caras: probar la MRZ del otro lado.
+        if (null === $lectura && !$esPasaporte && is_file($anversoPath)) {
+            $mrzAnverso = $this->ocrBandaMrz($anversoPath, $lineasMrz, false);
+            $lectura = $this->mejorLecturaMrz([$mrzAnverso]);
+            if (null !== $lectura) {
+                $reversoMrz = '' !== $reversoMrz ? $reversoMrz : $mrzAnverso;
+                $reversoCombinado = trim($reversoCombinado . "\n" . $mrzAnverso);
+            }
         }
 
+        $mrz = null !== $lectura ? $this->mrzParser->mapear($lectura) : null;
+
         if (null !== $mrz) {
-            if ($tipo === TipoEscaneoDocumentoIdentidad::Pasaporte) {
+            if ($esPasaporte) {
                 $mrz['tipoDocumento'] = 'PASAPORTE';
             }
             $resultado = $this->fusionar($resultado, $mrz);
@@ -128,19 +144,23 @@ final class TesseractDocumentoIdentidadExtractor implements DocumentoIdentidadEx
         return $texto;
     }
 
-  private function ocrBandaMrz(string $imagePath): string
+    /**
+     * Acumula todas las lecturas de la banda MRZ. El lector puntúa cada hipótesis con
+     * los dígitos de control, así que aportar varias variantes mejora el resultado
+     * en vez de empeorarlo.
+     */
+    private function ocrBandaMrz(string $imagePath, int $numLineas, bool $esPasaporte): string
     {
-        $lineas = $this->ocrMrzTresLineas($imagePath);
-        $textoLineas = trim(implode("\n", array_filter($lineas, static fn (string $l): bool => '' !== trim($l))));
-        if ('' !== $textoLineas) {
-            return $textoLineas;
+        $textos = [];
+
+        $lineas = $this->ocrMrzLineaALinea($imagePath, $numLineas, $esPasaporte);
+        if ([] !== $lineas) {
+            $textos[] = implode("\n", $lineas);
         }
 
-        $texto = '';
-
-        $preparada = $this->prepararBandaMrz($imagePath);
+        $preparada = $this->prepararBandaMrz($imagePath, $esPasaporte);
         if (null !== $preparada) {
-            $texto = $this->ejecutarTesseract($preparada, [
+            $textos[] = $this->ejecutarTesseract($preparada, [
                 'lang' => 'eng',
                 'psm' => '6',
                 'whitelist' => 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789<',
@@ -148,10 +168,10 @@ final class TesseractDocumentoIdentidadExtractor implements DocumentoIdentidadEx
             @unlink($preparada);
         }
 
-        if ('' === trim($texto)) {
+        if ('' === trim(implode('', $textos))) {
             $full = $this->prepararImagenMrzCompleta($imagePath);
             $rutaFull = $full ?? $imagePath;
-            $texto = $this->ejecutarTesseract($rutaFull, [
+            $textos[] = $this->ejecutarTesseract($rutaFull, [
                 'lang' => 'eng',
                 'psm' => '6',
                 'whitelist' => 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789<',
@@ -159,12 +179,10 @@ final class TesseractDocumentoIdentidadExtractor implements DocumentoIdentidadEx
             if (null !== $full) {
                 @unlink($full);
             }
-        }
 
-        if ('' === trim($texto)) {
             $prep = $this->prepararImagenOcr($imagePath);
             $ruta = $prep ?? $imagePath;
-            $texto = $this->ejecutarTesseract($ruta, [
+            $textos[] = $this->ejecutarTesseract($ruta, [
                 'lang' => 'eng',
                 'psm' => '4',
                 'whitelist' => 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789<',
@@ -174,19 +192,20 @@ final class TesseractDocumentoIdentidadExtractor implements DocumentoIdentidadEx
             }
         }
 
-        return $texto;
+        return trim(implode("\n", array_filter($textos, static fn (string $t): bool => '' !== trim($t))));
     }
 
     /**
-     * OCR línea a línea de la banda MRZ (TD1: 3 líneas). La línea 3 contiene apellidos y nombre.
+     * OCR franja a franja de la banda MRZ (TD1: 3 líneas; TD3 de pasaporte: 2).
+     * Aislar cada línea evita que Tesseract mezcle caracteres de líneas contiguas.
      *
      * @return list<string>
      */
-    private function ocrMrzTresLineas(string $imagePath): array
+    private function ocrMrzLineaALinea(string $imagePath, int $numLineas, bool $esPasaporte): array
     {
         $lineas = [];
-        for ($i = 0; $i < 3; ++$i) {
-            $prep = $this->prepararMrzLinea($imagePath, $i);
+        for ($i = 0; $i < $numLineas; ++$i) {
+            $prep = $this->prepararMrzLinea($imagePath, $i, $numLineas, $esPasaporte);
             if (null === $prep) {
                 continue;
             }
@@ -204,25 +223,54 @@ final class TesseractDocumentoIdentidadExtractor implements DocumentoIdentidadEx
         return $lineas;
     }
 
-    private function prepararMrzLinea(string $imagePath, int $indiceLinea): ?string
+    private function prepararMrzLinea(string $imagePath, int $indiceLinea, int $numLineas, bool $esPasaporte): ?string
     {
         if (!$this->imagemagickDisponible()) {
             return null;
         }
 
-        $cropAlto = $this->porcentajeBandaMrz($imagePath);
-        $offset = (int) floor($indiceLinea * 33.33);
+        $cropAlto = $this->porcentajeBandaMrz($imagePath, $esPasaporte);
+        // Franjas solapadas: absorben el desencuadre de la foto sin cortar caracteres.
+        $altoFranja = (int) round(100 / $numLineas * 1.15);
+        $offset = (int) round($indiceLinea * (100 - $altoFranja) / max(1, $numLineas - 1));
+
         $out = sys_get_temp_dir() . '/mrzline-' . bin2hex(random_bytes(8)) . '.jpg';
+        // El segundo recorte usa gravedad North para que el índice 0 sea la primera línea
+        // de la MRZ; con South quedarían invertidas y el parser leería los campos cruzados.
         $cmd = sprintf(
-            'convert %s -auto-orient -gravity South -crop 100x%s%%+0+0 +repage -crop 100x34%%+0+%d%% +repage -colorspace Gray -normalize -contrast-stretch 2x2%% -resize 500%% -sharpen 0x1.2 %s 2>/dev/null',
+            'convert %s -auto-orient -gravity South -crop 100x%s%%+0+0 +repage -gravity North -crop 100x%d%%+0+%d%% +repage -colorspace Gray -normalize -contrast-stretch 2x2%% -resize 500%% -sharpen 0x1.2 %s 2>/dev/null',
             escapeshellarg($imagePath),
             $cropAlto,
+            $altoFranja,
             $offset,
             escapeshellarg($out),
         );
         exec($cmd, $_, $code);
 
         return 0 === $code && is_file($out) ? $out : null;
+    }
+
+    /**
+     * De todas las lecturas OCR disponibles se queda con la MRZ de mayor confianza
+     * (la que valida más dígitos de control).
+     *
+     * @param list<string> $textos
+     */
+    private function mejorLecturaMrz(array $textos): ?MrzResult
+    {
+        $mejor = null;
+
+        foreach ($textos as $texto) {
+            if ('' === trim($texto)) {
+                continue;
+            }
+            $lectura = $this->mrzParser->leer($texto);
+            if (null !== $lectura && (null === $mejor || $lectura->confianza > $mejor->confianza)) {
+                $mejor = $lectura;
+            }
+        }
+
+        return $mejor;
     }
 
     /**
@@ -268,13 +316,13 @@ final class TesseractDocumentoIdentidadExtractor implements DocumentoIdentidadEx
         return 0 === $code && is_file($out) ? $out : null;
     }
 
-    private function prepararBandaMrz(string $imagePath): ?string
+    private function prepararBandaMrz(string $imagePath, bool $esPasaporte = false): ?string
     {
         if (!$this->imagemagickDisponible()) {
             return null;
         }
 
-        $cropAlto = $this->porcentajeBandaMrz($imagePath);
+        $cropAlto = $this->porcentajeBandaMrz($imagePath, $esPasaporte);
         $out = sys_get_temp_dir() . '/mrz-' . bin2hex(random_bytes(8)) . '.jpg';
         $cmd = sprintf(
             'convert %s -auto-orient -gravity South -crop 100x%s%%+0+0 +repage -colorspace Gray -normalize -contrast-stretch 2x2%% -resize 400%% -sharpen 0x1.2 %s 2>/dev/null',
@@ -304,14 +352,15 @@ final class TesseractDocumentoIdentidadExtractor implements DocumentoIdentidadEx
         return 0 === $code && is_file($out) ? $out : null;
     }
 
-    private function porcentajeBandaMrz(string $imagePath): string
+    private function porcentajeBandaMrz(string $imagePath, bool $esPasaporte = false): string
     {
         $info = @getimagesize($imagePath);
-        if (false === $info || $info[1] <= 0) {
-            return '40';
-        }
+        $ratio = false !== $info && $info[1] > 0 ? $info[0] / $info[1] : 0.0;
 
-        $ratio = $info[0] / $info[1];
+        if ($esPasaporte) {
+            // Página de datos en vertical (formato libreta): la MRZ ocupa la franja inferior.
+            return $ratio > 0 && $ratio < 1.0 ? '22' : '28';
+        }
 
         // Imagen ya recortada al documento (cámara con marco): MRZ ~30-35% inferior.
         if ($ratio >= 1.25 && $ratio <= 2.1) {
@@ -366,12 +415,28 @@ final class TesseractDocumentoIdentidadExtractor implements DocumentoIdentidadEx
         $numDocumento = '';
         $tipoDocumento = $tipo === TipoEscaneoDocumentoIdentidad::Pasaporte ? 'PASAPORTE' : 'DNI';
 
-        if (preg_match('/\b([XYZ]\d{7}[A-Z])\b/', $upper, $m)) {
-            $numDocumento = $m[1];
-            $tipoDocumento = 'NIE';
-        } elseif (preg_match('/\b(\d{8}[A-Z])\b/', $upper, $m)) {
-            $numDocumento = $m[1];
-            $tipoDocumento = 'DNI';
+        // Se prefiere la primera coincidencia cuya letra de control valide; así una
+        // lectura sucia no se cuela como número de documento.
+        preg_match_all('/\b([XYZ]\d{7}[A-Z]|\d{8}[A-Z])\b/', $upper, $coincidencias);
+        $candidatos = $coincidencias[1] ?? [];
+
+        foreach ($candidatos as $candidato) {
+            $corregido = NumeroDocumentoEspanol::corregir($candidato);
+            if (null !== $corregido && NumeroDocumentoEspanol::esValido($corregido)) {
+                $numDocumento = $corregido;
+                break;
+            }
+        }
+
+        if ('' === $numDocumento && [] !== $candidatos) {
+            $numDocumento = $candidatos[0];
+        }
+
+        if ('' !== $numDocumento && $tipo !== TipoEscaneoDocumentoIdentidad::Pasaporte) {
+            $tipoDocumento = 1 === preg_match('/^[XYZ]/', $numDocumento) ? 'NIE' : 'DNI';
+        } elseif ($tipo === TipoEscaneoDocumentoIdentidad::Pasaporte) {
+            // En un pasaporte un patrón tipo DNI en el texto visible no es el nº de documento.
+            $numDocumento = '';
         }
 
         return array_merge($this->fallback->vacio($tipoDocumento, '' !== $numDocumento), [

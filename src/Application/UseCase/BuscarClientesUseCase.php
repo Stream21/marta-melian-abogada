@@ -24,7 +24,10 @@ final class BuscarClientesUseCase
             return ['clientes' => []];
         }
 
-        $clientes = $this->clienteRepository->search($trimmed);
+        $clientes = array_values(array_filter(
+            $this->clienteRepository->search($trimmed),
+            static fn (Cliente $cliente) => !$cliente->esProvisional(),
+        ));
 
         return [
             'clientes' => array_map($this->clienteToArray(...), $clientes),

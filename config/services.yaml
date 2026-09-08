@@ -48,6 +48,16 @@ services:
     App\Application\Port\ClienteFileStoragePort: '@App\Infrastructure\Storage\ClienteFileStorage'
     App\Application\Port\DocumentoIdentidadExtractorPort: '@App\Infrastructure\Document\TesseractDocumentoIdentidadExtractor'
 
+    App\Infrastructure\Search\ClienteSearchProvider:
+        tags: ['app.search_provider']
+
+    App\Infrastructure\Search\ExpedienteSearchProvider:
+        tags: ['app.search_provider']
+
+    App\Application\UseCase\BusquedaGlobalUseCase:
+        arguments:
+            $providers: !tagged_iterator app.search_provider
+
     App\Infrastructure\Storage\ClienteFileStorage:
         arguments:
             $projectDir: '%kernel.project_dir%'

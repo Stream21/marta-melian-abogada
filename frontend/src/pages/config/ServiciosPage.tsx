@@ -3,7 +3,6 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { Plus } from 'lucide-react';
 import { api } from '@/api/client';
-import { ConfigBreadcrumb } from '@/components/config/ConfigBreadcrumb';
 import { ServiciosTable } from '@/components/config/ServiciosTable';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { PageShell } from '@/components/layout/PageShell';
@@ -32,9 +31,7 @@ export function ServiciosPage() {
   });
 
   return (
-    <>
-      <ConfigBreadcrumb section="servicios" variant="list" />
-      <PageShell>
+    <PageShell>
         <PageHeader
           title="Servicios"
           subtitle="Defina los servicios jurídicos que ofrece el bufete."
@@ -85,6 +82,5 @@ export function ServiciosPage() {
           />
         </div>
       </PageShell>
-    </>
   );
 }

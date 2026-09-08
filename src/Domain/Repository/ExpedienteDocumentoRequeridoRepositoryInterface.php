@@ -17,6 +17,13 @@ interface ExpedienteDocumentoRequeridoRepositoryInterface
      */
     public function findByExpediente(ExpedienteId $expedienteId): array;
 
+    /**
+     * @param list<string> $expedienteIds
+     *
+     * @return array<string, list<ExpedienteDocumentoRequerido>>
+     */
+    public function findByExpedienteIds(array $expedienteIds): array;
+
     public function findById(ExpedienteDocumentoRequeridoId $id): ?ExpedienteDocumentoRequerido;
 
     public function countByExpediente(ExpedienteId $expedienteId): int;

@@ -21,6 +21,13 @@ interface ExpedienteDocumentoRepositoryInterface
     /**
      * @param list<string> $expedienteIds
      *
+     * @return array<string, list<ExpedienteDocumentoEntregado>>
+     */
+    public function findByExpedienteIds(array $expedienteIds): array;
+
+    /**
+     * @param list<string> $expedienteIds
+     *
      * @return array<string, int>
      */
     public function countPendientesRevisionByExpedienteIds(array $expedienteIds): array;

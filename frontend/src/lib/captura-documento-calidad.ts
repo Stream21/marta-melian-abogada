@@ -30,14 +30,15 @@ export interface EvaluacionCaptura {
 const MUESTRA_ANCHO = 280;
 const MUESTRA_ALTO = Math.round(MUESTRA_ANCHO / ID1_ASPECT_RATIO);
 
-const NITIDEZ_MINIMA = 165;
-const NITIDEZ_MRZ_MINIMA = 145;
-const BRILLO_MIN = 50;
-const BRILLO_MAX = 210;
-const CONTRASTE_MIN = 22;
-const COBERTURA_MIN = 0.5;
-const MARGEN_INTERNO_MIN = 0.035;
-const TRANSICIONES_MRZ_FILA = 12;
+const NITIDEZ_MINIMA = 120;
+const NITIDEZ_ANVERSO_LISTA = 95;
+const NITIDEZ_MRZ_MINIMA = 120;
+const BRILLO_MIN = 42;
+const BRILLO_MAX = 220;
+const CONTRASTE_MIN = 16;
+const COBERTURA_MIN = 0.42;
+const MARGEN_INTERNO_MIN = 0.02;
+const TRANSICIONES_MRZ_FILA = 10;
 
 /** Marco guía DNI/NIE (horizontal) o pasaporte (vertical, libreta). */
 export function marcoGuiaRelativo(esPasaporte: boolean): MarcoRelativo {
@@ -181,8 +182,8 @@ export function evaluarFrameCaptura(
     const ratio = (bbox.maxX - bbox.minX + 1) / (bbox.maxY - bbox.minY + 1);
     const ratioOk =
       lado === 'pasaporte'
-        ? ratio >= 0.62 && ratio <= 0.86
-        : ratio >= 1.25 && ratio <= 1.95;
+        ? ratio >= 0.58 && ratio <= 0.92
+        : ratio >= 1.15 && ratio <= 2.05;
 
     documentoCompleto =
       coberturaAncho >= COBERTURA_MIN &&
@@ -194,11 +195,19 @@ export function evaluarFrameCaptura(
       ratioOk;
   }
 
-  const nitidezOk = nitidez >= NITIDEZ_MINIMA;
+  const nitidezOk =
+    lado === 'anverso' ? nitidez >= NITIDEZ_ANVERSO_LISTA : nitidez >= NITIDEZ_MINIMA;
   const textoLegible = evaluarTextoLegible(grises, ancho, alto, lado, nitidez);
 
+  // En delantera no exigimos «texto legible»: la heurística de foto fallaba con luz
+  // uniforme y el marco nunca llegaba a verde / auto-disparo.
   const lista =
-    documentoDetectado && documentoCompleto && nitidezOk && brilloOk && contrasteOk && textoLegible;
+    documentoDetectado &&
+    documentoCompleto &&
+    nitidezOk &&
+    brilloOk &&
+    contrasteOk &&
+    (lado === 'anverso' || textoLegible);
 
   const puntaje = calcularPuntaje({
     nitidez,
@@ -315,33 +324,23 @@ function evaluarTextoAnverso(
   alto: number,
   nitidezGlobal: number,
 ): boolean {
-  if (nitidezGlobal < NITIDEZ_MINIMA) return false;
+  if (nitidezGlobal < NITIDEZ_ANVERSO_LISTA) return false;
 
-  const inicioX = Math.floor(ancho * 0.28);
+  const inicioX = Math.floor(ancho * 0.22);
   const finX = ancho - 2;
-  const inicioY = Math.floor(alto * 0.15);
-  const finY = Math.floor(alto * 0.85);
+  const inicioY = Math.floor(alto * 0.12);
+  const finY = Math.floor(alto * 0.88);
 
   let transicionesTotales = 0;
   let filas = 0;
 
   for (let y = inicioY; y <= finY; y += 4) {
-    transicionesTotales += contarTransicionesFilaRango(grises, ancho, y, inicioX, finX, 24);
+    transicionesTotales += contarTransicionesFilaRango(grises, ancho, y, inicioX, finX, 22);
     filas++;
   }
 
   const mediaTransiciones = filas > 0 ? transicionesTotales / filas : 0;
-
-  const zonaFoto = grises.slice(
-    Math.floor(alto * 0.2) * ancho,
-    Math.floor(alto * 0.75) * ancho,
-  );
-  const mitadIzq = zonaFoto.filter((_, i) => i % ancho < ancho * 0.35);
-  const brilloFoto = media(mitadIzq);
-  const brillo = media(grises);
-  const hayFoto = brilloFoto < brillo - 12;
-
-  return mediaTransiciones >= 8 && (hayFoto || mediaTransiciones >= 12);
+  return mediaTransiciones >= 6;
 }
 
 interface Bbox {

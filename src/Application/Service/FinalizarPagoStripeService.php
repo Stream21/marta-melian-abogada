@@ -43,31 +43,34 @@ final class FinalizarPagoStripeService
         bool $notificarPagoRecibido = true,
         bool $registrarHitoPaso = true,
     ): ?Expediente {
-        $expediente = $this->expedienteRepository->findById($payment->expedienteId());
+        // Releer estado: webhook Stripe y confirm-session pueden llegar a la vez.
+        $paymentActual = $this->paymentRepository->findById($payment->id()) ?? $payment;
+
+        $expediente = $this->expedienteRepository->findById($paymentActual->expedienteId());
         if (null === $expediente) {
             return null;
         }
 
-        $acabadeCobrar = PaymentStatus::Paid !== $payment->status();
+        $acabadeCobrar = PaymentStatus::Paid !== $paymentActual->status();
         if ($acabadeCobrar) {
-            $payment = $this->holdedSync->markPendingSync($payment->withStatus(PaymentStatus::Paid));
-            $this->paymentRepository->save($payment);
+            $paymentActual = $this->holdedSync->markPendingSync($paymentActual->withStatus(PaymentStatus::Paid));
+            $this->paymentRepository->save($paymentActual);
         }
 
-        $expediente = $this->sincronizarEstadoTrasPago($expediente, $payment, $cuotaNumero, $registrarHitoPaso);
+        $expediente = $this->sincronizarEstadoTrasPago($expediente, $paymentActual, $cuotaNumero, $registrarHitoPaso);
 
         if ($acabadeCobrar && $registrarHitoPaso) {
-            $this->registrarHitoPagoStripe($payment, $expediente, $cuotaNumero);
+            $this->registrarHitoPagoStripe($paymentActual, $expediente, $cuotaNumero);
         }
 
-        $this->attemptHoldedSync($payment, $expediente);
+        $this->attemptHoldedSync($paymentActual, $expediente);
 
-        if ($notificarPagoRecibido) {
-            $this->realtime->publishContratacionUpdate($payment->expedienteId()->value(), [
+        if ($notificarPagoRecibido && $acabadeCobrar) {
+            $this->realtime->publishContratacionUpdate($paymentActual->expedienteId()->value(), [
                 'type' => 'pago_recibido',
-                'paymentId' => $payment->id()->value(),
+                'paymentId' => $paymentActual->id()->value(),
                 'cuotaNumero' => $cuotaNumero,
-                'amount' => $payment->amount(),
+                'amount' => $paymentActual->amount(),
                 'actor' => 'cliente',
                 'expedienteNumero' => $expediente->numero(),
                 'clienteNombre' => $expediente->clientName(),
@@ -150,6 +153,15 @@ final class FinalizarPagoStripeService
 
     private function registrarHitoPagoStripe(Payment $payment, Expediente $expediente, int $cuotaNumero): void
     {
+        $paymentId = $payment->id()->value();
+        if ($this->contratacionRepository->existsHitoByTipoAndReferencia('pago_stripe_completado', $paymentId)) {
+            $this->logger->info('Pago Stripe: hito ya registrado (idempotente)', [
+                'paymentId' => $paymentId,
+            ]);
+
+            return;
+        }
+
         $detalleCuota = $cuotaNumero > 0 ? sprintf(' (cuota %d)', $cuotaNumero) : '';
         $descripcion = sprintf(
             'Pago Stripe recibido%s: %s € — expediente %s.',
@@ -166,7 +178,7 @@ final class FinalizarPagoStripeService
             ActorHitoExpediente::Cliente,
             new \DateTimeImmutable('now'),
             PasoContratacionCliente::Pago,
-            $payment->id()->value(),
+            $paymentId,
         ));
     }
 

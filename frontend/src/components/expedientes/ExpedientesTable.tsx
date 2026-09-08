@@ -23,6 +23,8 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { labelFaseNegocio } from '@/lib/portal-fases';
+import { capitalizeDisplay } from '@/lib/capitalize-display';
+import { ExpedienteSubfaseBadge } from '@/components/expedientes/ExpedienteSubfaseBadge';
 import {
   labelEstadoExpediente,
   normalizarEstadoFiltro,
@@ -72,14 +74,23 @@ export function ExpedientesTable({ data, isLoading, isFetching, onRefresh }: Exp
       {
         accessorKey: 'titulo',
         header: 'Título',
-        cell: ({ row }) => <span className="font-medium">{row.original.titulo}</span>,
+        cell: ({ row }) => (
+          <span className="font-medium">{capitalizeDisplay(row.original.titulo)}</span>
+        ),
       },
       {
         accessorKey: 'clientName',
         header: 'Cliente',
-        cell: ({ row }) => (
-          <span className="text-muted-foreground">{row.original.clientName}</span>
-        ),
+        cell: ({ row }) => {
+          const raw = row.original.clientName?.trim() ?? '';
+          const label =
+            !raw || raw === 'Cliente pendiente'
+              ? 'Pendiente de identificación'
+              : /^\+?[\d\s\-().]{9,}$/.test(raw)
+                ? raw
+                : capitalizeDisplay(raw);
+          return <span className="text-muted-foreground">{label}</span>;
+        },
       },
       {
         accessorKey: 'faseNegocio',
@@ -100,6 +111,11 @@ export function ExpedientesTable({ data, isLoading, isFetching, onRefresh }: Exp
             )}
           </div>
         ),
+      },
+      {
+        id: 'subfase',
+        header: 'Subfase',
+        cell: ({ row }) => <ExpedienteSubfaseBadge expediente={row.original} />,
       },
       {
         accessorKey: 'avisosPendientes',

@@ -110,7 +110,7 @@ export function AbogadoContratacionIdentidadCarga({
               onCompletado={({ archivos: files, datosExtraidos }) => {
                 setArchivos(files);
                 setExtraccionAutomatica(datosExtraidos.extraccionAutomatica === true);
-                setDatosIniciales(datosExtraidosAClienteInput(datosExtraidos));
+                setDatosIniciales(datosExtraidosAClienteInput(datosExtraidos, files.tipoEscaneo));
                 setPaso('revision');
               }}
             />

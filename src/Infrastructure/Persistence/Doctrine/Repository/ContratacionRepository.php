@@ -128,6 +128,25 @@ final class ContratacionRepository implements ContratacionRepositoryInterface
         return $orm instanceof ExpedienteHitoOrm ? $this->hitoOrmToDomain($orm) : null;
     }
 
+    public function existsHitoByTipoAndReferencia(string $tipo, string $referenciaId): bool
+    {
+        if ('' === $tipo || '' === $referenciaId) {
+            return false;
+        }
+
+        $count = (int) $this->entityManager->getRepository(ExpedienteHitoOrm::class)
+            ->createQueryBuilder('h')
+            ->select('COUNT(h.id)')
+            ->where('h.tipo = :tipo')
+            ->andWhere('h.referenciaId = :referenciaId')
+            ->setParameter('tipo', $tipo)
+            ->setParameter('referenciaId', $referenciaId)
+            ->getQuery()
+            ->getSingleScalarResult();
+
+        return $count > 0;
+    }
+
     public function findHitosByExpediente(ExpedienteId $expedienteId): array
     {
         $orms = $this->entityManager->getRepository(ExpedienteHitoOrm::class)->findBy(

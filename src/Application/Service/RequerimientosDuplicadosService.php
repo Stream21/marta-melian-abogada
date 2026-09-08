@@ -14,6 +14,7 @@ use App\Domain\Repository\ExpedienteDocumentoRepositoryInterface;
 use App\Domain\Repository\ExpedienteDocumentoRequeridoRepositoryInterface;
 use App\Domain\Repository\ServicioDocumentoRequeridoRepositoryInterface;
 use App\Domain\Repository\TramiteDocumentoRequeridoRepositoryInterface;
+use App\Domain\ValueObject\ExpedienteDocumentoRequeridoId;
 use App\Domain\ValueObject\ExpedienteId;
 use App\Domain\ValueObject\ServicioId;
 use App\Domain\ValueObject\TramiteId;
@@ -42,9 +43,103 @@ final class RequerimientosDuplicadosService
     {
         $entregas = $this->indexarEntregas($expedienteId);
 
+        $this->anadirFaltantesDePlantilla($expedienteId, $expediente);
         $this->eliminarHuerfanosDePlantilla($expedienteId, $expediente, $entregas);
         $this->eliminarDuplicadosSemánticos($expedienteId, $entregas);
         $this->eliminarDuplicadosPorNombre($expedienteId, $entregas);
+    }
+
+    /**
+     * Si el abogado añade docs al servicio/trámite después de abrir la fase,
+     * hay que incorporarlos al expediente (no solo borrar huérfanos).
+     */
+    private function anadirFaltantesDePlantilla(ExpedienteId $expedienteId, Expediente $expediente): void
+    {
+        $existentesServicio = [];
+        $existentesTramite = [];
+        $maxOrden = -1;
+        foreach ($this->requeridoRepository->findByExpediente($expedienteId) as $doc) {
+            $maxOrden = max($maxOrden, $doc->orden());
+            if (OrigenDocumentoRequeridoExpediente::Servicio === $doc->origen()) {
+                $plantillaId = $doc->servicioDocumentoRequeridoId();
+                if (null !== $plantillaId) {
+                    $existentesServicio[$plantillaId->value()] = true;
+                }
+            }
+            if (OrigenDocumentoRequeridoExpediente::Tramite === $doc->origen()) {
+                $plantillaId = $doc->tramiteDocumentoRequeridoId();
+                if (null !== $plantillaId) {
+                    $existentesTramite[$plantillaId->value()] = true;
+                }
+            }
+        }
+
+        $orden = $maxOrden + 1;
+        $nombresServicio = [];
+        $clavesServicio = [];
+
+        $servicioId = $expediente->servicioId();
+        if (null !== $servicioId && '' !== $servicioId) {
+            foreach ($this->servicioDocumentoRepository->findByServicioId(new ServicioId($servicioId)) as $doc) {
+                if (FaseDocumentoTramite::DocumentosCliente !== $doc->fase()) {
+                    continue;
+                }
+
+                $nombresServicio[$this->normalizarNombre($doc->nombre())] = true;
+                $clave = $this->claveSemantica($doc->nombre());
+                if (null !== $clave) {
+                    $clavesServicio[$clave] = true;
+                }
+
+                if (isset($existentesServicio[$doc->id()->value()])) {
+                    continue;
+                }
+
+                $this->requeridoRepository->save(new ExpedienteDocumentoRequerido(
+                    new ExpedienteDocumentoRequeridoId(bin2hex(random_bytes(16))),
+                    $expedienteId,
+                    $doc->nombre(),
+                    $doc->descripcion(),
+                    $doc->obligatorio(),
+                    $doc->tipo(),
+                    $doc->maxImagenes(),
+                    $orden++,
+                    OrigenDocumentoRequeridoExpediente::Servicio,
+                    null,
+                    $doc->id(),
+                ));
+            }
+        }
+
+        $tramiteId = $expediente->tramiteId();
+        if (null !== $tramiteId && '' !== $tramiteId) {
+            foreach ($this->tramiteDocumentoRepository->findByTramiteId(new TramiteId($tramiteId)) as $doc) {
+                if (FaseDocumentoTramite::DocumentosCliente !== $doc->fase()) {
+                    continue;
+                }
+
+                if ($this->tramiteDuplicaServicio($doc->nombre(), $nombresServicio, $clavesServicio)) {
+                    continue;
+                }
+
+                if (isset($existentesTramite[$doc->id()->value()])) {
+                    continue;
+                }
+
+                $this->requeridoRepository->save(new ExpedienteDocumentoRequerido(
+                    new ExpedienteDocumentoRequeridoId(bin2hex(random_bytes(16))),
+                    $expedienteId,
+                    $doc->nombre(),
+                    $doc->descripcion(),
+                    $doc->obligatorio(),
+                    $doc->tipo(),
+                    $doc->maxImagenes(),
+                    max(100, $orden++),
+                    OrigenDocumentoRequeridoExpediente::Tramite,
+                    $doc->id(),
+                ));
+            }
+        }
     }
 
     public function normalizarNombre(string $nombre): string

@@ -7,7 +7,9 @@ namespace App\Infrastructure\Symfony\Controller;
 use App\Application\DTO\AltaExpedienteInput;
 use App\Application\DTO\CrearExpedienteInput;
 use App\Application\DTO\ExpedienteResponseMapper;
+use App\Application\Service\ContratacionCompletitudValidator;
 use App\Application\Service\ExpedienteAvisosAggregator;
+use App\Application\Service\RequerimientosSubfaseListadoService;
 use App\Application\UseCase\AltaExpedienteUseCase;
 use App\Application\UseCase\CancelarExpedienteUseCase;
 use App\Application\UseCase\CrearExpedienteUseCase;
@@ -18,6 +20,7 @@ use App\Application\UseCase\ObtenerFacturacionExpedienteUseCase;
 use App\Application\UseCase\ReabrirExpedienteUseCase;
 use App\Application\UseCase\SincronizarCobrosExpedienteHoldedUseCase;
 use App\Application\UseCase\VincularExpedienteClienteUseCase;
+use App\Domain\Entity\FaseNegocioExpediente;
 use App\Domain\Exception\ClienteDuplicadoExceptionInterface;
 use App\Domain\Repository\PaymentRepositoryInterface;
 use App\Infrastructure\Http\ClienteDuplicadoJsonResponse;
@@ -44,7 +47,9 @@ final class ExpedienteController extends AbstractController
         private CancelarExpedienteUseCase $cancelarExpediente,
         private ReabrirExpedienteUseCase $reabrirExpediente,
         private ExpedienteAvisosAggregator $avisosAggregator,
+        private ContratacionCompletitudValidator $contratacionCompletitud,
         private string $frontendBaseUrl = 'http://localhost:5173',
+        private RequerimientosSubfaseListadoService $requerimientosSubfaseListado,
     ) {
     }
 
@@ -54,12 +59,33 @@ final class ExpedienteController extends AbstractController
         $expedientes = ($this->listarExpedientes)();
         $avisosPorExpediente = $this->avisosAggregator->aggregate($expedientes);
 
+        $requerimientosIds = [];
+        foreach ($expedientes as $e) {
+            if (FaseNegocioExpediente::Requerimientos === $e->faseNegocio()) {
+                $requerimientosIds[] = $e->id()->value();
+            }
+        }
+        $subfasesRequerimientos = $this->requerimientosSubfaseListado->aggregate($requerimientosIds);
+
         return new JsonResponse(array_map(
-            fn ($e) => ExpedienteResponseMapper::fromDomain(
-                $e,
-                $this->frontendBaseUrl,
-                $avisosPorExpediente[$e->id()->value()] ?? null,
-            ),
+            function ($e) use ($avisosPorExpediente, $subfasesRequerimientos) {
+                $subfaseContratacion = null;
+                $subfaseRequerimientos = null;
+                if (FaseNegocioExpediente::Contratacion === $e->faseNegocio()) {
+                    $subfaseContratacion = $this->contratacionCompletitud->subfaseContratacionParaListado($e->id());
+                }
+                if (FaseNegocioExpediente::Requerimientos === $e->faseNegocio()) {
+                    $subfaseRequerimientos = $subfasesRequerimientos[$e->id()->value()] ?? null;
+                }
+
+                return ExpedienteResponseMapper::fromDomain(
+                    $e,
+                    $this->frontendBaseUrl,
+                    $avisosPorExpediente[$e->id()->value()] ?? null,
+                    $subfaseContratacion,
+                    $subfaseRequerimientos,
+                );
+            },
             $expedientes,
         ));
     }

@@ -101,4 +101,97 @@ final class ContratacionCompletitudValidator
 
         return null;
     }
+
+    /**
+     * Subfase actual de contratación para listados (incluye «esperando abogado»).
+     *
+     * @return array{
+     *     codigo: string,
+     *     label: string,
+     *     orden: int,
+     *     total: int,
+     *     estado: string,
+     *     estadoLabel: string,
+     *     items: list<array{
+     *         codigo: string,
+     *         label: string,
+     *         estado: string,
+     *         estadoLabel: string,
+     *         fecha: string|null
+     *     }>
+     * }|null
+     */
+    public function subfaseContratacionParaListado(ExpedienteId $expedienteId): ?array
+    {
+        $pasos = $this->contratacionRepository->findPasosByExpediente($expedienteId);
+        $porPaso = [];
+        foreach ($pasos as $paso) {
+            $porPaso[$paso->paso()->value] = $paso;
+        }
+
+        $items = [];
+        foreach (PasoContratacionCliente::ordenados() as $ordenPaso) {
+            $paso = $porPaso[$ordenPaso->value] ?? null;
+            $estado = $paso?->estado() ?? EstadoPasoContratacion::Pendiente;
+            $fecha = $paso?->validadoAt() ?? $paso?->realizadoAt();
+            $items[] = [
+                'codigo' => $ordenPaso->value,
+                'label' => $ordenPaso->label(),
+                'estado' => $estado->value,
+                'estadoLabel' => $estado->label(),
+                'fecha' => $fecha?->format(\DateTimeInterface::ATOM),
+            ];
+        }
+
+        foreach (PasoContratacionCliente::ordenados() as $ordenPaso) {
+            $paso = $porPaso[$ordenPaso->value] ?? null;
+            if (null === $paso) {
+                continue;
+            }
+
+            if ($paso->estado() === EstadoPasoContratacion::ValidadoAbogado) {
+                continue;
+            }
+
+            if ($paso->estado() === EstadoPasoContratacion::RealizadoCliente) {
+                return [
+                    'codigo' => $ordenPaso->value,
+                    'label' => $ordenPaso->label(),
+                    'orden' => $ordenPaso->orden(),
+                    'total' => PasoContratacionCliente::TOTAL,
+                    'estado' => 'esperando_abogado',
+                    'estadoLabel' => 'Esperando abogado',
+                    'items' => $items,
+                ];
+            }
+
+            return [
+                'codigo' => $ordenPaso->value,
+                'label' => $ordenPaso->label(),
+                'orden' => $ordenPaso->orden(),
+                'total' => PasoContratacionCliente::TOTAL,
+                'estado' => 'pendiente_cliente',
+                'estadoLabel' => 'Pendiente cliente',
+                'items' => $items,
+            ];
+        }
+
+        if ([] === $items) {
+            return null;
+        }
+
+        // Todos validados: mostrar última subfase como completada.
+        $ultimo = PasoContratacionCliente::ordenados();
+        $ultimoPaso = $ultimo[array_key_last($ultimo)];
+
+        return [
+            'codigo' => $ultimoPaso->value,
+            'label' => $ultimoPaso->label(),
+            'orden' => $ultimoPaso->orden(),
+            'total' => PasoContratacionCliente::TOTAL,
+            'estado' => 'completado',
+            'estadoLabel' => 'Completado',
+            'items' => $items,
+        ];
+    }
 }

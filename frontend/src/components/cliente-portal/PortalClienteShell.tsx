@@ -1,6 +1,4 @@
 import type { ReactNode } from 'react';
-import { useEffect, useState } from 'react';
-import { Shield } from 'lucide-react';
 import type { AccesoExpedienteResponse } from '@/api/client';
 import {
   PortalClienteBrandingHero,
@@ -10,56 +8,116 @@ import {
   PortalClienteRoadmap,
   roadmapFromAcceso,
 } from '@/components/cliente-portal/PortalClienteRoadmap';
-import { esDispositivoMovil } from '@/lib/device';
+import { Badge } from '@/components/ui/badge';
+import { useCampoEnfocadoVisible } from '@/hooks/useCampoEnfocadoVisible';
+import { usePortalViewportLock } from '@/hooks/usePortalViewportLock';
+import { textoVencimientoFase, calcularVencimientoFase } from '@/lib/vencimiento-fase';
+import { cn } from '@/lib/utils';
 
 interface PortalClienteShellProps {
   data: AccesoExpedienteResponse;
   children: ReactNode;
+  focusMode?: boolean;
 }
 
-export function PortalClienteShell({ data, children }: PortalClienteShellProps) {
-  const branding = brandingFromAcceso(data);
-  const [esMovil, setEsMovil] = useState(false);
-  const nombre =
-    data.clienteNombre?.trim() ||
-    data.clienteDatos?.nombre?.trim() ||
-    'Su expediente';
+export function PortalClienteShell({
+  data,
+  children,
+  focusMode = false,
+}: PortalClienteShellProps) {
+  usePortalViewportLock(focusMode);
+  useCampoEnfocadoVisible(focusMode);
 
-  useEffect(() => {
-    setEsMovil(esDispositivoMovil());
-  }, []);
+  const branding = brandingFromAcceso(data);
+  const vencimiento = calcularVencimientoFase(data.fechaVencimientoFase);
+  const textoVencimiento = textoVencimientoFase(data.fechaVencimientoFase);
+  const showRoadmap = data.faseNegocio === 'contratacion';
 
   return (
-    <div className="min-h-screen bg-muted/40 pb-10">
-      <PortalClienteBrandingHero {...branding} compact={esMovil} />
+    <div
+      className={cn(
+        'portal-focus-shell flex flex-col bg-muted/40',
+        focusMode
+          ? 'fixed inset-x-0 z-0 overflow-hidden'
+          : 'min-h-screen',
+      )}
+      style={
+        focusMode
+          ? { top: 'var(--portal-vt, 0px)', height: 'var(--portal-vh, 100svh)' }
+          : undefined
+      }
+    >
+      <header className="shrink-0">
+        <PortalClienteBrandingHero {...branding} compact dense={focusMode} />
 
-      <div className="border-b border-border bg-card">
-        <div className="mx-auto max-w-2xl px-4 py-4">
-          <p className="break-words text-lg font-semibold leading-snug text-foreground">{nombre}</p>
-          <div className="mt-1.5 space-y-0.5 text-sm text-muted-foreground sm:flex sm:flex-wrap sm:items-baseline sm:gap-x-2 sm:space-y-0">
-            <p className="shrink-0 font-mono text-[13px] tracking-tight">{data.expedienteNumero}</p>
-            <p className="hidden sm:inline" aria-hidden>
-              ·
+        <div className="border-b border-border bg-card">
+          <div
+            className={cn(
+              'mx-auto w-full max-w-3xl px-4',
+              focusMode ? 'py-1.5' : 'py-2',
+            )}
+          >
+            <div className="flex items-start justify-between gap-2">
+              <p className="font-mono text-xs font-semibold tracking-tight text-foreground">
+                {data.expedienteNumero}
+              </p>
+              {textoVencimiento && (
+                <Badge
+                  variant={
+                    vencimiento.vencido ? 'destructive' : vencimiento.urgente ? 'warning' : 'secondary'
+                  }
+                  className="shrink-0 whitespace-nowrap text-[11px]"
+                >
+                  {textoVencimiento}
+                </Badge>
+              )}
+            </div>
+            <p
+              className={cn(
+                'mt-0.5 text-sm leading-snug text-muted-foreground',
+                focusMode && 'line-clamp-2 text-foreground/90',
+              )}
+              title={data.tramiteNombre}
+            >
+              {data.tramiteNombre}
             </p>
-            <p className="break-words leading-snug">{data.tramiteNombre}</p>
+
+            {showRoadmap && (
+              <div className={cn(focusMode ? 'mt-1' : 'mt-1.5')}>
+                <PortalClienteRoadmap {...roadmapFromAcceso(data)} compact />
+              </div>
+            )}
           </div>
         </div>
-      </div>
+      </header>
 
-      <main className="mx-auto w-full max-w-2xl space-y-4 px-4 pt-5">
-        <PortalClienteRoadmap {...roadmapFromAcceso(data)} />
-
-        <div className="panel overflow-hidden shadow-sm">
-          <div className="p-4 sm:p-6">{children}</div>
+      <main
+        className={cn(
+          'mx-auto flex w-full max-w-3xl min-h-0 flex-1 flex-col px-4',
+          focusMode
+            ? 'overflow-hidden pb-[max(0.75rem,env(safe-area-inset-bottom,0.75rem))]'
+            : 'overflow-hidden py-4',
+        )}
+      >
+        <div
+          className={cn(
+            'flex min-h-0 flex-1 flex-col',
+            !focusMode && 'panel overflow-hidden shadow-sm',
+            focusMode && 'border-0 bg-transparent shadow-none',
+          )}
+        >
+          {/* En focus mode el scroll lo gestiona cada pantalla (FocusContent / captura).
+              Aquí solo delimitamos altura; overflow-y-auto en este nivel + overflow-hidden
+              en un hijo flex-1 volvía a dejar el contenido sin desplazamiento. */}
+          <div
+            className={cn(
+              'flex min-h-0 min-w-0 flex-1 flex-col',
+              focusMode ? 'overflow-hidden' : 'overflow-hidden p-4 sm:p-6',
+            )}
+          >
+            {children}
+          </div>
         </div>
-
-        <footer className="flex items-center justify-center gap-2 px-2 text-center text-[11px] text-muted-foreground">
-          <Shield className="h-3.5 w-3.5 shrink-0 text-primary/60" />
-          <span>
-            Conexión segura · Sus datos están protegidos conforme a la normativa de protección de
-            datos
-          </span>
-        </footer>
       </main>
     </div>
   );

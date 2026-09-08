@@ -33,7 +33,7 @@ final class GuardarClienteUseCase
             throw new \InvalidArgumentException('El nombre del cliente es obligatorio.');
         }
         if ('' === $nombre && $altaMinima) {
-            $nombre = 'Cliente pendiente';
+            $nombre = Cliente::NOMBRE_PROVISIONAL;
         }
 
         $telefono = $this->telefonoNormalizer->normalize($input->telefono);

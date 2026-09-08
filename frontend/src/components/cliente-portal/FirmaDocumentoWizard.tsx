@@ -236,8 +236,6 @@ export function FirmaDocumentoWizard({
                             Dibuje su firma
                           </div>
                           <SignaturePad
-                            title={`Firma: ${doc.label}`}
-                            description="Use el dedo o el ratón. Se incorporará al PDF."
                             filename={`firma-${doc.tipo}.png`}
                             isSaving={firmarMutation.isPending}
                             onSave={async (file) => {

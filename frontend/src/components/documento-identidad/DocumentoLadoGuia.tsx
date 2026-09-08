@@ -1,49 +1,81 @@
 import { useId } from 'react';
 import { cn } from '@/lib/utils';
 import { ID1_ASPECT_RATIO, PASAPORTE_ANCHO_MM, PASAPORTE_ALTO_MM } from '@/lib/documento-id1';
+import { CAPTURA_LADO_DESCRIPCION } from './captura-lado-textos';
 
 type LadoGuia = 'anverso' | 'reverso' | 'pasaporte';
 
 interface DocumentoLadoGuiaProps {
   lado: LadoGuia;
   className?: string;
+  /** default: estándar · embebido: dentro del marco de captura · dialogo: pantalla de ayuda */
+  variant?: 'default' | 'embebido' | 'dialogo';
 }
-
-const TITULO: Record<LadoGuia, string> = {
-  anverso: 'Cara delantera · con foto',
-  reverso: 'Cara trasera · banda inferior',
-  pasaporte: 'Página de datos del pasaporte',
-};
 
 /**
  * Guía visual tipo KYC: muestra qué cara escanear.
  * En NIE/DNI compara anverso/reverso y resalta solo la cara activa.
  */
-export function DocumentoLadoGuia({ lado, className }: DocumentoLadoGuiaProps) {
+export function DocumentoLadoGuia({ lado, className, variant = 'default' }: DocumentoLadoGuiaProps) {
+  const embebido = variant === 'embebido';
+  const dialogo = variant === 'dialogo';
+
   return (
-    <div className={cn('flex flex-col items-center gap-3', className)}>
-      {lado === 'pasaporte' ? (
-        <GuiaPasaporte />
-      ) : (
-        <GuiaTarjetaDosCaras activa={lado} />
+    <div
+      className={cn(
+        'flex flex-col items-center',
+        embebido ? 'gap-1.5' : dialogo ? 'gap-4' : 'gap-3',
+        className,
       )}
-      <p className="max-w-[18rem] text-center text-sm font-medium text-foreground">{TITULO[lado]}</p>
+    >
+      {lado === 'pasaporte' ? (
+        <GuiaPasaporte grande={dialogo} compacto={embebido} />
+      ) : (
+        <GuiaTarjetaDosCaras activa={lado} grande={dialogo} compacto={embebido} />
+      )}
+      <p
+        className={cn(
+          'max-w-[18rem] text-center font-medium text-foreground',
+          embebido ? 'text-xs' : dialogo ? 'text-base' : 'text-sm',
+        )}
+      >
+        {CAPTURA_LADO_DESCRIPCION[lado]}
+      </p>
     </div>
   );
 }
 
-function GuiaTarjetaDosCaras({ activa }: { activa: 'anverso' | 'reverso' }) {
+function GuiaTarjetaDosCaras({
+  activa,
+  grande = false,
+  compacto = false,
+}: {
+  activa: 'anverso' | 'reverso';
+  grande?: boolean;
+  compacto?: boolean;
+}) {
   return (
-    <div className="flex w-full items-end justify-center gap-3 px-1" role="img" aria-label={TITULO[activa]}>
+    <div
+      className={cn(
+        'flex w-full items-end justify-center px-1',
+        compacto ? 'gap-2' : grande ? 'gap-5' : 'gap-3',
+      )}
+      role="img"
+      aria-label={CAPTURA_LADO_DESCRIPCION[activa]}
+    >
       <CaraMini
         tipo="anverso"
         activa={activa === 'anverso'}
         etiqueta="Delantera"
+        grande={grande}
+        compacto={compacto}
       />
       <CaraMini
         tipo="reverso"
         activa={activa === 'reverso'}
         etiqueta="Trasera"
+        grande={grande}
+        compacto={compacto}
       />
     </div>
   );
@@ -53,16 +85,21 @@ function CaraMini({
   tipo,
   activa,
   etiqueta,
+  grande = false,
+  compacto = false,
 }: {
   tipo: 'anverso' | 'reverso';
   activa: boolean;
   etiqueta: string;
+  grande?: boolean;
+  compacto?: boolean;
 }) {
   const uid = useId().replace(/:/g, '');
   return (
     <div
       className={cn(
-        'flex w-[46%] max-w-[9.5rem] flex-col items-center gap-2 transition-opacity',
+        'flex flex-col items-center transition-opacity',
+        compacto ? 'w-[44%] max-w-[7rem] gap-1' : grande ? 'w-[46%] max-w-[11rem] gap-2.5' : 'w-[46%] max-w-[9.5rem] gap-2',
         activa ? 'opacity-100' : 'opacity-40',
       )}
     >
@@ -81,7 +118,8 @@ function CaraMini({
       </div>
       <span
         className={cn(
-          'text-[11px] font-semibold uppercase tracking-wide',
+          'font-semibold uppercase tracking-wide',
+          compacto ? 'text-[10px]' : 'text-[11px]',
           activa ? 'text-primary' : 'text-muted-foreground',
         )}
       >
@@ -187,7 +225,7 @@ function SvgReverso({ uid }: { uid: string }) {
   );
 }
 
-function GuiaPasaporte() {
+function GuiaPasaporte({ grande = false, compacto = false }: { grande?: boolean; compacto?: boolean }) {
   const uid = useId().replace(/:/g, '');
   const w = 148;
   const h = Math.round((w / PASAPORTE_ANCHO_MM) * PASAPORTE_ALTO_MM);
@@ -196,9 +234,12 @@ function GuiaPasaporte() {
 
   return (
     <div
-      className="relative w-full max-w-[8.5rem] overflow-hidden rounded-xl bg-muted/40 p-2 ring-2 ring-primary ring-offset-2 ring-offset-card"
+      className={cn(
+        'relative overflow-hidden rounded-xl bg-muted/40 p-2 ring-2 ring-primary ring-offset-2 ring-offset-card',
+        compacto ? 'w-full max-w-[6.5rem]' : grande ? 'w-full max-w-[10rem]' : 'w-full max-w-[8.5rem]',
+      )}
       role="img"
-      aria-label={TITULO.pasaporte}
+      aria-label={CAPTURA_LADO_DESCRIPCION.pasaporte}
     >
       <svg viewBox={`0 0 ${w} ${h}`} className="h-auto w-full" aria-hidden>
         <defs>

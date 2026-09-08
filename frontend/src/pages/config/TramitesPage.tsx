@@ -3,7 +3,6 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { Plus } from 'lucide-react';
 import { api } from '@/api/client';
-import { ConfigBreadcrumb } from '@/components/config/ConfigBreadcrumb';
 import { TramitesTable } from '@/components/config/TramitesTable';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { PageShell } from '@/components/layout/PageShell';
@@ -42,9 +41,7 @@ export function TramitesPage() {
   });
 
   return (
-    <>
-      <ConfigBreadcrumb section="tramites" variant="list" />
-      <PageShell>
+    <PageShell>
         <PageHeader
           title="Trámites"
           subtitle="Defina los trámites asociados a cada servicio jurídico. Use el icono de configuración para definir la hoja de encargo y la documentación requerida."
@@ -103,6 +100,5 @@ export function TramitesPage() {
           />
         </div>
       </PageShell>
-    </>
   );
 }

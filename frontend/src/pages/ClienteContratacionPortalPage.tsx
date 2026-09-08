@@ -1,40 +1,21 @@
-import { useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import {
-  AlertTriangle,
-  Clock,
-  CreditCard,
-  Loader2,
-  PenLine,
-  User,
-} from 'lucide-react';
-import { api, type AccesoExpedienteResponse, type AccesoPasoResponse } from '@/api/client';
-import { DocumentoUploadPanel } from '@/components/cliente-portal/DocumentoUploadPanel';
+import { api } from '@/api/client';
+import { ContratacionJourney } from '@/components/cliente-portal/contratacion/ContratacionJourney';
+import { PortalClienteShell } from '@/components/cliente-portal/PortalClienteShell';
+import { PortalClienteBrandingHero } from '@/components/cliente-portal/PortalClienteBrandingHero';
 import { RequerimientosClientePortal } from '@/components/cliente-portal/RequerimientosClientePortal';
 import { TramitacionClientePortal } from '@/components/cliente-portal/TramitacionClientePortal';
 import { ResolucionClientePortal } from '@/components/cliente-portal/ResolucionClientePortal';
-import { FirmaDocumentoWizard } from '@/components/cliente-portal/FirmaDocumentoWizard';
-import { PortalClienteShell } from '@/components/cliente-portal/PortalClienteShell';
-import { PortalClienteBrandingHero } from '@/components/cliente-portal/PortalClienteBrandingHero';
-import { ClienteIdentidadOnboarding } from '@/components/documento-identidad/ClienteIdentidadOnboarding';
-import { Button } from '@/components/ui/button';
 import { useMercureAcceso } from '@/hooks/useMercureAcceso';
-import { CalendarioCuotasTable } from '@/components/expedientes/contratacion/CondicionesPagoPanel';
-import { formatEuros, getImportePagoInicial } from '@/lib/pago-contratacion';
-import { cn } from '@/lib/utils';
 
 interface ClienteContratacionPortalPageProps {
   token: string;
 }
 
-const PASO_ICONS: Record<string, typeof User> = {
-  datos_cliente: User,
-  firmas: PenLine,
-  pago: CreditCard,
-};
-
 export function ClienteContratacionPortalPage({ token }: ClienteContratacionPortalPageProps) {
   const queryClient = useQueryClient();
+  const [focusMode, setFocusMode] = useState(false);
   useMercureAcceso(token);
 
   const { data, isLoading, error } = useQuery({
@@ -73,6 +54,10 @@ export function ClienteContratacionPortalPage({ token }: ClienteContratacionPort
     if (!data?.pasos?.length || !data.pasoActivo) return null;
     return data.pasos.find((p) => p.paso === data.pasoActivo) ?? null;
   }, [data]);
+
+  const onFocusChange = useCallback((isFocus: boolean) => {
+    setFocusMode(isFocus);
+  }, []);
 
   if (isLoading) {
     return (
@@ -128,7 +113,7 @@ export function ClienteContratacionPortalPage({ token }: ClienteContratacionPort
   if (data.faseNegocio !== 'contratacion') {
     return (
       <PortalClienteShell data={data}>
-        <p className="text-center text-sm text-muted-foreground py-8">
+        <p className="py-8 text-center text-sm text-muted-foreground">
           Este expediente no está disponible en el portal en este momento.
         </p>
       </PortalClienteShell>
@@ -136,14 +121,13 @@ export function ClienteContratacionPortalPage({ token }: ClienteContratacionPort
   }
 
   return (
-    <PortalClienteShell data={data}>
-      {esperandoAbogado ? (
-        <WaitingScreen />
-      ) : pasoActivo ? (
-        <PasoActivoContent
+    <PortalClienteShell data={data} focusMode={focusMode}>
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+        <ContratacionJourney
           token={token}
-          paso={pasoActivo}
           data={data}
+          pasoActivo={pasoActivo}
+          esperandoAbogado={esperandoAbogado}
           onCompletar={(p) => completarMutation.mutate(p)}
           onIdentidadCompletada={() =>
             void queryClient.invalidateQueries({ queryKey: ['acceso', token] })
@@ -151,236 +135,9 @@ export function ClienteContratacionPortalPage({ token }: ClienteContratacionPort
           onIniciarPago={() => pagoMutation.mutate()}
           completando={completarMutation.isPending}
           iniciandoPago={pagoMutation.isPending}
+          onFocusChange={onFocusChange}
         />
-      ) : (
-        <div className="py-8 text-center text-sm text-muted-foreground">
-          Todos los pasos han sido completados. Su abogado finalizará la contratación.
-        </div>
-      )}
+      </div>
     </PortalClienteShell>
-  );
-}
-
-function WaitingScreen() {
-  return (
-    <div className="flex flex-col items-center py-10 text-center">
-      <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-amber-100">
-        <Clock className="h-7 w-7 text-amber-600 animate-pulse" />
-      </div>
-      <h2 className="text-lg font-semibold">Esperando revisión del abogado</h2>
-      <p className="mt-2 max-w-sm text-sm text-muted-foreground">
-        Su abogado está revisando la información enviada. Podrá continuar cuando le avisemos.
-      </p>
-    </div>
-  );
-}
-
-function NotaDevolucionBanner({ nota }: { nota: string }) {
-  return (
-    <div className="mb-5 flex gap-3 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm">
-      <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-700" />
-      <div>
-        <p className="font-semibold text-amber-900">Su abogado le ha enviado un mensaje sobre este paso</p>
-        <p className="mt-1 whitespace-pre-wrap text-amber-800">{nota}</p>
-      </div>
-    </div>
-  );
-}
-
-function PasoActivoContent({
-  token,
-  paso,
-  data,
-  onCompletar,
-  onIdentidadCompletada,
-  onIniciarPago,
-  completando,
-  iniciandoPago,
-}: {
-  token: string;
-  paso: AccesoPasoResponse;
-  data: AccesoExpedienteResponse;
-  onCompletar: (paso: string) => void;
-  onIdentidadCompletada: () => void;
-  onIniciarPago: () => void;
-  completando: boolean;
-  iniciandoPago: boolean;
-}) {
-  const Icon = PASO_ICONS[paso.paso] ?? User;
-
-  const docsObligatoriosOk =
-    paso.paso !== 'datos_cliente' ||
-    (data.documentosRequeridos ?? [])
-      .filter((d) => d.obligatorio)
-      .every((d) => d.estado === 'entregado' || d.estado === 'validado');
-
-  const firmasOk =
-    paso.paso !== 'firmas' || (data.documentosFirma ?? []).every((d) => d.firmado);
-
-  const puedeConfirmar = docsObligatoriosOk && firmasOk && paso.paso !== 'datos_cliente';
-
-  const docsAdicionales = (data.documentosRequeridos ?? []).filter((d) => d.obligatorio);
-
-  if (paso.paso === 'datos_cliente') {
-    return (
-      <div>
-        {paso.notaDevolucion && <NotaDevolucionBanner nota={paso.notaDevolucion} />}
-        <ClienteIdentidadOnboarding
-          token={token}
-          tipoServicio={data.tipoServicio}
-          identidadEdicion={data.identidadEdicion}
-          datosClienteEditables={data.datosClienteEditables}
-          notaDevolucion={paso.notaDevolucion}
-          onCompletado={onIdentidadCompletada}
-        />
-        {docsAdicionales.length > 0 && (
-          <div className="mt-6 border-t pt-6">
-            <p className="section-label mb-3">Documentación adicional</p>
-            <DocumentoUploadPanel token={token} documentos={data.documentosRequeridos ?? []} />
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  return (
-    <div>
-      {paso.notaDevolucion && paso.paso !== 'firmas' && (
-        <NotaDevolucionBanner nota={paso.notaDevolucion} />
-      )}
-      <PasoTitulo icon={Icon} label={paso.label} />
-
-      {paso.paso === 'firmas' && (
-        <FirmaDocumentoWizard
-          token={token}
-          documentos={data.documentosFirma ?? []}
-          firmasConfig={data.firmas}
-          notaDevolucion={paso.notaDevolucion}
-          motivosDevolucion={paso.motivosDevolucion}
-        />
-      )}
-
-      {paso.paso === 'pago' && data.resumenPago && (
-        <PagoResumen resumen={data.resumenPago} onIniciarPago={onIniciarPago} iniciando={iniciandoPago} />
-      )}
-
-      {paso.paso === 'pago' && data.resumenPago?.metodoPago === 'manual' && (
-        <div className="mt-6 rounded-lg border border-border bg-muted/20 p-4 text-sm text-muted-foreground">
-          <p className="font-medium text-foreground">¿Cómo funciona el pago manual?</p>
-          <p className="mt-2">
-            Realice el pago inicial según las instrucciones anteriores (transferencia, Bizum o el medio acordado con su
-            abogado). <strong>No debe confirmar nada en este portal</strong>: su abogado validará el cobro cuando lo
-            reciba.
-          </p>
-        </div>
-      )}
-
-      {paso.paso !== 'pago' && (
-        <>
-          {!firmasOk && paso.paso === 'firmas' && (
-            <p className="mt-4 text-xs text-muted-foreground">
-              Cuando haya firmado todos los documentos, pulse Continuar.
-            </p>
-          )}
-
-          <Button
-            className="mt-4 w-full"
-            size="lg"
-            onClick={() => onCompletar(paso.paso)}
-            disabled={!puedeConfirmar || completando}
-          >
-            {completando ? 'Enviando…' : 'Confirmar y continuar'}
-          </Button>
-        </>
-      )}
-    </div>
-  );
-}
-
-function PasoTitulo({ icon: Icon, label }: { icon: typeof User; label: string }) {
-  return (
-    <div className="mb-5 flex items-center gap-3 border-b border-border pb-4">
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-        <Icon className="h-5 w-5" />
-      </div>
-      <div className="min-w-0">
-        <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Paso actual</p>
-        <h2 className="text-lg font-semibold leading-tight">{label}</h2>
-      </div>
-    </div>
-  );
-}
-
-function PagoResumen({
-  resumen,
-  onIniciarPago,
-  iniciando,
-}: {
-  resumen: NonNullable<AccesoExpedienteResponse['resumenPago']>;
-  onIniciarPago: () => void;
-  iniciando: boolean;
-}) {
-  const calendario = resumen.calendarioPago ?? resumen.calendarioProyectado ?? [];
-  const calendarioDefinitivo = !!resumen.calendarioPago && !!resumen.fechaFirmaContrato;
-  const importePagoInicial = getImportePagoInicial(resumen);
-  const planLabel =
-    resumen.planPago === 'fraccionado'
-      ? `Fraccionado (${resumen.numCuotas} cuotas)`
-      : 'Pago único';
-  const esManual = resumen.metodoPago === 'manual';
-
-  return (
-    <div className="space-y-4">
-      <div className="space-y-3 rounded-lg border bg-card p-4 text-sm">
-        <DatoFila
-          label={resumen.planPago === 'fraccionado' ? 'Pago inicial (1.ª cuota)' : 'Importe a pagar'}
-          value={formatEuros(importePagoInicial)}
-          destacado
-        />
-        {resumen.planPago === 'fraccionado' && (
-          <DatoFila
-            label="Honorarios totales"
-            value={formatEuros(resumen.honorariosAcordados)}
-          />
-        )}
-        <DatoFila label="Método" value={resumen.metodoPagoLabel} />
-        <DatoFila label="Plan" value={resumen.planPagoLabel ?? planLabel} />
-        {esManual && resumen.iban && (
-          <>
-            <DatoFila label="Titular" value={resumen.titularCuenta} />
-            <DatoFila label="IBAN" value={resumen.iban} />
-          </>
-        )}
-        {resumen.metodoPago === 'digital' && (
-          <Button className="mt-2 w-full" size="lg" onClick={onIniciarPago} disabled={iniciando}>
-            {iniciando ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Redirigiendo…
-              </>
-            ) : (
-              'Pagar ahora'
-            )}
-          </Button>
-        )}
-      </div>
-
-      {calendario.length > 0 && (
-        <CalendarioCuotasTable
-          cuotas={calendario}
-          definitivo={calendarioDefinitivo}
-          fechaFirmaContrato={resumen.fechaFirmaContrato}
-        />
-      )}
-    </div>
-  );
-}
-
-function DatoFila({ label, value, destacado }: { label: string; value: string; destacado?: boolean }) {
-  return (
-    <div className="flex justify-between gap-4">
-      <span className="text-muted-foreground">{label}</span>
-      <span className={cn('text-right', destacado && 'font-bold text-primary')}>{value}</span>
-    </div>
   );
 }

@@ -72,6 +72,28 @@ final class ExpedienteDocumentoRepository implements ExpedienteDocumentoReposito
         return array_map($this->ormToDomain(...), $orms);
     }
 
+    public function findByExpedienteIds(array $expedienteIds): array
+    {
+        if ([] === $expedienteIds) {
+            return [];
+        }
+
+        /** @var ExpedienteDocumentoEntregadoOrm[] $orms */
+        $orms = $this->entityManager->getRepository(ExpedienteDocumentoEntregadoOrm::class)
+            ->createQueryBuilder('d')
+            ->where('d.expedienteId IN (:ids)')
+            ->setParameter('ids', $expedienteIds)
+            ->getQuery()
+            ->getResult();
+
+        $grouped = [];
+        foreach ($orms as $orm) {
+            $grouped[$orm->getExpedienteId()][] = $this->ormToDomain($orm);
+        }
+
+        return $grouped;
+    }
+
     public function countPendientesRevisionByExpedienteIds(array $expedienteIds): array
     {
         if ([] === $expedienteIds) {

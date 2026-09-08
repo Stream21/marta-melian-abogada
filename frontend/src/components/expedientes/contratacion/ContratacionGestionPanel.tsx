@@ -9,11 +9,11 @@ import {
   CreditCard,
   FileText,
   PenLine,
-  Radio,
   User,
   AlertTriangle,
 } from 'lucide-react';
 import { api, type ContratacionPasoResponse, type ContratacionResponse } from '@/api/client';
+import type { ExpedienteResponse } from '@/api/client';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -30,8 +30,11 @@ const PASO_ICONS: Record<string, typeof User> = {
   pago: CreditCard,
 };
 
+type SubfaseContratacion = NonNullable<ExpedienteResponse['subfaseContratacion']>;
+
 interface ContratacionGestionPanelProps {
   expedienteId: string;
+  subfaseContratacion?: SubfaseContratacion | null;
   focusPaso?: string;
   abrirRevision?: boolean;
   onFocusConsumed?: () => void;
@@ -243,6 +246,7 @@ function StepperHorizontal({
 
 export function ContratacionGestionPanel({
   expedienteId,
+  subfaseContratacion,
   focusPaso,
   abrirRevision,
   onFocusConsumed,
@@ -305,6 +309,7 @@ export function ContratacionGestionPanel({
     <ContratacionContent
       expedienteId={expedienteId}
       data={data}
+      subfaseContratacion={subfaseContratacion}
       focusPaso={focusPaso}
       abrirRevision={abrirRevision}
       onFocusConsumed={onFocusConsumed}
@@ -320,6 +325,7 @@ export function ContratacionGestionPanel({
 function ContratacionContent({
   expedienteId,
   data,
+  subfaseContratacion,
   focusPaso,
   abrirRevision,
   onFocusConsumed,
@@ -331,6 +337,7 @@ function ContratacionContent({
 }: {
   expedienteId: string;
   data: ContratacionResponse;
+  subfaseContratacion?: SubfaseContratacion | null;
   focusPaso?: string;
   abrirRevision?: boolean;
   onFocusConsumed?: () => void;
@@ -389,21 +396,27 @@ function ContratacionContent({
       <div className="panel p-6">
         <div className="flex flex-wrap items-start justify-between gap-4 mb-6">
           <div>
-            <p className="section-label">Fase 1</p>
-            <h2 className="panel-title">Contratación — Formalización inicial</h2>
-            <p className="text-sm text-muted-foreground mt-1">
+            <h2 className="text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
+              Fase 1 · Contratación — Formalización inicial
+            </h2>
+            <p className="mt-1.5 text-sm text-muted-foreground">
               Supervise el avance del cliente y valide cada hito antes de pasar a requerimientos.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <Badge variant={pendientesRevision > 0 ? 'warning' : 'info'}>
-              {pendientesRevision > 0 ? `${pendientesRevision} pendiente(s) de revisión` : 'En proceso'}
-            </Badge>
+            {subfaseContratacion && (
+              <Badge variant="secondary">
+                {subfaseContratacion.orden}/{subfaseContratacion.total}{' '}
+                {subfaseContratacion.label}
+                {subfaseContratacion.estado === 'esperando_abogado' ? ' · en revisión' : ''}
+              </Badge>
+            )}
+            {pendientesRevision > 0 && (
+              <Badge variant="warning">
+                {pendientesRevision} pendiente{pendientesRevision === 1 ? '' : 's'} de revisión
+              </Badge>
+            )}
             {vencimientoBadge(data.fechaVencimientoFase)}
-            <Badge variant="secondary" className="gap-1">
-              <Radio className="h-3 w-3 text-emerald-600" />
-              Tiempo real
-            </Badge>
           </div>
         </div>
 

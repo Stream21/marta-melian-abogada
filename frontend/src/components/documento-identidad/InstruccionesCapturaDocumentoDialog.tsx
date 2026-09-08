@@ -8,6 +8,12 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
+import { cn } from '@/lib/utils';
+import {
+  CAPTURA_CONSEJO,
+  CAPTURA_LADO_AYUDA,
+  CAPTURA_LADO_TITULO,
+} from './captura-lado-textos';
 import { DocumentoLadoGuia } from './DocumentoLadoGuia';
 import type { LadoCapturaCamara } from './CapturaCamaraDocumento';
 
@@ -19,47 +25,37 @@ interface InstruccionesCapturaDocumentoDialogProps {
   onCancelar: () => void;
 }
 
-const TITULO: Record<LadoCapturaCamara, string> = {
-  anverso: 'Prepare la delantera',
-  reverso: 'Prepare la trasera',
-  pasaporte: 'Prepare el pasaporte',
-};
-
-const AYUDA: Record<LadoCapturaCamara, string> = {
-  anverso: 'Coloque la tarjeta en horizontal, con la foto hacia arriba.',
-  reverso: 'Gire la tarjeta. La banda negra inferior debe verse completa.',
-  pasaporte: 'Abra la página interior con su foto y datos.',
-};
-
 export function InstruccionesCapturaDocumentoDialog({
   abierto,
   lado,
-  etiquetaDocumento,
   onContinuar,
   onCancelar,
 }: InstruccionesCapturaDocumentoDialogProps) {
-  const doc = etiquetaDocumento?.trim();
-
   return (
     <Dialog open={abierto} onOpenChange={(open) => !open && onCancelar()}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-sm">
-        <DialogHeader className="space-y-1 text-center sm:text-center">
-          {doc && (
-            <p className="section-label justify-center text-center sm:justify-center">{doc}</p>
-          )}
-          <DialogTitle>{TITULO[lado]}</DialogTitle>
-          <DialogDescription className="text-center">{AYUDA[lado]}</DialogDescription>
-        </DialogHeader>
+      <DialogContent
+        className={cn(
+          'flex h-[100dvh] max-h-[100dvh] w-full max-w-none flex-col gap-0 overflow-hidden rounded-none border-0 p-0',
+          'left-0 top-0 translate-x-0 translate-y-0',
+          'sm:left-[50%] sm:top-[50%] sm:h-auto sm:max-h-[92vh] sm:max-w-md sm:translate-x-[-50%] sm:translate-y-[-50%] sm:rounded-xl sm:border sm:p-0',
+        )}
+      >
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-5 pb-4 pt-14 sm:pt-12">
+          <DialogHeader className="space-y-2 text-center sm:text-center">
+            <DialogTitle className="text-xl">{CAPTURA_LADO_TITULO[lado]}</DialogTitle>
+            <DialogDescription className="text-center text-base">
+              {CAPTURA_LADO_AYUDA[lado]}
+            </DialogDescription>
+          </DialogHeader>
 
-        <DocumentoLadoGuia lado={lado} />
+          <DocumentoLadoGuia lado={lado} variant="dialogo" className="my-6 flex-1 justify-center py-2" />
 
-        <p className="text-center text-xs text-muted-foreground">
-          Evite reflejos y sombras. El documento debe verse entero en el marco.
-        </p>
+          <p className="text-center text-sm text-muted-foreground">{CAPTURA_CONSEJO}</p>
+        </div>
 
-        <DialogFooter className="flex-col gap-2 sm:flex-col">
+        <DialogFooter className="shrink-0 flex-col gap-2 border-t border-border bg-card px-5 py-4 sm:flex-col">
           <Button type="button" size="lg" className="w-full" onClick={onContinuar}>
-            <Camera className="mr-2 h-4 w-4" />
+            <Camera className="mr-2 h-5 w-5" />
             Abrir cámara
           </Button>
           <Button type="button" variant="ghost" className="w-full" onClick={onCancelar}>

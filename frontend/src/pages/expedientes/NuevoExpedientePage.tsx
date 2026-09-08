@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from '@tanstack/react-router';
+import { useNavigate } from '@tanstack/react-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
 import { api, isClienteDuplicadoError } from '@/api/client';
@@ -158,17 +158,7 @@ export function NuevoExpedientePage() {
   return (
     <div className="p-6 max-w-4xl">
       <div className="mb-6">
-        <p className="section-label">
-          <Link to="/expedientes" className="hover:text-primary">
-            Expedientes
-          </Link>
-          {' / '}
-          <Link to="/expedientes" className="hover:text-primary">
-            Expedientes
-          </Link>
-          {' / Nuevo'}
-        </p>
-        <h1 className="mt-1 page-title">Alta de Expediente</h1>
+        <h1 className="page-title">Alta de Expediente</h1>
         <p className="page-subtitle">Proceso de apertura y contratación con el cliente</p>
       </div>
 

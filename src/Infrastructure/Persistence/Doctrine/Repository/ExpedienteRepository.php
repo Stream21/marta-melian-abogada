@@ -88,6 +88,37 @@ final class ExpedienteRepository implements ExpedienteRepositoryInterface
         return array_map($this->ormToDomain(...), $orms);
     }
 
+    /**
+     * @return Expediente[]
+     */
+    public function search(string $query, int $limit = 20): array
+    {
+        $trimmed = trim($query);
+        if ('' === $trimmed) {
+            return [];
+        }
+
+        $like = '%' . addcslashes(mb_strtolower($trimmed), '%_\\') . '%';
+
+        $qb = $this->entityManager->createQueryBuilder();
+        $qb->select('e')
+            ->from(ExpedienteOrm::class, 'e')
+            ->where($qb->expr()->orX(
+                'LOWER(e.numero) LIKE :like',
+                'LOWER(e.titulo) LIKE :like',
+                'LOWER(e.clientName) LIKE :like',
+                'LOWER(e.caseReference) LIKE :like',
+            ))
+            ->setParameter('like', $like)
+            ->orderBy('e.fechaApertura', 'DESC')
+            ->setMaxResults($limit);
+
+        /** @var ExpedienteOrm[] $orms */
+        $orms = $qb->getQuery()->getResult();
+
+        return array_map($this->ormToDomain(...), $orms);
+    }
+
     public function remove(Expediente $expediente): void
     {
         $orm = $this->entityManager->getRepository(ExpedienteOrm::class)->find($expediente->id()->value());

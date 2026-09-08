@@ -242,11 +242,16 @@ export function RequerimientosGestionPanel({
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            <Badge variant={listo ? 'success' : 'secondary'}>
+              {data.progreso.validados}/{data.progreso.total} docs
+              {data.progreso.enRevision > 0
+                ? ' · revisión'
+                : data.progreso.pendientesEntrega + data.progreso.rechazados > 0
+                  ? ` · faltan ${data.progreso.pendientesEntrega + data.progreso.rechazados}`
+                  : ''}
+            </Badge>
             <Badge variant={listo ? 'success' : 'warning'}>
               {listo ? 'Listo para presentación' : 'En progreso'}
-            </Badge>
-            <Badge variant="info">
-              {data.progreso.validados}/{data.progreso.obligatorios} obligatorios validados
             </Badge>
             {data.progreso.enRevision > 0 && (
               <Badge variant="warning">{data.progreso.enRevision} en revisión</Badge>

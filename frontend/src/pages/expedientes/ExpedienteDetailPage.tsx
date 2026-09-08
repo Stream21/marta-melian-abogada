@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from '@tanstack/react-router';
+import { Link, useNavigate } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
+import { ExternalLink } from 'lucide-react';
 import { api } from '@/api/client';
 import type { ExpedienteNotificacionSearch } from '@/lib/notificacion-destino';
 import { ContratacionGestionPanel } from '@/components/expedientes/contratacion/ContratacionGestionPanel';
@@ -16,6 +17,7 @@ import { Badge } from '@/components/ui/badge';
 import { ExpedienteGestionToolbarActions } from '@/components/expedientes/ExpedienteGestionToolbarActions';
 import { ExpedienteEstadoActions } from '@/components/expedientes/ExpedienteEstadoActions';
 import { consumirNotificacionAlta } from '@/lib/email-notificacion';
+import { capitalizeDisplay } from '@/lib/capitalize-display';
 import { cn } from '@/lib/utils';
 
 interface ExpedienteDetailPageProps {
@@ -71,15 +73,46 @@ export function ExpedienteDetailPage({ expedienteId, notificacionSearch }: Exped
     });
   };
 
+  const titulo = capitalizeDisplay(expediente?.titulo) || 'Cargando…';
+  const clientNameRaw = expediente?.clientName?.trim() ?? '';
+  const clientName =
+    clientNameRaw && clientNameRaw !== 'Cliente pendiente'
+      ? capitalizeDisplay(clientNameRaw)
+      : '';
+  const fichaDisponible = Boolean(expediente?.clienteFichaDisponible && expediente.clienteId);
+
   return (
     <div className="p-6">
       <div className="mb-6">
-        <p className="section-label">Expedientes / {expediente?.numero ?? '…'}</p>
-        <h1 className="mt-1 page-title">{expediente?.titulo ?? 'Cargando…'}</h1>
+        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+          <h1 className="page-title min-w-0">{titulo}</h1>
+          {expediente && (
+            <div className="ml-auto shrink-0">
+              <ExpedienteEstadoActions expediente={expediente} />
+            </div>
+          )}
+        </div>
+
         {expediente && (
           <div className="mt-2 flex flex-wrap items-center gap-2">
-            <p className="page-subtitle">{expediente.clientName}</p>
-            {expediente.faseNegocio && (
+            {fichaDisponible ? (
+              <Link
+                to="/clientes/$clienteId"
+                params={{ clienteId: expediente.clienteId! }}
+                state={{ breadcrumb: { keepTrail: true } } as never}
+                className="inline-flex items-center gap-1.5 text-base font-semibold text-primary hover:underline"
+                title="Abrir ficha del cliente. Si ya hay firmas, revise que los datos coincidan con los documentos firmados."
+              >
+                {clientName || 'Ver cliente'}
+                <ExternalLink className="h-3.5 w-3.5 shrink-0 opacity-70" />
+              </Link>
+            ) : (
+              <p className="text-base font-semibold text-foreground">
+                {clientName || 'Pendiente de identificación'}
+              </p>
+            )}
+
+            {expediente.faseNegocio && expediente.faseNegocio !== 'contratacion' && (
               <Badge variant="info">
                 {FASE_LABELS[expediente.faseNegocio] ?? expediente.faseNegocio}
               </Badge>
@@ -91,17 +124,7 @@ export function ExpedienteDetailPage({ expedienteId, notificacionSearch }: Exped
             )}
             {expediente.faseNegocio === 'tramitacion' && expediente.subfaseTramitacionLabel ? (
               <Badge variant="secondary">{expediente.subfaseTramitacionLabel}</Badge>
-            ) : (
-              expediente.estadoFase && (
-                <Badge variant="secondary">{expediente.estadoFase.replace(/_/g, ' ')}</Badge>
-              )
-            )}
-            {expediente.honorariosAcordados != null && expediente.honorariosAcordados > 0 && (
-              <span className="text-sm text-muted-foreground">
-                {expediente.honorariosAcordados.toLocaleString('es-ES', { minimumFractionDigits: 2 })} €
-              </span>
-            )}
-            <ExpedienteEstadoActions expediente={expediente} />
+            ) : null}
           </div>
         )}
       </div>
@@ -134,11 +157,11 @@ export function ExpedienteDetailPage({ expedienteId, notificacionSearch }: Exped
           {activeTab === 'gestion' &&
             expediente?.faseNegocio &&
             expediente.estado === 'abierto' && (
-            <ExpedienteGestionToolbarActions
-              expedienteId={expedienteId}
-              faseNegocio={expediente.faseNegocio}
-            />
-          )}
+              <ExpedienteGestionToolbarActions
+                expedienteId={expedienteId}
+                faseNegocio={expediente.faseNegocio}
+              />
+            )}
         </div>
 
         {expediente && expediente.estado !== 'abierto' && activeTab === 'gestion' && (
@@ -155,6 +178,7 @@ export function ExpedienteDetailPage({ expedienteId, notificacionSearch }: Exped
           {expediente?.faseNegocio === 'contratacion' ? (
             <ContratacionGestionPanel
               expedienteId={expedienteId}
+              subfaseContratacion={expediente.subfaseContratacion}
               focusPaso={notificacionSearch?.paso}
               abrirRevision={notificacionSearch?.revision === '1'}
               onFocusConsumed={limpiarNotificacionSearch}
@@ -207,9 +231,10 @@ function FaseEscritosNoDisponible() {
   return (
     <div className="panel p-8 text-center">
       <p className="font-medium">Escritos no disponibles en fase de contratación</p>
-      <p className="mt-2 text-sm text-muted-foreground max-w-md mx-auto">
-        Los escritos adicionales (requerimientos, tramitación, resolución) estarán disponibles a partir de la fase 2.
-        En contratación solo se generan los documentos legales firmados por el cliente.
+      <p className="mt-2 mx-auto max-w-md text-sm text-muted-foreground">
+        Los escritos adicionales (requerimientos, tramitación, resolución) estarán disponibles a
+        partir de la fase 2. En contratación solo se generan los documentos legales firmados por el
+        cliente.
       </p>
     </div>
   );

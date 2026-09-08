@@ -4,11 +4,17 @@ declare(strict_types=1);
 
 namespace App\Domain\Entity;
 
+/**
+ * Las 3 subfases de la fase de negocio «contratación».
+ * Expuestas en API como subfaseContratacion para listados y portal.
+ */
 enum PasoContratacionCliente: string
 {
     case DatosCliente = 'datos_cliente';
     case Firmas = 'firmas';
     case Pago = 'pago';
+
+    public const TOTAL = 3;
 
     public function label(): string
     {

@@ -59,19 +59,19 @@ export function ExpedienteEstadoActions({ expediente }: ExpedienteEstadoActionsP
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <Badge variant={variantEstadoExpediente(expediente.estado)}>
+      <Badge variant={variantEstadoExpediente(expediente.estado)} className="shrink-0">
         {expediente.estadoLabel || labelEstadoExpediente(expediente.estado)}
       </Badge>
 
       {expediente.estado === 'abierto' && (
-        <Button type="button" variant="outline" size="sm" onClick={() => setCancelOpen(true)}>
+        <Button type="button" variant="outline" size="sm" className="h-8" onClick={() => setCancelOpen(true)}>
           <Ban className="h-4 w-4" />
           Cancelar
         </Button>
       )}
 
       {expediente.estado === 'cancelado' && (
-        <Button type="button" variant="outline" size="sm" onClick={() => setReabrirOpen(true)}>
+        <Button type="button" variant="outline" size="sm" className="h-8" onClick={() => setReabrirOpen(true)}>
           <RotateCcw className="h-4 w-4" />
           Reabrir
         </Button>

@@ -67,6 +67,7 @@ function SidebarContent({ collapsed, configOpen, setConfigOpen, onLogout, onTogg
           <Link
             key={item.label}
             to={item.href}
+            state={{ breadcrumb: { reset: true } } as never}
             className={cn(navLinkClass, collapsed && 'justify-center px-2')}
             title={collapsed ? item.label : undefined}
           >
@@ -101,6 +102,7 @@ function SidebarContent({ collapsed, configOpen, setConfigOpen, onLogout, onTogg
                 <Link
                   key={sub.label}
                   to={sub.href}
+                  state={{ breadcrumb: { reset: true } } as never}
                   className="flex items-center gap-3 rounded-lg px-3 py-1.5 text-primary-foreground/60 hover:text-primary-foreground hover:bg-primary-foreground/5 transition-colors"
                 >
                   <span className="h-1.5 w-1.5 rounded-full bg-primary-foreground/50 shrink-0" />

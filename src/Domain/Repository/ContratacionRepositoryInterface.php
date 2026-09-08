@@ -32,6 +32,11 @@ interface ContratacionRepositoryInterface
     public function findHitoById(string $id): ?ExpedienteHito;
 
     /**
+     * Idempotencia: p. ej. evitar duplicar «pago_stripe_completado» si webhook y confirm-session coinciden.
+     */
+    public function existsHitoByTipoAndReferencia(string $tipo, string $referenciaId): bool;
+
+    /**
      * @return ExpedienteHito[]
      */
     public function findHitosByExpediente(ExpedienteId $expedienteId): array;

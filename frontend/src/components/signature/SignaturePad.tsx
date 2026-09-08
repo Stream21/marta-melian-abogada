@@ -19,7 +19,6 @@ export interface SignaturePadProps {
   isSaving?: boolean;
   disabled?: boolean;
   title?: string;
-  description?: string;
   filename?: string;
   className?: string;
 }
@@ -37,7 +36,7 @@ export function SignaturePad({
   savedImageUrl = null,
   isSaving = false,
   disabled = false,
-  title = 'Firma manuscrita',
+  title,
   filename = 'firma.png',
   className,
 }: SignaturePadProps) {
@@ -187,9 +186,7 @@ export function SignaturePad({
 
   return (
     <div className={cn('space-y-3', className)}>
-      <div>
-        <p className="section-label">{title}</p>
-      </div>
+      {title ? <p className="section-label">{title}</p> : null}
 
       {!showPad && savedImageUrl && (
         <div className="space-y-3">
@@ -222,10 +219,6 @@ export function SignaturePad({
               aria-label="Área para dibujar la firma"
             />
           </div>
-
-          <p className="text-xs text-muted-foreground">
-            El fondo cuadriculado solo es una guía visual. La firma guardada no incluye fondo.
-          </p>
 
           {localError && (
             <p className="text-sm text-destructive" role="alert">

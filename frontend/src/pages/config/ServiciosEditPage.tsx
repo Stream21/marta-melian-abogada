@@ -1,7 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { Pencil } from 'lucide-react';
 import { api } from '@/api/client';
-import { ConfigBreadcrumb } from '@/components/config/ConfigBreadcrumb';
 import { ServicioDocumentosRequeridosPanel } from '@/components/config/servicio/ServicioDocumentosRequeridosPanel';
 import { ServicioForm } from '@/components/config/ServicioForm';
 import type { TipoServicioValue } from '@/lib/servicio-tipos';
@@ -19,8 +18,6 @@ export function ServiciosEditPage({ servicioId }: ServiciosEditPageProps) {
 
   return (
     <div className="flex min-h-full flex-col bg-muted/30">
-      <ConfigBreadcrumb section="servicios" variant="edit" />
-
       <main className="flex-1 p-6 md:p-8">
         <div className="mx-auto flex max-w-[720px] flex-col gap-6">
           <div className="flex gap-3">

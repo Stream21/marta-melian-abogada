@@ -17,6 +17,8 @@ export interface OcrAnalisisMarco {
   datosLeidos: boolean;
   mensaje: string;
   analizando: boolean;
+  /** El encuadre corresponde a la otra cara del documento. */
+  ladoIncorrecto?: boolean;
 }
 
 let workerMrz: Worker | null = null;
@@ -239,22 +241,16 @@ async function analizarAnverso(canvas: HTMLCanvasElement): Promise<OcrAnalisisMa
   const { data } = await worker.recognize(procesada);
   const texto = data.text ?? '';
   const textoNorm = normalizarTextoOcrMrz(texto);
-  const lineasMrz = cuentaLineasMrz(textoNorm);
-  const mrzParcial = puntuacionMrzParcial(textoNorm);
 
-  // La MRZ del reverso contiene patrones tipo DNI (p. ej. 8 dígitos + letra).
-  // Si la detectamos, el usuario está mostrando el reverso: no auto-capturar.
-  if (
-    lineasMrz >= 1
-    || mrzParcial >= 40
-    || tieneMrzLegible(textoNorm)
-    || /IDESP|I<DESP|<<<</.test(textoNorm)
-  ) {
+  // Solo con MRZ inequívoca: un falso positivo aquí bloquea la auto-captura
+  // y obliga a girar el documento cuando la delantera ya es correcta.
+  if (pareceTraseraConMrz(textoNorm)) {
     return {
       progreso: 20,
       datosLeidos: false,
       mensaje: 'Está mostrando la trasera (banda MRZ). Gire a la cara con foto',
       analizando: false,
+      ladoIncorrecto: true,
     };
   }
 
@@ -292,6 +288,23 @@ async function analizarAnverso(canvas: HTMLCanvasElement): Promise<OcrAnalisisMa
     mensaje: 'Coloque la delantera (cara con foto) dentro del marco',
     analizando: false,
   };
+}
+
+/**
+ * ¿El encuadre es inequívocamente la trasera (MRZ)?
+ * Exigimos cabecera TD1 + muchos rellenos «<»: el OCR de la delantera suele inventar
+ * líneas alfanuméricas o convertir comillas tipográficas en «<».
+ */
+function pareceTraseraConMrz(textoNorm: string): boolean {
+  const compacto = textoNorm.replace(/[\s\n\r]/g, '');
+  const chevrons = (compacto.match(/</g) ?? []).length;
+  const cabeceraTd1 = /IDESP|ID[A-Z<]ESP/.test(compacto);
+  if (!cabeceraTd1 || chevrons < 20) return false;
+
+  const mrz = parseMrzFromText(textoNorm);
+  if (mrz?.numDocumento) return true;
+
+  return cuentaLineasMrz(textoNorm) >= 2;
 }
 
 /** Heurística visual: ¿hay texto tipo MRZ en el tercio inferior? (0–1) */

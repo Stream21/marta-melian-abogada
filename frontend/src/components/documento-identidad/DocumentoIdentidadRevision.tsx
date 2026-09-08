@@ -73,7 +73,8 @@ export function DocumentoIdentidadRevision({
         etiquetaNumDocumento={labels.numeroDocumento}
         submitLabel={confirmLabel ?? (esCliente ? 'Confirmar y continuar' : 'Crear cliente')}
         portalCliente={esCliente}
-        onVolver={onVolverEscaneo}
+        // En portal el volver vive en el subheader; el botón del pie solo hace falta al abogado.
+        onVolver={esCliente ? undefined : onVolverEscaneo}
         volverLabel={volverLabel ?? 'Volver al escaneo del documento'}
       />
     </div>

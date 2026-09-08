@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Camera, Loader2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { capturarVideoRecortado } from '@/lib/captura-documento-calidad';
+import { capturarVideoRecortado, evaluarFrameCaptura } from '@/lib/captura-documento-calidad';
 import {
   analizarMarcoConOcr,
   liberarOcrCamara,
@@ -20,12 +20,28 @@ interface CapturaCamaraDocumentoProps {
   onCerrar: () => void;
 }
 
-const CALENTAMIENTO_MS = 2000;
+const CALENTAMIENTO_MS = 1200;
 const PAUSA_ENTRE_OCR_MS = 400;
 const PAUSA_OCR_OCUPADO_MS = 180;
-const FRAMES_OCR_LISTOS = 2;
+const FRAMES_OCR_LISTOS = 1;
 const FRAMES_OCR_LISTOS_REVERSO = 2;
-const PROGRESO_VERDE_REVERSO = 80;
+/** Umbral visual de «marco verde» (antes la delantera exigía 100 y casi nunca llegaba). */
+const PROGRESO_VERDE_ANVERSO = 68;
+const PROGRESO_VERDE_REVERSO = 75;
+
+/** Cadencia del análisis de calidad de imagen (barato, sin OCR). */
+const PAUSA_CALIDAD_MS = 180;
+/** Calidad buena mantenida durante este tiempo ⇒ disparo automático. */
+const ESTABLE_ANVERSO_MS = 550;
+const ESTABLE_MRZ_MS = 900;
+/**
+ * Red de seguridad: el OCR en móvil puede no llegar nunca a leer la MRZ aunque la foto
+ * sea perfectamente válida. Pasado este tiempo basta con una calidad razonable.
+ */
+const RESCATE_MS = 4500;
+const RESCATE_AMPLIADO_MS = 9000;
+const RESCATE_PUNTAJE = 58;
+const RESCATE_AMPLIADO_PUNTAJE = 48;
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => {
@@ -54,12 +70,16 @@ export function CapturaCamaraDocumento({
   const ocrListosRef = useRef(0);
   const capturandoRef = useRef(false);
   const camaraListaEnRef = useRef<number | null>(null);
+  const estableDesdeRef = useRef<number | null>(null);
+  const ladoIncorrectoRef = useRef(false);
   const [error, setError] = useState<string | null>(null);
   const [listo, setListo] = useState(false);
   const [ocrIniciando, setOcrIniciando] = useState(true);
   const [progreso, setProgreso] = useState(0);
+  const [calidad, setCalidad] = useState(0);
   const [autoActivo, setAutoActivo] = useState(false);
   const [enCalentamiento, setEnCalentamiento] = useState(true);
+  const [pista, setPista] = useState('');
 
   const detenerCamara = useCallback(() => {
     streamRef.current?.getTracks().forEach((t) => t.stop());
@@ -99,12 +119,16 @@ export function CapturaCamaraDocumento({
       setListo(false);
       setError(null);
       setProgreso(0);
+      setCalidad(0);
       setOcrIniciando(true);
       setAutoActivo(false);
       setEnCalentamiento(true);
+      setPista('');
       ocrListosRef.current = 0;
       capturandoRef.current = false;
       camaraListaEnRef.current = null;
+      estableDesdeRef.current = null;
+      ladoIncorrectoRef.current = false;
       return;
     }
 
@@ -189,6 +213,8 @@ export function CapturaCamaraDocumento({
         }
 
         setProgreso((prev) => suavizarProgreso(prev, resultado.progreso));
+        ladoIncorrectoRef.current = resultado.ladoIncorrecto === true;
+        if (ladoIncorrectoRef.current) setPista(resultado.mensaje);
 
         if (resultado.datosLeidos) {
           ocrListosRef.current += 1;
@@ -217,16 +243,68 @@ export function CapturaCamaraDocumento({
     };
   }, [abierto, listo, error, ocrIniciando, lado, capturar]);
 
+  // Disparo por calidad de imagen: no depende del OCR, que en muchos móviles nunca
+  // llega a leer la MRZ aunque la foto sea buena.
+  useEffect(() => {
+    if (!abierto || !listo || error) return;
+
+    const esMrz = lado === 'reverso' || lado === 'pasaporte';
+    const estableMs = esMrz ? ESTABLE_MRZ_MS : ESTABLE_ANVERSO_MS;
+
+    const id = window.setInterval(() => {
+      const video = videoRef.current;
+      const marco = marcoRef.current;
+      if (!video || !marco || capturandoRef.current) return;
+
+      const inicio = camaraListaEnRef.current;
+      if (inicio === null) return;
+
+      const ahora = Date.now();
+      const transcurrido = ahora - inicio;
+      if (transcurrido < CALENTAMIENTO_MS) return;
+
+      const evaluacion = evaluarFrameCaptura(video, marco, lado);
+      setCalidad(evaluacion.puntaje);
+
+      // El OCR ha reconocido la otra cara: no disparar aunque la imagen sea nítida.
+      if (ladoIncorrectoRef.current) {
+        estableDesdeRef.current = null;
+        return;
+      }
+
+      setPista(evaluacion.mensaje);
+
+      if (evaluacion.lista) {
+        estableDesdeRef.current ??= ahora;
+      } else {
+        estableDesdeRef.current = null;
+      }
+
+      const sostenida =
+        estableDesdeRef.current !== null && ahora - estableDesdeRef.current >= estableMs;
+      const rescate =
+        (transcurrido >= RESCATE_MS && evaluacion.puntaje >= RESCATE_PUNTAJE) ||
+        (transcurrido >= RESCATE_AMPLIADO_MS && evaluacion.puntaje >= RESCATE_AMPLIADO_PUNTAJE);
+
+      if (sostenida || rescate) {
+        setAutoActivo(true);
+        capturar();
+      }
+    }, PAUSA_CALIDAD_MS);
+
+    return () => window.clearInterval(id);
+  }, [abierto, listo, error, lado, capturar]);
+
   if (!abierto) return null;
 
   const esPasaporte = lado === 'pasaporte';
   const esReversoMrz = lado === 'reverso' || esPasaporte;
-  const marcoVerde =
-    progreso >= 100 ||
-    autoActivo ||
-    (esReversoMrz && progreso >= PROGRESO_VERDE_REVERSO);
-  const marcoAmbar = !marcoVerde && progreso >= 45;
-  const mostrandoBarra = !error && listo && !ocrIniciando && !enCalentamiento;
+  // Se muestra la mejor de las dos señales: lectura OCR y calidad de imagen.
+  const lectura = Math.max(progreso, calidad);
+  const umbralVerde = esReversoMrz ? PROGRESO_VERDE_REVERSO : PROGRESO_VERDE_ANVERSO;
+  const marcoVerde = lectura >= umbralVerde || autoActivo;
+  const marcoAmbar = !marcoVerde && lectura >= 40;
+  const mostrandoBarra = !error && listo && !enCalentamiento;
 
   return (
     <div className="fixed inset-0 z-50 bg-black">
@@ -308,7 +386,7 @@ export function CapturaCamaraDocumento({
                 role="progressbar"
                 aria-valuemin={0}
                 aria-valuemax={100}
-                aria-valuenow={progreso}
+                aria-valuenow={lectura}
                 aria-label="Lectura del documento"
               >
                 <div
@@ -320,7 +398,7 @@ export function CapturaCamaraDocumento({
                         ? 'bg-amber-400'
                         : 'bg-white',
                   )}
-                  style={{ width: `${Math.max(progreso, 4)}%` }}
+                  style={{ width: `${Math.max(lectura, 4)}%` }}
                 />
               </div>
             </div>
@@ -338,8 +416,8 @@ export function CapturaCamaraDocumento({
         <X className="h-5 w-5" />
       </button>
 
-      {/* Preparando OCR — un solo estado estable */}
-      {(ocrIniciando || !listo) && !error && (
+      {/* Esperando a la cámara — un solo estado estable */}
+      {!listo && !error && (
         <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/40">
           <Loader2 className="h-8 w-8 animate-spin text-white motion-reduce:animate-none" />
         </div>
@@ -347,8 +425,11 @@ export function CapturaCamaraDocumento({
 
       {/* Pie mínimo */}
       <div className="absolute inset-x-0 bottom-0 z-10 space-y-3 bg-gradient-to-t from-black/80 via-black/50 to-transparent px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-10">
-        {error && (
+        {error ? (
           <p className="text-center text-sm text-amber-200">{error}</p>
+        ) : (
+          mostrandoBarra &&
+          pista && <p className="text-center text-sm text-white/85">{autoActivo ? 'Capturando…' : pista}</p>
         )}
         <Button
           type="button"
@@ -356,10 +437,10 @@ export function CapturaCamaraDocumento({
           variant="secondary"
           className="h-12 w-full bg-white/15 text-white hover:bg-white/25"
           onClick={capturar}
-          disabled={!listo || !!error || autoActivo || ocrIniciando}
+          disabled={!listo || !!error || autoActivo}
         >
           <Camera className="mr-2 h-5 w-5" />
-          {autoActivo ? 'Capturando…' : 'Capturar manualmente'}
+          {autoActivo ? 'Capturando…' : 'Capturar ahora'}
         </Button>
       </div>
     </div>

@@ -15,6 +15,15 @@ import { esDispositivoMovil } from '@/lib/device';
 import { cn } from '@/lib/utils';
 import type { DocumentoIdentidadArchivos, DocumentoIdentidadResultado, ModoDocumentoIdentidad } from './types';
 import { ImagenDocumentoCaptura } from './ImagenDocumentoCaptura';
+import { PortalCapturaSubheader } from './PortalCapturaSubheader';
+import { ContratacionBriefingDialog } from '@/components/cliente-portal/contratacion/ContratacionBriefingDialog';
+import { useStepBriefing } from '@/hooks/useStepBriefing';
+import { DocumentoLadoGuia } from './DocumentoLadoGuia';
+import {
+  identidadBriefingCaptura,
+  identidadBriefingStepKey,
+  identidadBriefingTipo,
+} from './identidad-briefings';
 import type { LadoCapturaCamara } from './CapturaCamaraDocumento';
 
 type PasoFlujo = 'tipo' | 'captura' | 'extraccion';
@@ -47,6 +56,8 @@ interface DocumentoIdentidadFlujoProps {
   capturasPrevias?: DocumentoIdentidadArchivos | null;
   /** Oculta el micro-stepper Tipo / Escaneo / Revisión (p. ej. carga del abogado). */
   ocultarIndicadorPasos?: boolean;
+  /** Devolución del abogado: vuelve a mostrar briefings aunque ya se vieron en el primer envío. */
+  modoCorreccion?: boolean;
 }
 
 export function DocumentoIdentidadFlujo({
@@ -59,6 +70,7 @@ export function DocumentoIdentidadFlujo({
   inicioRapido,
   capturasPrevias,
   ocultarIndicadorPasos = false,
+  modoCorreccion = false,
 }: DocumentoIdentidadFlujoProps) {
   const inputId = useId();
   const anversoInputRef = useRef<HTMLInputElement>(null);
@@ -293,29 +305,49 @@ export function DocumentoIdentidadFlujo({
       {!esCliente && !ocultarIndicadorPasos && <IndicadorPasos pasoActual={paso} />}
 
       {paso === 'tipo' && (
-        <section className="space-y-5">
-          <h2 className="text-xl font-semibold text-foreground sm:text-lg">Elija su documento</h2>
+        <section className={cn(esCliente ? 'flex min-h-0 flex-1 flex-col gap-1 overflow-hidden' : 'space-y-3')}>
+          {!esCliente && (
+            <h2 className="text-xl font-semibold text-foreground sm:text-lg">Elija su documento</h2>
+          )}
           {(anverso || reverso) && (
             <p className="rounded-lg border border-border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
               Tiene fotos guardadas. Si elige el mismo tipo, las recuperará; si cambia de tipo, se
               sustituirán.
             </p>
           )}
-          <div className={cn('grid gap-4', esCliente ? 'grid-cols-1' : 'grid-cols-1 sm:grid-cols-2')}>
+          <div
+            className={cn(
+              esCliente
+                ? 'flex min-h-0 flex-1 flex-col gap-1.5'
+                : 'grid grid-cols-1 gap-3 sm:grid-cols-2',
+            )}
+          >
             <TipoCard
               icon={IdCard}
               label={labels.tarjetaIdentidad}
+              descripcion={esCliente ? 'Tarjeta con foto y banda MRZ · 2 fotos' : undefined}
               onClick={() => seleccionarTipo('dni_nie')}
               grande={esCliente}
             />
             <TipoCard
               icon={CreditCard}
               label="Pasaporte"
+              descripcion={esCliente ? 'Página interior con sus datos · 1 foto' : undefined}
               onClick={() => seleccionarTipo('pasaporte')}
               grande={esCliente}
             />
           </div>
-          {onVolver && (
+          {esCliente && onVolver && (
+            <button
+              type="button"
+              onClick={onVolver}
+              className="inline-flex shrink-0 items-center gap-1.5 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Volver
+            </button>
+          )}
+          {!esCliente && onVolver && (
             <Button
               type="button"
               variant="outline"
@@ -331,73 +363,48 @@ export function DocumentoIdentidadFlujo({
       )}
 
       {paso === 'captura' && tipoEscaneo && (
-        <section className="space-y-5">
+        <section className={cn(esCliente ? 'flex min-h-0 flex-1 flex-col gap-1 overflow-hidden' : 'space-y-3')}>
           {esCliente ? (
             <>
-              <header className="space-y-4">
-                <div className="flex items-center justify-between gap-3">
-                  <button
-                    type="button"
-                    onClick={volverDesdeCaptura}
-                    className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-                  >
-                    <ArrowLeft className="h-4 w-4" />
-                    Volver
-                  </button>
-                  {requiereReverso && (
-                    <div className="flex items-center gap-2" aria-label={`Cara ${indiceLado} de ${totalLados}`}>
-                      {[1, 2].map((n) => (
-                        <span
-                          key={n}
-                          className={cn(
-                            'h-2 w-6 rounded-full transition-colors',
-                            n <= indiceLado ? 'bg-primary' : 'bg-border',
-                          )}
-                        />
-                      ))}
-                      <span className="text-xs font-medium text-muted-foreground">
-                        {indiceLado} de {totalLados}
-                      </span>
-                    </div>
-                  )}
+              <PortalCapturaSubheader
+                onVolver={volverDesdeCaptura}
+                pasoActual={indiceLado}
+                pasosTotal={totalLados}
+                leyenda={
+                  tipoEscaneo === 'pasaporte'
+                    ? 'Pasaporte'
+                    : ladoActivo === 'anverso'
+                      ? 'Delantera'
+                      : 'Trasera'
+                }
+              />
+
+              {(anversoListo || reversoListo) && requiereReverso && (
+                <div className="grid grid-cols-2 gap-2">
+                  <MiniaturaLado
+                    label="Delantera"
+                    url={anversoPreview}
+                    done={anversoListo}
+                    active={ladoActivo === 'anverso'}
+                    onClick={() => setLadoActivo('anverso')}
+                    compacta
+                  />
+                  <MiniaturaLado
+                    label="Trasera"
+                    url={reversoPreview}
+                    done={reversoListo}
+                    active={ladoActivo === 'reverso'}
+                    onClick={() => setLadoActivo('reverso')}
+                    compacta
+                  />
                 </div>
+              )}
 
-                <div className="space-y-1.5 text-center sm:text-left">
-                  <h2 className="text-2xl font-bold tracking-tight text-foreground">
-                    {tipoEscaneo === 'pasaporte' ? 'Pasaporte' : labels.tipoDocumentoCorto}
-                  </h2>
-                  <p className="text-sm text-muted-foreground">
-                    {tipoEscaneo === 'pasaporte'
-                      ? 'Página interior con sus datos'
-                      : ladoActivo === 'anverso'
-                        ? 'Delantera · Cara con foto'
-                        : 'Trasera · Banda MRZ'}
-                  </p>
-                </div>
-
-                {(anversoListo || reversoListo) && (
-                  <div className="grid grid-cols-2 gap-3">
-                    <MiniaturaLado
-                      label="Delantera"
-                      url={anversoPreview}
-                      done={anversoListo}
-                      active={ladoActivo === 'anverso'}
-                      onClick={() => setLadoActivo('anverso')}
-                    />
-                    {requiereReverso && (
-                      <MiniaturaLado
-                        label="Trasera"
-                        url={reversoPreview}
-                        done={reversoListo}
-                        active={ladoActivo === 'reverso'}
-                        onClick={() => setLadoActivo('reverso')}
-                      />
-                    )}
-                  </div>
-                )}
-              </header>
-
-              <div className={ladoActivo === 'anverso' ? '' : 'hidden'}>
+              <div
+                className={
+                  ladoActivo === 'anverso' ? 'flex min-h-0 flex-1 flex-col' : 'hidden'
+                }
+              >
                 {ladoConservado === 'anverso' ? (
                   <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
                     {anversoPreview ? (
@@ -432,7 +439,11 @@ export function DocumentoIdentidadFlujo({
                 )}
               </div>
               {requiereReverso && (
-                <div className={ladoActivo === 'reverso' ? '' : 'hidden'}>
+                <div
+                  className={
+                    ladoActivo === 'reverso' ? 'flex min-h-0 flex-1 flex-col' : 'hidden'
+                  }
+                >
                   {ladoConservado === 'reverso' ? (
                     <p className="rounded-lg border border-emerald-200 bg-emerald-50/50 px-3 py-2 text-sm text-emerald-800">
                       Trasera conservada. Escanee la delantera.
@@ -623,9 +634,53 @@ export function DocumentoIdentidadFlujo({
     </>
   );
 
+  const ladoBriefingCamara: LadoCapturaCamara | null =
+    paso === 'captura' && tipoEscaneo ? ladoCamara(ladoActivo) : null;
+
+  const briefingKey =
+    esCliente && (paso === 'tipo' || (paso === 'captura' && !!tipoEscaneo))
+      ? identidadBriefingStepKey(paso === 'tipo' ? 'tipo' : 'captura', {
+          lado: ladoBriefingCamara ?? undefined,
+          tipoEscaneo,
+          correccion: modoCorreccion,
+        })
+      : '';
+
+  const { open: briefingOpen, dismiss: dismissBriefing } = useStepBriefing(
+    briefingKey,
+    esCliente && briefingKey !== '',
+  );
+
+  const briefingCopy =
+    paso === 'tipo'
+      ? identidadBriefingTipo()
+      : paso === 'captura' && ladoBriefingCamara
+        ? identidadBriefingCaptura(ladoBriefingCamara)
+        : null;
+
   // En portal cliente el shell ya aporta el panel: sin cabecera ni texto redundante.
   // En carga del abogado (sin stepper) también va embebido en otro contenedor.
   if (esCliente || ocultarIndicadorPasos) {
+    if (esCliente) {
+      return (
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+          {briefingCopy && (
+            <ContratacionBriefingDialog
+              open={briefingOpen}
+              title={briefingCopy.title}
+              description={briefingCopy.description}
+              ctaLabel={briefingCopy.ctaLabel}
+              onContinue={dismissBriefing}
+            >
+              {paso === 'captura' && ladoBriefingCamara ? (
+                <DocumentoLadoGuia lado={ladoBriefingCamara} variant="dialogo" />
+              ) : null}
+            </ContratacionBriefingDialog>
+          )}
+          {!briefingOpen && contenido}
+        </div>
+      );
+    }
     return <div className="space-y-5">{contenido}</div>;
   }
 
@@ -689,11 +744,13 @@ function IndicadorPasos({ pasoActual }: { pasoActual: PasoFlujo }) {
 function TipoCard({
   icon: Icon,
   label,
+  descripcion,
   onClick,
   grande = false,
 }: {
   icon: typeof IdCard;
   label: string;
+  descripcion?: string;
   onClick: () => void;
   grande?: boolean;
 }) {
@@ -702,30 +759,37 @@ function TipoCard({
       type="button"
       onClick={onClick}
       className={cn(
-        'group flex w-full items-center text-left transition-all cursor-pointer',
+        'group flex w-full cursor-pointer transition-all',
         'rounded-xl border-2 border-primary/30 bg-card',
         'hover:border-primary hover:bg-primary/5 hover:shadow-sm',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
         'active:scale-[0.99]',
-        grande ? 'min-h-[4.5rem] gap-5 px-5 py-6' : 'gap-4 p-5',
+        grande
+          ? 'min-h-0 flex-1 flex-col items-center justify-center gap-3 px-5 py-5 text-center'
+          : 'items-center gap-4 p-5 text-left',
       )}
     >
       <span
         className={cn(
           'flex shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary transition-colors',
           'group-hover:bg-primary group-hover:text-primary-foreground',
-          grande ? 'h-14 w-14' : 'h-12 w-12',
+          grande ? 'h-16 w-16' : 'h-12 w-12',
         )}
       >
-        <Icon className={grande ? 'h-7 w-7' : 'h-6 w-6'} />
+        <Icon className={grande ? 'h-8 w-8' : 'h-6 w-6'} />
       </span>
-      <span
-        className={cn(
-          'min-w-0 font-semibold leading-snug text-foreground',
-          grande ? 'text-lg' : 'text-sm sm:text-base',
+      <span className="flex flex-col items-center gap-1">
+        <span
+          className={cn(
+            'min-w-0 font-semibold leading-snug text-foreground',
+            grande ? 'text-xl' : 'text-sm sm:text-base',
+          )}
+        >
+          {label}
+        </span>
+        {descripcion && (
+          <span className="max-w-[16rem] text-sm leading-snug text-muted-foreground">{descripcion}</span>
         )}
-      >
-        {label}
       </span>
     </button>
   );
@@ -737,34 +801,47 @@ function MiniaturaLado({
   done,
   active,
   onClick,
+  compacta = false,
 }: {
   label: string;
   url: string | null;
   done: boolean;
   active: boolean;
   onClick: () => void;
+  compacta?: boolean;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
+      aria-label={label}
       className={cn(
-        'overflow-hidden rounded-xl border text-left transition-colors',
+        'relative overflow-hidden rounded-xl border text-left transition-colors',
         active ? 'border-primary ring-2 ring-primary/30' : 'border-border',
         done ? 'bg-card' : 'bg-muted/40',
       )}
     >
-      <div className="flex aspect-[1.6] items-center justify-center bg-muted/30">
+      <div className={cn('flex items-center justify-center bg-muted/30', compacta ? 'aspect-[1.6]' : 'aspect-[1.6]')}>
         {url ? (
-          <img src={url} alt={label} className="h-full w-full object-cover" />
+          <img src={url} alt="" className="h-full w-full object-cover" />
         ) : (
           <span className="text-xs text-muted-foreground">Pendiente</span>
         )}
+        {done && (
+          <CheckCircle2
+            className={cn(
+              'absolute text-emerald-600',
+              compacta ? 'bottom-1.5 right-1.5 h-4 w-4' : 'bottom-2 right-2 h-3.5 w-3.5',
+            )}
+          />
+        )}
       </div>
-      <div className="flex items-center justify-between gap-2 px-2.5 py-2">
-        <span className="text-xs font-semibold text-foreground">{label}</span>
-        {done && <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-emerald-600" />}
-      </div>
+      {!compacta && (
+        <div className="flex items-center justify-between gap-2 px-2.5 py-2">
+          <span className="text-xs font-semibold text-foreground">{label}</span>
+          {done && <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-emerald-600" />}
+        </div>
+      )}
     </button>
   );
 }

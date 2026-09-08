@@ -19,10 +19,20 @@ import {
   analizarDevolucionIdentidad,
   type LadoDocumentoDevolucion,
 } from '@/lib/campos-devolucion';
+import { labelsDocumentoIdentidad } from '@/lib/documento-identidad-labels';
+import { cn } from '@/lib/utils';
+import { ContratacionBriefingDialog } from '@/components/cliente-portal/contratacion/ContratacionBriefingDialog';
+import { PortalScrollArea } from '@/components/cliente-portal/PortalScrollArea';
+import { useStepBriefing } from '@/hooks/useStepBriefing';
+import {
+  identidadBriefingRevision,
+  identidadBriefingStepKey,
+} from './identidad-briefings';
 import { ClienteIdentidadCorreccion } from './ClienteIdentidadCorreccion';
 import { ClienteIdentidadEleccion } from './ClienteIdentidadEleccion';
 import { DocumentoIdentidadFlujo } from './DocumentoIdentidadFlujo';
 import { DocumentoIdentidadRevision } from './DocumentoIdentidadRevision';
+import { PortalCapturaSubheader } from './PortalCapturaSubheader';
 import type { DocumentoIdentidadArchivos } from './types';
 
 type Paso = 'eleccion' | 'correccion' | 'documento' | 'revision';
@@ -274,45 +284,44 @@ export function ClienteIdentidadOnboarding({
     return 'Volver al escaneo del documento';
   })();
 
-  return (
-    <div className="space-y-6">
-      {paso === 'eleccion' && identidadEdicion && (
-        <ClienteIdentidadEleccion
-          identidadEdicion={identidadEdicion}
-          onReutilizar={() => reutilizarMutation.mutate()}
-          onEscanearNuevo={() => irAActualizarDocumento()}
-          reutilizando={reutilizarMutation.isPending}
-        />
-      )}
+  const revisionBriefing = identidadBriefingRevision({ correccion: modoCorreccion });
+  const { open: revisionBriefingOpen, dismiss: dismissRevisionBriefing } = useStepBriefing(
+    identidadBriefingStepKey('revision', { correccion: modoCorreccion }),
+    paso === 'revision',
+  );
 
-      {paso === 'correccion' && identidadEdicion && (
-        <ClienteIdentidadCorreccion
-          identidadEdicion={identidadEdicion}
-          notaDevolucion={notaDevolucion}
-          tipoServicio={tipoServicio}
-          onCorregirDatos={irACorregirDatos}
-          onActualizarDocumento={irAActualizarDocumento}
-        />
+  return (
+    <div
+      className={cn(
+        'flex min-h-0 flex-1 flex-col overflow-hidden',
+        paso !== 'documento' && paso !== 'revision' && 'min-h-0',
+      )}
+    >
+      {(paso === 'eleccion' || paso === 'correccion') && (
+        <PortalScrollArea contentClassName="space-y-4 px-4 pb-4 pt-3 sm:px-5">
+          {paso === 'eleccion' && identidadEdicion && (
+            <ClienteIdentidadEleccion
+              identidadEdicion={identidadEdicion}
+              onReutilizar={() => reutilizarMutation.mutate()}
+              onEscanearNuevo={() => irAActualizarDocumento()}
+              reutilizando={reutilizarMutation.isPending}
+            />
+          )}
+
+          {paso === 'correccion' && identidadEdicion && (
+            <ClienteIdentidadCorreccion
+              identidadEdicion={identidadEdicion}
+              notaDevolucion={notaDevolucion}
+              tipoServicio={tipoServicio}
+              onCorregirDatos={irACorregirDatos}
+              onActualizarDocumento={irAActualizarDocumento}
+            />
+          )}
+        </PortalScrollArea>
       )}
 
       {paso === 'documento' && (
-        <>
-          {modoCorreccion && analisis.necesitaDocumento && (
-            <div className="rounded-xl border border-primary/25 bg-primary/5 px-4 py-3 text-sm">
-              <p className="font-semibold text-foreground">
-                {analisis.ladoDocumento === 'anverso'
-                  ? 'Fotografie de nuevo la delantera'
-                  : analisis.ladoDocumento === 'reverso'
-                    ? 'Fotografie de nuevo la trasera'
-                    : 'Vuelva a escanear su documento'}
-              </p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                {notaDevolucion?.trim()
-                  ? notaDevolucion
-                  : 'Siga las indicaciones en pantalla. Cuando termine, revisará los datos antes de enviar.'}
-              </p>
-            </div>
-          )}
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
           <DocumentoIdentidadFlujo
             key={
               inicioRapido
@@ -323,6 +332,7 @@ export function ClienteIdentidadOnboarding({
             }
             modo="cliente"
             tipoServicio={tipoServicio}
+            modoCorreccion={modoCorreccion}
             inicioRapido={inicioRapido ?? undefined}
             capturasPrevias={archivos}
             onReiniciarTipo={() => setInicioRapido(null)}
@@ -339,7 +349,12 @@ export function ClienteIdentidadOnboarding({
               setSoloDatos(false);
               setExtraccionAutomatica(datosExtraidos.extraccionAutomatica === true);
               setCamposMrzBloqueados(inferirCamposMrz(datosExtraidos));
-              const extraidos = datosExtraidosAClienteInput(datosExtraidos);
+              const extraidos = datosExtraidosAClienteInput(datosExtraidos, files.tipoEscaneo);
+              if ('' === extraidos.tipoDocumento) {
+                // Ni OCR ni número legibles: el documento habitual del servicio es mejor
+                // punto de partida que dejar el selector en blanco.
+                extraidos.tipoDocumento = labelsDocumentoIdentidad(tipoServicio).tipoDocumentoSelect[0];
+              }
               setDatosIniciales(
                 datosClienteEditables
                   ? fusionarClienteInput(datosClienteEditables, extraidos)
@@ -348,23 +363,42 @@ export function ClienteIdentidadOnboarding({
               setPaso('revision');
             }}
           />
-        </>
+        </div>
       )}
 
       {paso === 'revision' && datosIniciales && (soloDatos || archivos) && (
-        <DocumentoIdentidadRevision
-          modo="cliente"
-          tipoServicio={tipoServicio}
-          extraccionAutomatica={extraccionAutomatica}
-          camposSoloLectura={camposMrzBloqueados}
-          camposResaltados={soloDatos || modoCorreccion ? camposResaltados : []}
-          datosIniciales={datosIniciales}
-          onConfirmar={handleConfirmar}
-          onVolverEscaneo={volverDesdeRevision}
-          isSaving={isSaving}
-          confirmLabel="Confirmar y continuar"
-          volverLabel={etiquetaVolverRevision}
-        />
+        <>
+          <ContratacionBriefingDialog
+            open={revisionBriefingOpen}
+            title={revisionBriefing.title}
+            description={revisionBriefing.description}
+            ctaLabel={revisionBriefing.ctaLabel}
+            onContinue={dismissRevisionBriefing}
+          />
+          {!revisionBriefingOpen && (
+            <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+              <PortalCapturaSubheader
+                onVolver={volverDesdeRevision}
+                volverLabel={etiquetaVolverRevision}
+                className="shrink-0"
+              />
+              <PortalScrollArea contentClassName="pt-2" etiqueta="Más campos abajo">
+                <DocumentoIdentidadRevision
+                  modo="cliente"
+                  tipoServicio={tipoServicio}
+                  extraccionAutomatica={extraccionAutomatica}
+                  camposSoloLectura={camposMrzBloqueados}
+                  camposResaltados={soloDatos || modoCorreccion ? camposResaltados : []}
+                  datosIniciales={datosIniciales}
+                  onConfirmar={handleConfirmar}
+                  onVolverEscaneo={volverDesdeRevision}
+                  isSaving={isSaving}
+                  confirmLabel="Confirmar y continuar"
+                />
+              </PortalScrollArea>
+            </div>
+          )}
+        </>
       )}
 
       {guardarAccesoMutation.isError && !isClienteDuplicadoError(guardarAccesoMutation.error) && (

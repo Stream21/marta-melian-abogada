@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { TelefonoInput } from '@/components/ui/TelefonoInput';
 import { ESTADOS_CIVILES } from '@/lib/cliente-datos';
+import { telefonoParaMostrar } from '@/lib/telefono';
 
 export function ClienteDatosPanel() {
   const queryClient = useQueryClient();
@@ -71,7 +72,7 @@ export function ClienteDatosPanel() {
     setProvincia(cliente.provincia ?? '');
     setNombrePadre(cliente.nombrePadre ?? '');
     setNombreMadre(cliente.nombreMadre ?? '');
-    setTelefono(cliente.telefono);
+    setTelefono(telefonoParaMostrar(cliente.telefono));
     setEmail(cliente.email);
   };
 

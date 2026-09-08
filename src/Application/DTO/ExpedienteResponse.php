@@ -6,6 +6,38 @@ namespace App\Application\DTO;
 
 final readonly class ExpedienteResponse
 {
+    /**
+     * @param array{contratacion: int, requerimientos: int} $avisosDetalle
+     * @param array{
+     *     codigo: string,
+     *     label: string,
+     *     orden: int,
+     *     total: int,
+     *     estado: string,
+     *     estadoLabel: string,
+     *     items?: list<array{
+     *         codigo: string,
+     *         label: string,
+     *         estado: string,
+     *         estadoLabel: string,
+     *         fecha: string|null
+     *     }>
+     * }|null $subfaseContratacion
+     * @param array{
+     *     validados: int,
+     *     total: int,
+     *     pendientes: int,
+     *     enRevision: int,
+     *     label: string,
+     *     items: list<array{
+     *         nombre: string,
+     *         obligatorio: bool,
+     *         estado: string,
+     *         estadoLabel: string,
+     *         fecha: string|null
+     *     }>
+     * }|null $subfaseRequerimientos
+     */
     public function __construct(
         public string $id,
         public string $numero,
@@ -18,6 +50,8 @@ final readonly class ExpedienteResponse
         public string $folderPath = '',
         public string $paymentStatus = 'pending',
         public ?string $clienteId = null,
+        /** True solo si el cliente ya está registrado (no alta provisional de contratación). */
+        public bool $clienteFichaDisponible = false,
         public ?string $tramiteId = null,
         public ?string $servicioId = null,
         public string $faseNegocio = 'contratacion',
@@ -31,8 +65,11 @@ final readonly class ExpedienteResponse
         public int $numCuotas = 1,
         public ?string $accessUrl = null,
         public int $avisosPendientes = 0,
-        /** @var array{contratacion: int, requerimientos: int} */
         public array $avisosDetalle = ['contratacion' => 0, 'requerimientos' => 0],
+        /** Subfase 1–3 dentro de contratación (identidad, firmas, pago). */
+        public ?array $subfaseContratacion = null,
+        /** Progreso documental en fase requerimientos. */
+        public ?array $subfaseRequerimientos = null,
     ) {
     }
 }

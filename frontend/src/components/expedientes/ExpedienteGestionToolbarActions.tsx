@@ -144,25 +144,23 @@ function RequerimientosToolbarActions({ expedienteId }: { expedienteId: string }
 
   return (
     <>
-      <div className="flex w-full min-w-[280px] flex-col gap-2 sm:min-w-[420px]">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <EnlaceClienteModal expedienteId={expedienteId} accessUrl={data.accessUrl} />
-          <div className="flex flex-wrap items-center gap-2">
-            <Button variant="outline" size="sm" onClick={() => setMostrarAddDoc(true)}>
-              <Plus className="mr-2 h-4 w-4" />
-              Añadir documento
-            </Button>
-            <Button
-              size="sm"
-              disabled={!data.puedeAvanzarFase3 || avanzarMutation.isPending}
-              onClick={() => avanzarMutation.mutate()}
-            >
-              {avanzarMutation.isPending ? 'Avanzando…' : 'Pasar a Fase 3'}
-            </Button>
-          </div>
-        </div>
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        <EnlaceClienteModal expedienteId={expedienteId} accessUrl={data.accessUrl} />
+        <Button variant="outline" size="sm" onClick={() => setMostrarAddDoc(true)}>
+          <Plus className="mr-2 h-4 w-4" />
+          Añadir documento
+        </Button>
+        <Button
+          size="sm"
+          disabled={!data.puedeAvanzarFase3 || avanzarMutation.isPending}
+          onClick={() => avanzarMutation.mutate()}
+        >
+          {avanzarMutation.isPending ? 'Avanzando…' : 'Pasar a Fase 3'}
+        </Button>
         {avanzarMutation.error && (
-          <p className="text-sm text-destructive">{avanzarMutation.error.message}</p>
+          <p className="w-full text-sm text-destructive sm:w-auto">
+            {avanzarMutation.error.message}
+          </p>
         )}
       </div>
 

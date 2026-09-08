@@ -16,6 +16,7 @@ import type { ClienteHoldedEstado, ClienteResponse } from '@/api/client';
 import { ClienteHoldedBadge } from '@/components/clientes/ClienteHoldedBadge';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { capitalizeDisplay } from '@/lib/capitalize-display';
 import {
   Dialog,
   DialogContent,
@@ -71,7 +72,9 @@ export function ClientesTable({
         header: 'Nombre',
         cell: ({ row }) => (
           <div>
-            <p className="font-medium">{row.original.nombre || '—'}</p>
+            <p className="font-medium">
+              {capitalizeDisplay(row.original.nombre) || '—'}
+            </p>
             <p className="text-xs text-muted-foreground">
               {row.original.tipoDocumento} {row.original.numDocumento}
             </p>

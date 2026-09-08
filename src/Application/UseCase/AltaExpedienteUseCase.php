@@ -7,7 +7,7 @@ namespace App\Application\UseCase;
 use App\Application\DTO\AltaExpedienteInput;
 use App\Application\DTO\AltaExpedienteResult;
 use App\Application\DTO\ClienteInput;
-use App\Application\DTO\ExpedienteResponse;
+use App\Application\DTO\ExpedienteResponseMapper;
 use App\Application\Port\ExpedienteFileStoragePort;
 use App\Application\Service\NotificarAltaExpedienteService;
 use App\Application\Service\TelefonoNormalizer;
@@ -66,6 +66,12 @@ final class AltaExpedienteUseCase
 
         $cliente = $this->resolverCliente($input);
 
+        // En expediente: nunca mostrar «Cliente pendiente». Cliente nuevo → teléfono de contacto;
+        // cliente ya registrado → su nombre real (2.º servicio u otro trámite).
+        $nombreEnExpediente = $cliente->esProvisional()
+            ? $cliente->telefono()
+            : $cliente->nombre();
+
         $expedienteId = ExpedienteId::generate();
         $numero = $this->expedienteRepository->nextNumeroForYear((int) date('Y'));
         $accessToken = bin2hex(random_bytes(32));
@@ -76,7 +82,7 @@ final class AltaExpedienteUseCase
             $expedienteId,
             $numero,
             $tramite->nombre(),
-            $cliente->nombre(),
+            $nombreEnExpediente,
             $folderPath,
             $cliente->id()->value(),
             $tramite->id()->value(),
@@ -120,7 +126,7 @@ final class AltaExpedienteUseCase
         }
 
         return new AltaExpedienteResult(
-            $this->toResponse($expediente, $accessUrl),
+            ExpedienteResponseMapper::fromDomain($expediente, $this->frontendBaseUrl),
             $accessUrl,
             $canales,
         );
@@ -193,30 +199,5 @@ final class AltaExpedienteUseCase
             telefono: $telefono,
             email: $input->email ?? '',
         ), altaMinima: true, permitirDuplicado: $input->permitirDuplicado);
-    }
-
-    private function toResponse(Expediente $expediente, string $accessUrl): ExpedienteResponse
-    {
-        return new ExpedienteResponse(
-            id: $expediente->id()->value(),
-            numero: $expediente->numero(),
-            titulo: $expediente->titulo(),
-            estado: $expediente->estado()->value,
-            fechaApertura: $expediente->fechaApertura()->format(\DateTimeInterface::ATOM),
-            clientName: $expediente->clientName(),
-            caseReference: $expediente->caseReference(),
-            folderPath: $expediente->folderPath(),
-            paymentStatus: $expediente->paymentStatus(),
-            clienteId: $expediente->clienteId(),
-            tramiteId: $expediente->tramiteId(),
-            servicioId: $expediente->servicioId(),
-            faseNegocio: $expediente->faseNegocio()->value,
-            estadoFase: $expediente->estadoFase()->value,
-            honorariosAcordados: $expediente->honorariosAcordados(),
-            metodoPago: $expediente->metodoPago()->value,
-            planPago: $expediente->planPago()->value,
-            numCuotas: $expediente->numCuotas(),
-            accessUrl: $accessUrl,
-        );
     }
 }

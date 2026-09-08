@@ -28,5 +28,12 @@ interface ExpedienteRepositoryInterface
      */
     public function findByClienteId(ClienteId $clienteId): array;
 
+    /**
+     * Búsqueda por número, título o nombre de cliente.
+     *
+     * @return Expediente[]
+     */
+    public function search(string $query, int $limit = 20): array;
+
     public function remove(Expediente $expediente): void;
 }

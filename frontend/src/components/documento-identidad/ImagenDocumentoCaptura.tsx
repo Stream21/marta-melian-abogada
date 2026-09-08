@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils';
 import { CapturaCamaraDocumento, type LadoCapturaCamara } from './CapturaCamaraDocumento';
 import { EncuadreHorizontal } from './EncuadreHorizontal';
 import { InstruccionesCapturaDocumentoDialog } from './InstruccionesCapturaDocumentoDialog';
+import { CAPTURA_LADO_ETIQUETA } from './captura-lado-textos';
 
 function clickInputRef(ref: React.RefObject<HTMLInputElement | null>): void {
   ref.current?.click();
@@ -128,18 +129,13 @@ export function ImagenDocumentoCaptura({
 
   const abrirCamara = () => {
     if (soloCamaraOcr) {
-      setInstruccionesAbiertas(true);
+      setCamaraAbierta(true);
       return;
     }
     clickInputRef(inputRef);
   };
 
-  const etiquetaLadoCorto =
-    ladoCamara === 'reverso'
-      ? 'Trasera'
-      : ladoCamara === 'pasaporte'
-        ? 'Pasaporte'
-        : 'Delantera';
+  const etiquetaLadoCorto = CAPTURA_LADO_ETIQUETA[ladoCamara];
 
   const aspectRatioCaptura =
     ladoCamara === 'pasaporte' ? PASAPORTE_ASPECT_RATIO : ID1_ASPECT_RATIO;
@@ -174,41 +170,58 @@ export function ImagenDocumentoCaptura({
   })();
 
   if (uiSimplificada && soloCamaraOcr) {
+    const adaptarAltura = esCliente;
+    const esMarcoVertical = aspectRatioCaptura < 1;
+
+    const marcoStyle: React.CSSProperties = adaptarAltura
+      ? esMarcoVertical
+        ? {
+            aspectRatio: String(aspectRatioCaptura),
+            height: '100%',
+            width: 'auto',
+            maxWidth: '100%',
+          }
+        : {
+            aspectRatio: String(aspectRatioCaptura),
+            width: '100%',
+            height: 'auto',
+            maxHeight: '100%',
+          }
+      : { aspectRatio: String(aspectRatioCaptura) };
+
     return (
-      <div className="space-y-4">
+      <div className={cn(adaptarAltura && 'flex min-h-0 flex-1 flex-col')}>
         {!preview ? (
           <button
             type="button"
             onClick={abrirCamara}
             disabled={procesando}
+            aria-label="Pulse para abrir la cámara"
             className={cn(
-              'group relative w-full overflow-hidden rounded-2xl border border-border bg-card text-left shadow-sm',
-              'transition-colors hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+              'group relative overflow-hidden rounded-2xl bg-transparent shadow-none',
+              'transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
               'disabled:pointer-events-none disabled:opacity-60',
+              adaptarAltura
+                ? 'flex min-h-0 flex-1 w-full flex-col'
+                : 'block w-full',
             )}
           >
             <div
-              className="doc-scan-frame mx-4 mb-4 mt-4"
-              style={{ aspectRatio: String(aspectRatioCaptura) }}
+              className={cn(
+                'flex min-h-0 flex-1 items-center justify-center',
+                adaptarAltura && 'min-h-0',
+              )}
             >
-              <span
-                aria-hidden
-                className="pointer-events-none absolute inset-3 border border-primary/20"
-              />
+              <div className="doc-scan-frame relative shrink-0" style={marcoStyle}>
               <span aria-hidden className="pointer-events-none absolute left-2 top-2 h-5 w-5 border-l-2 border-t-2 border-primary" />
               <span aria-hidden className="pointer-events-none absolute right-2 top-2 h-5 w-5 border-r-2 border-t-2 border-primary" />
               <span aria-hidden className="pointer-events-none absolute bottom-2 left-2 h-5 w-5 border-b-2 border-l-2 border-primary" />
               <span aria-hidden className="pointer-events-none absolute bottom-2 right-2 h-5 w-5 border-b-2 border-r-2 border-primary" />
-              <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 px-4 text-center">
-                <span className="flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm transition-transform group-hover:scale-105">
-                  <Camera className="h-5 w-5" />
+              <div className="absolute inset-0 flex items-center justify-center">
+                <span className="flex h-16 w-16 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-md transition-transform group-hover:scale-105 group-active:scale-95">
+                  <Camera className="h-8 w-8" />
                 </span>
-                <span className="text-sm font-semibold text-foreground">
-                  Escanear {etiquetaLadoCorto}
-                </span>
-                <span className="max-w-[14rem] text-xs text-muted-foreground">
-                  Buena luz, sin reflejos. El documento debe verse entero.
-                </span>
+              </div>
               </div>
             </div>
           </button>
@@ -236,16 +249,6 @@ export function ImagenDocumentoCaptura({
           </div>
         )}
 
-        <InstruccionesCapturaDocumentoDialog
-          abierto={instruccionesAbiertas}
-          lado={ladoCamara}
-          etiquetaDocumento={etiquetaDocumento}
-          onContinuar={() => {
-            setInstruccionesAbiertas(false);
-            setCamaraAbierta(true);
-          }}
-          onCancelar={() => setInstruccionesAbiertas(false)}
-        />
         <CapturaCamaraDocumento
           abierto={camaraAbierta}
           lado={ladoCamara}

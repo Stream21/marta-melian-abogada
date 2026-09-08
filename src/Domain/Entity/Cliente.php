@@ -8,6 +8,12 @@ use App\Domain\ValueObject\ClienteId;
 
 final readonly class Cliente
 {
+    /**
+     * Nombre placeholder al abrir expediente con cliente nuevo (aún sin identidad).
+     * No debe listarse ni enlazarse como ficha hasta completar el alta de identidad.
+     */
+    public const NOMBRE_PROVISIONAL = 'Cliente pendiente';
+
     public function __construct(
         private ClienteId $id,
         private string $nombre,
@@ -46,6 +52,14 @@ final readonly class Cliente
     public function nombre(): string
     {
         return $this->nombre;
+    }
+
+    /**
+     * Alta mínima de contratación (solo teléfono): aún no es un cliente registrado.
+     */
+    public function esProvisional(): bool
+    {
+        return self::NOMBRE_PROVISIONAL === $this->nombre;
     }
 
     public function nacionalidad(): string

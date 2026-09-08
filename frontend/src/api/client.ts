@@ -672,6 +672,14 @@ export const api = {
       '/api/clientes/buscar?q=' + encodeURIComponent(query),
     ),
 
+  searchGlobal: (params: { q: string; types?: string[]; limit?: number }) => {
+    const search = new URLSearchParams();
+    search.set('q', params.q);
+    if (params.types?.length) search.set('types', params.types.join(','));
+    if (params.limit != null) search.set('limit', String(params.limit));
+    return request<BusquedaGlobalResponse>('/api/search?' + search.toString());
+  },
+
   altaExpediente: (body: AltaExpedienteInput) =>
     request<AltaExpedienteResponse>('/api/expedientes/alta', {
       method: 'POST',
@@ -1475,6 +1483,8 @@ export interface ExpedienteResponse {
   folderPath: string;
   paymentStatus: string;
   clienteId?: string | null;
+  /** False mientras el cliente es solo contacto de contratación (aún no registrado). */
+  clienteFichaDisponible?: boolean;
   tramiteId?: string | null;
   servicioId?: string | null;
   faseNegocio?: FaseNegocio;
@@ -1482,6 +1492,37 @@ export interface ExpedienteResponse {
   subfaseTramitacion?: string | null;
   subfaseTramitacionLabel?: string | null;
   actorBandejaTramitacion?: 'despacho' | 'mercurio' | string | null;
+  /** Subfase 1–3 dentro de contratación (identidad, firmas, pago). */
+  subfaseContratacion?: {
+    codigo: string;
+    label: string;
+    orden: number;
+    total: number;
+    estado: string;
+    estadoLabel: string;
+    items?: Array<{
+      codigo: string;
+      label: string;
+      estado: string;
+      estadoLabel: string;
+      fecha: string | null;
+    }>;
+  } | null;
+  /** Progreso documental en fase requerimientos. */
+  subfaseRequerimientos?: {
+    validados: number;
+    total: number;
+    pendientes: number;
+    enRevision: number;
+    label: string;
+    items: Array<{
+      nombre: string;
+      obligatorio: boolean;
+      estado: string;
+      estadoLabel: string;
+      fecha: string | null;
+    }>;
+  } | null;
   honorariosAcordados?: number;
   metodoPago?: MetodoPago;
   planPago?: PlanPago;
@@ -1526,6 +1567,22 @@ export interface ClienteBusquedaItem {
 
 export interface BuscarClientesResponse {
   clientes: ClienteBusquedaItem[];
+}
+
+export type SearchHitType = 'cliente' | 'expediente' | string;
+
+export interface SearchHit {
+  type: SearchHitType;
+  id: string;
+  title: string;
+  subtitle: string;
+  href: string;
+  score: number;
+}
+
+export interface BusquedaGlobalResponse {
+  query: string;
+  hits: SearchHit[];
 }
 
 export type MotivoDevolucionIdentidad =

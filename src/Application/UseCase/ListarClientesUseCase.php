@@ -22,10 +22,13 @@ final class ListarClientesUseCase
     {
         $clientes = $this->repository->findAll();
 
-        return array_map(function ($cliente) {
+        return array_values(array_map(function ($cliente) {
             $numExpedientes = count($this->expedienteRepository->findByClienteId($cliente->id()));
 
             return ClienteResponseMapper::fromDomain($cliente, $numExpedientes);
-        }, $clientes);
+        }, array_filter(
+            $clientes,
+            static fn ($cliente) => !$cliente->esProvisional(),
+        )));
     }
 }

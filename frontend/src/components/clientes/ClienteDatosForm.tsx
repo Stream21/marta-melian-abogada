@@ -1,14 +1,16 @@
-import { type FormEvent, useEffect, useState } from 'react';
+import { type FormEvent, useEffect, useRef, useState } from 'react';
 import { Save, User } from 'lucide-react';
 import { api, type ClienteInput, type ClienteResponse, type NacionalidadOption } from '@/api/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { TelefonoInput } from '@/components/ui/TelefonoInput';
-import { ESTADOS_CIVILES } from '@/lib/cliente-datos';
+import { ESTADOS_CIVILES, TIPOS_DOCUMENTO } from '@/lib/cliente-datos';
+import { cerrarTecladoAlEnter } from '@/lib/cerrar-teclado';
+import { telefonoParaMostrar, telefonoValido } from '@/lib/telefono';
 import { cn } from '@/lib/utils';
 
-const TIPOS_DOCUMENTO_DEFAULT = ['DNI', 'NIE', 'PASAPORTE', 'OTRO'];
+const TIPOS_DOCUMENTO_DEFAULT = [...TIPOS_DOCUMENTO];
 
 interface ClienteDatosFormProps {
   cliente?: ClienteResponse | null;
@@ -61,6 +63,8 @@ export function ClienteDatosForm({
   const [telefono, setTelefono] = useState('');
   const [email, setEmail] = useState('');
   const [nacionalidades, setNacionalidades] = useState<NacionalidadOption[]>([]);
+  const [errorTelefono, setErrorTelefono] = useState<string | null>(null);
+  const editadoRef = useRef(false);
 
   const applyValues = (values: ClienteInput) => {
     setNombre(values.nombre ?? '');
@@ -76,7 +80,7 @@ export function ClienteDatosForm({
     setProvincia(values.provincia ?? '');
     setNombrePadre(values.nombrePadre ?? '');
     setNombreMadre(values.nombreMadre ?? '');
-    setTelefono(values.telefono ?? '');
+    setTelefono(telefonoParaMostrar(values.telefono ?? ''));
     setEmail(values.email ?? '');
   };
 
@@ -105,7 +109,9 @@ export function ClienteDatosForm({
     }
   }, [nacionalidades, nacionalidad]);
 
+  // Una recarga de datos del expediente no debe borrar lo que el cliente ya está escribiendo.
   useEffect(() => {
+    if (editadoRef.current) return;
     if (cliente) {
       applyValues({
         nombre: cliente.nombre,
@@ -140,9 +146,19 @@ export function ClienteDatosForm({
       resaltado(campo) && 'rounded-lg p-2 ring-2 ring-amber-400 ring-offset-2 ring-offset-background',
     );
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (readOnly) return;
+
+    if (!telefonoValido(telefono)) {
+      setErrorTelefono(
+        'Indique un teléfono válido: 9 dígitos si es español (612345678) o con prefijo internacional (+212…).',
+      );
+      e.currentTarget.querySelector<HTMLElement>('#telefono')?.focus();
+      return;
+    }
+    setErrorTelefono(null);
+
     onSubmit({
       nombre,
       nacionalidad,
@@ -170,15 +186,26 @@ export function ClienteDatosForm({
         n.codigo.toUpperCase() === nacionalidad.toUpperCase(),
     );
 
+  const tipoDocumentoFueraDeCatalogo =
+    tipoDocumento !== '' && !tiposDocumentoPermitidos.includes(tipoDocumento);
+
   return (
-    <form onSubmit={handleSubmit} className="panel">
-      <div className="panel-header">
-        <div className="panel-header-icon">
-          <User className="h-5 w-5" />
-        </div>
-        <div>
-          <h2 className="panel-title">Datos del cliente</h2>
-          {!portalCliente && (
+    <form
+      onSubmit={handleSubmit}
+      onChange={() => {
+        editadoRef.current = true;
+      }}
+      onKeyDown={portalCliente ? cerrarTecladoAlEnter : undefined}
+      className="panel"
+    >
+      {/* En el portal la pantalla previa ya explica en qué paso está: la cabecera solo restaría espacio. */}
+      {!portalCliente && (
+        <div className="panel-header">
+          <div className="panel-header-icon">
+            <User className="h-5 w-5" />
+          </div>
+          <div>
+            <h2 className="panel-title">Datos del cliente</h2>
             <p className="text-sm text-muted-foreground">
               {readOnly
                 ? 'Solo lectura. Los datos no se pueden modificar hasta que cierre el proceso de contratación.'
@@ -186,14 +213,9 @@ export function ClienteDatosForm({
                   ? 'Puede corregir nombre, nacionalidad y fecha si la lectura falló. Tipo y número de documento vienen del documento.'
                   : 'Complete la ficha mínima del cliente. Los campos del documento se rellenan al escanear; el resto debe indicarlo el cliente.'}
             </p>
-          )}
-          {portalCliente && (
-            <p className="text-sm text-muted-foreground">
-              Revise sus datos (puede corregir nombre, nacionalidad y fecha) y complete contacto y domicilio.
-            </p>
-          )}
+          </div>
         </div>
-      </div>
+      )}
 
       <div className={portalCliente ? 'space-y-6 p-4 sm:p-6' : 'space-y-6 p-6'}>
         <section>
@@ -241,8 +263,14 @@ export function ClienteDatosForm({
                 value={tipoDocumento}
                 onChange={(e) => setTipoDocumento(e.target.value)}
                 disabled={bloqueado('tipoDocumento')}
+                required
               >
                 <option value="">Seleccionar…</option>
+                {/* El documento leído puede no estar entre los habituales del servicio:
+                    mostrarlo evita que el selector aparezca vacío. */}
+                {tipoDocumentoFueraDeCatalogo && (
+                  <option value={tipoDocumento}>{tipoDocumento}</option>
+                )}
                 {tiposDocumentoPermitidos.map((t) => (
                   <option key={t} value={t}>
                     {t}
@@ -373,13 +401,24 @@ export function ClienteDatosForm({
           <h3 className="section-label mb-3">Contacto</h3>
           <div className={portalCliente ? 'grid gap-3' : 'grid max-w-xl gap-3'}>
             <div className={claseSelect('telefono')}>
-              <Label htmlFor="telefono">Teléfono</Label>
+              <Label htmlFor="telefono">Teléfono móvil</Label>
               <TelefonoInput
                 id="telefono"
                 value={telefono}
-                onChange={setTelefono}
+                onChange={(v) => {
+                  setTelefono(v);
+                  if (errorTelefono) setErrorTelefono(null);
+                }}
                 disabled={bloqueado('telefono')}
+                required
               />
+              {errorTelefono ? (
+                <p className="text-[11px] font-medium text-destructive">{errorTelefono}</p>
+              ) : (
+                <p className="text-[11px] text-muted-foreground">
+                  Si es español, escríbalo sin prefijo. Para otro país, anteponga el prefijo (+212…).
+                </p>
+              )}
               {resaltado('telefono') && (
                 <p className="text-[11px] font-medium text-amber-800">Revise este campo</p>
               )}
@@ -466,6 +505,8 @@ function Field({
         type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        onKeyDown={cerrarTecladoAlEnter}
+        enterKeyHint="done"
         required={required}
         disabled={disabled}
       />

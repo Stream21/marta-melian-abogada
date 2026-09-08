@@ -65,6 +65,7 @@ export function ClienteExpedientesPanel({ expedientes }: ClienteExpedientesPanel
                   <Link
                     to="/expedientes/$expedienteId"
                     params={{ expedienteId: exp.id }}
+                    state={{ breadcrumb: { keepTrail: true } } as never}
                     className="link-brand text-sm"
                   >
                     Abrir

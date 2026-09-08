@@ -54,6 +54,30 @@ final class ExpedienteDocumentoRequeridoRepository implements ExpedienteDocument
         return array_map($this->ormToDomain(...), $orms);
     }
 
+    public function findByExpedienteIds(array $expedienteIds): array
+    {
+        if ([] === $expedienteIds) {
+            return [];
+        }
+
+        /** @var ExpedienteDocumentoRequeridoOrm[] $orms */
+        $orms = $this->entityManager->getRepository(ExpedienteDocumentoRequeridoOrm::class)
+            ->createQueryBuilder('d')
+            ->where('d.expedienteId IN (:ids)')
+            ->setParameter('ids', $expedienteIds)
+            ->orderBy('d.orden', 'ASC')
+            ->addOrderBy('d.nombre', 'ASC')
+            ->getQuery()
+            ->getResult();
+
+        $grouped = [];
+        foreach ($orms as $orm) {
+            $grouped[$orm->getExpedienteId()][] = $this->ormToDomain($orm);
+        }
+
+        return $grouped;
+    }
+
     public function findById(ExpedienteDocumentoRequeridoId $id): ?ExpedienteDocumentoRequerido
     {
         $orm = $this->entityManager->find(ExpedienteDocumentoRequeridoOrm::class, $id->value());

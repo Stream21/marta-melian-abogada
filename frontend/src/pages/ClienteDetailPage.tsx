@@ -7,6 +7,7 @@ import { ClienteDocumentoIdentidadPanel } from '@/components/clientes/ClienteDoc
 import { ClienteExpedientesPanel } from '@/components/clientes/ClienteExpedientesPanel';
 import { ClienteHoldedBadge } from '@/components/clientes/ClienteHoldedBadge';
 import { ClienteHoldedPanel } from '@/components/clientes/ClienteHoldedPanel';
+import { capitalizeDisplay } from '@/lib/capitalize-display';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 
@@ -60,7 +61,9 @@ export function ClienteDetailPage({ clienteId }: ClienteDetailPageProps) {
                 </Link>
               </Button>
               <p className="section-label">Ficha de cliente</p>
-              <h1 className="page-title">{cliente.nombre || 'Cliente sin nombre'}</h1>
+              <h1 className="page-title">
+                {capitalizeDisplay(cliente.nombre) || 'Cliente sin nombre'}
+              </h1>
               <div className="mt-2 flex flex-wrap items-center gap-2">
                 <p className="page-subtitle">
                   {cliente.tipoDocumento} {cliente.numDocumento}
