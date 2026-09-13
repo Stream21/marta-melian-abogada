@@ -104,6 +104,7 @@ final class PaymentFacadeService
                 taxKey: $breakdown['taxKey'],
                 dateUnix: $nowCanary->getTimestamp(),
                 taxes: $breakdown['taxes'],
+                numberKey: $expedienteId ?? $contactId,
             ),
         );
 

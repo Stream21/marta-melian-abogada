@@ -12,6 +12,8 @@ final readonly class ExpedienteInvoiceData
 {
     /**
      * @param list<string> $taxes Claves de impuesto Holded (p. ej. s_iva_exento en v2).
+     * @param string|null $documentNumber Número de factura explícito (recomendado con HOLDED_ENV_PREFIX).
+     * @param string|null $numberKey Clave estable (p. ej. nº expediente) para componer el número si hay prefijo.
      */
     public function __construct(
         public string $description,
@@ -21,6 +23,8 @@ final readonly class ExpedienteInvoiceData
         public string $taxKey,
         public int $dateUnix,
         public array $taxes = [],
+        public ?string $documentNumber = null,
+        public ?string $numberKey = null,
     ) {
     }
 }

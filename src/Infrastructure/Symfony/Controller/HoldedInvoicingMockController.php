@@ -140,7 +140,10 @@ final class HoldedInvoicingMockController extends AbstractController
         $total = round($subtotal + $taxAmount, 2);
 
         $id = $this->generateHexId();
-        $number = 'FAC-' . date('Y') . '-' . str_pad((string) (count($db['invoices']) + 1), 4, '0', \STR_PAD_LEFT);
+        $customNumber = trim((string) ($data['number'] ?? $data['invoiceNum'] ?? ''));
+        $number = '' !== $customNumber
+            ? $customNumber
+            : 'FAC-' . date('Y') . '-' . str_pad((string) (count($db['invoices']) + 1), 4, '0', \STR_PAD_LEFT);
 
         $invoice = [
             'id' => $id,

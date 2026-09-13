@@ -64,53 +64,38 @@ final class PaymentHoldedSyncService
         }
 
         $holdedInvoiceId = trim((string) ($expediente->holdedInvoiceId() ?? $payment->holdedInvoiceId() ?? ''));
+        $reusedExistingInvoice = '' !== $holdedInvoiceId;
 
         try {
             $cliente = $this->resolveCliente($expediente);
             $contactId = $this->ensureContact($cliente, $expediente);
 
             if ('' === $holdedInvoiceId) {
-                $breakdown = $this->igicCalculator->fromTotalWithTax($expediente->honorariosAcordados());
-                $nowCanary = new \DateTimeImmutable('now', new \DateTimeZone('Atlantic/Canary'));
-                $holdedInvoiceId = $this->holdedPort->createInvoice(
-                    $contactId,
-                    new ExpedienteInvoiceData(
-                        description: sprintf('Expediente %s — %s', $expediente->numero(), $expediente->titulo()),
-                        totalWithTax: $breakdown['total'],
-                        itemName: $expediente->titulo() !== '' ? $expediente->titulo() : 'Servicios legales',
-                        subtotal: $breakdown['subtotal'],
-                        taxKey: $breakdown['taxKey'],
-                        dateUnix: $nowCanary->getTimestamp(),
-                        taxes: $breakdown['taxes'],
-                    ),
-                );
-
-                if ('' === $holdedInvoiceId) {
-                    throw new \RuntimeException('Holded no devolvió un identificador de factura.');
-                }
-
+                $holdedInvoiceId = $this->createInvoiceForExpediente($contactId, $expediente);
                 $expediente = $expediente->withHoldedInvoiceId($holdedInvoiceId);
                 $this->expedienteRepository->save($expediente);
+                $reusedExistingInvoice = false;
             }
 
-            $method = match ($payment->type()) {
-                PaymentType::Manual => 'CASH',
-                default => 'STRIPE',
-            };
-            $cuota = $payment->cuotaNumero();
-            $desc = sprintf(
-                'Cobro%s — expediente %s%s',
-                null !== $cuota ? ' cuota ' . $cuota : '',
-                $expediente->numero(),
-                PaymentType::Manual === $payment->type() ? ' (efectivo/TPV despacho)' : ' (Stripe)',
-            );
+            try {
+                $this->registerPaymentOnInvoice($payment, $expediente, $holdedInvoiceId);
+            } catch (\Throwable $payError) {
+                // Factura borrada en Holded (pruebas/demo): recrear con número nuevo y reintentar cobro.
+                if (!$reusedExistingInvoice || !$this->isMissingInHolded($payError)) {
+                    throw $payError;
+                }
 
-            $this->holdedPort->recordPayment(
-                $holdedInvoiceId,
-                (float) $payment->amount(),
-                $desc,
-                $method,
-            );
+                $this->logger->warning('PaymentHoldedSync: factura Holded inexistente; se recrea', [
+                    'paymentId' => $payment->id()->value(),
+                    'holdedInvoiceId' => $holdedInvoiceId,
+                    'error' => $payError->getMessage(),
+                ]);
+
+                $holdedInvoiceId = $this->createInvoiceForExpediente($contactId, $expediente);
+                $expediente = $expediente->withHoldedInvoiceId($holdedInvoiceId);
+                $this->expedienteRepository->save($expediente);
+                $this->registerPaymentOnInvoice($payment, $expediente, $holdedInvoiceId);
+            }
 
             $pdfPath = $payment->pdfPath();
             try {
@@ -121,11 +106,19 @@ final class PaymentHoldedSyncService
                 $filename = 'factura_' . $holdedInvoiceId . '.pdf';
                 $pdfPath = $this->fileStorage->savePdf($payment->expedienteId(), $filename, $pdfContent);
             } catch (\Throwable $e) {
-                $this->logger->warning('PaymentHoldedSync: PDF no descargado', [
-                    'paymentId' => $payment->id()->value(),
-                    'holdedInvoiceId' => $holdedInvoiceId,
-                    'error' => $e->getMessage(),
-                ]);
+                if ($this->isMissingInHolded($e)) {
+                    $this->logger->warning('PaymentHoldedSync: PDF no disponible (factura ausente en Holded)', [
+                        'paymentId' => $payment->id()->value(),
+                        'holdedInvoiceId' => $holdedInvoiceId,
+                        'error' => $e->getMessage(),
+                    ]);
+                } else {
+                    $this->logger->warning('PaymentHoldedSync: PDF no descargado', [
+                        'paymentId' => $payment->id()->value(),
+                        'holdedInvoiceId' => $holdedInvoiceId,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
             }
 
             $now = new \DateTimeImmutable('now');
@@ -173,6 +166,67 @@ final class PaymentHoldedSyncService
         }
     }
 
+    private function createInvoiceForExpediente(string $contactId, Expediente $expediente): string
+    {
+        $breakdown = $this->igicCalculator->fromTotalWithTax($expediente->honorariosAcordados());
+        $nowCanary = new \DateTimeImmutable('now', new \DateTimeZone('Atlantic/Canary'));
+        $holdedInvoiceId = $this->holdedPort->createInvoice(
+            $contactId,
+            new ExpedienteInvoiceData(
+                description: sprintf('Expediente %s — %s', $expediente->numero(), $expediente->titulo()),
+                totalWithTax: $breakdown['total'],
+                itemName: $expediente->titulo() !== '' ? $expediente->titulo() : 'Servicios legales',
+                subtotal: $breakdown['subtotal'],
+                taxKey: $breakdown['taxKey'],
+                dateUnix: $nowCanary->getTimestamp(),
+                taxes: $breakdown['taxes'],
+                numberKey: $expediente->numero(),
+            ),
+        );
+
+        if ('' === $holdedInvoiceId) {
+            throw new \RuntimeException('Holded no devolvió un identificador de factura.');
+        }
+
+        return $holdedInvoiceId;
+    }
+
+    private function registerPaymentOnInvoice(Payment $payment, Expediente $expediente, string $holdedInvoiceId): void
+    {
+        $method = match ($payment->type()) {
+            PaymentType::Manual => 'CASH',
+            default => 'STRIPE',
+        };
+        $cuota = $payment->cuotaNumero();
+        $desc = sprintf(
+            'Cobro%s — expediente %s%s',
+            null !== $cuota ? ' cuota ' . $cuota : '',
+            $expediente->numero(),
+            PaymentType::Manual === $payment->type() ? ' (efectivo/TPV despacho)' : ' (Stripe)',
+        );
+
+        $this->holdedPort->recordPayment(
+            $holdedInvoiceId,
+            (float) $payment->amount(),
+            $desc,
+            $method,
+        );
+    }
+
+    private function isMissingInHolded(\Throwable $error): bool
+    {
+        if ($error instanceof \App\Domain\Exception\HoldedApiException && 404 === $error->getStatusCode()) {
+            return true;
+        }
+
+        $message = strtolower($error->getMessage());
+
+        return str_contains($message, '404')
+            || str_contains($message, 'not found')
+            || str_contains($message, 'no encontrado')
+            || str_contains($message, 'does not exist');
+    }
+
     public function markPendingSync(Payment $payment): Payment
     {
         return $payment->withHoldedSync(PaymentHoldedEstado::PendienteSync, null, null, null);
@@ -214,10 +268,7 @@ final class PaymentHoldedSyncService
 
     private function ensureContact(?Cliente $cliente, Expediente $expediente): string
     {
-        if (null !== $cliente && $cliente->estaSincronizadoHolded()) {
-            return (string) $cliente->holdedContactId();
-        }
-
+        // No cortocircuitar solo por id local: HoldedService valida existencia y recrea si se borró en demo.
         $nombre = $cliente?->nombre() ?: $expediente->clientName();
         if ('' === trim($nombre)) {
             $nombre = 'Cliente ' . substr($expediente->id()->value(), 0, 8);
@@ -251,7 +302,7 @@ final class PaymentHoldedSyncService
             phone: $cliente?->telefono() ?? '',
         ));
 
-        if (null !== $cliente) {
+        if (null !== $cliente && $contactId !== (string) $cliente->holdedContactId()) {
             $this->clienteRepository->save($cliente->withHoldedSincronizado($contactId));
         }
 

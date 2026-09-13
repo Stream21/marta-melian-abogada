@@ -94,6 +94,7 @@ services:
         arguments:
             $holdedApiKey: '%env(HOLDED_API_KEY)%'
             $holdedApiBaseUrl: '%env(HOLDED_API_BASE_URL)%'
+            $holdedEnvPrefix: '%env(default::HOLDED_ENV_PREFIX)%'
 
     App\Application\Service\IgicInvoiceCalculator:
         arguments:

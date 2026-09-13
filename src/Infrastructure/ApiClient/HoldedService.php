@@ -14,27 +14,39 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 /**
  * Cliente HTTP contra Holded: API v2 (Bearer PAT) o Invoicing API v1 mock/legacy (header key).
+ *
+ * Con HOLDED_ENV_PREFIX (DEV/STG) aísla contactos y números de factura entre entornos
+ * que compartan la misma cuenta demo, y evita reutilizar la serie automática tras borrados.
  */
 final class HoldedService implements HoldedPort
 {
     private const TIMEOUT = 15.0;
+
+    private string $envPrefix;
 
     public function __construct(
         private HttpClientInterface $httpClient,
         private string $holdedApiKey,
         private string $holdedApiBaseUrl,
         private LoggerInterface $logger,
+        string $holdedEnvPrefix = '',
     ) {
+        $this->envPrefix = strtoupper(trim($holdedEnvPrefix));
     }
 
     public function findOrCreateContact(ClienteHoldedData $clientData): string
     {
         $existing = trim((string) ($clientData->existingHoldedContactId ?? ''));
         if ('' !== $existing) {
-            return $existing;
+            if ($this->contactExists($existing)) {
+                return $existing;
+            }
+            $this->logger->warning('Holded contact id local ya no existe; se recreará.', [
+                'holdedContactId' => $existing,
+            ]);
         }
 
-        $documentNumber = trim($clientData->documentNumber);
+        $documentNumber = $this->prefixedDocumentCode(trim($clientData->documentNumber));
         if ('' !== $documentNumber) {
             $foundId = $this->findContactIdByDocument($documentNumber);
             if (null !== $foundId) {
@@ -42,7 +54,7 @@ final class HoldedService implements HoldedPort
             }
         }
 
-        $data = $this->request('POST', '/contacts', $this->buildContactPayload($clientData));
+        $data = $this->request('POST', '/contacts', $this->buildContactPayload($clientData, $documentNumber));
 
         $id = (string) ($data['id'] ?? '');
         if ('' === $id) {
@@ -50,6 +62,30 @@ final class HoldedService implements HoldedPort
         }
 
         return $id;
+    }
+
+    private function contactExists(string $contactId): bool
+    {
+        // El mock v1 no expone GET /contacts/{id}; confiamos en el id local.
+        if (!$this->usesApiV2()) {
+            return true;
+        }
+
+        try {
+            $this->request('GET', '/contacts/' . rawurlencode($contactId));
+
+            return true;
+        } catch (HoldedApiException $e) {
+            if (404 === $e->getStatusCode()) {
+                return false;
+            }
+            // Si la API no permite GET por id, asumimos que el id local sigue siendo válido.
+            if ($e->getStatusCode() >= 400 && $e->getStatusCode() < 500) {
+                return true;
+            }
+
+            throw $e;
+        }
     }
 
     /**
@@ -104,6 +140,36 @@ final class HoldedService implements HoldedPort
     private function normalizeDocumentCode(string $value): string
     {
         return strtoupper(preg_replace('/\s+/', '', trim($value)) ?? '');
+    }
+
+    private function prefixedDocumentCode(string $documentNumber): string
+    {
+        $normalized = $this->normalizeDocumentCode($documentNumber);
+        if ('' === $normalized || '' === $this->envPrefix) {
+            return $normalized;
+        }
+
+        $prefix = $this->envPrefix . '-';
+        if (str_starts_with($normalized, $prefix)) {
+            return $normalized;
+        }
+
+        return $prefix . $normalized;
+    }
+
+    private function prefixedDisplayName(string $name): string
+    {
+        $trimmed = trim($name);
+        if ('' === $this->envPrefix || '' === $trimmed) {
+            return $trimmed;
+        }
+
+        $tag = '[' . $this->envPrefix . ']';
+        if (str_starts_with($trimmed, $tag)) {
+            return $trimmed;
+        }
+
+        return $tag . ' ' . $trimmed;
     }
 
     public function createInvoice(string $holdedContactId, ExpedienteInvoiceData $caseData): string
@@ -199,13 +265,15 @@ final class HoldedService implements HoldedPort
     /**
      * @return array<string, mixed>
      */
-    private function buildContactPayload(ClienteHoldedData $clientData): array
+    private function buildContactPayload(ClienteHoldedData $clientData, string $documentNumber): array
     {
+        $name = $this->prefixedDisplayName($clientData->name);
+
         if ($this->usesApiV2()) {
             $payload = [
-                'name' => $clientData->name,
+                'name' => $name,
                 'email' => $clientData->email,
-                'code' => $clientData->documentNumber,
+                'code' => $documentNumber,
                 'type' => ['client'],
                 'is_person' => true,
                 'bill_address' => [
@@ -223,9 +291,9 @@ final class HoldedService implements HoldedPort
         }
 
         $payload = [
-            'name' => $clientData->name,
+            'name' => $name,
             'email' => $clientData->email,
-            'code' => $clientData->documentNumber,
+            'code' => $documentNumber,
             'type' => 'client',
             'isperson' => true,
             'billAddress' => [
@@ -252,29 +320,84 @@ final class HoldedService implements HoldedPort
             'units' => 1,
             'taxes' => $caseData->taxes,
         ];
+        $description = $this->prefixedDescription($caseData->description);
+        $documentNumber = $this->resolveInvoiceDocumentNumber($caseData);
 
         if ($this->usesApiV2()) {
             $lineItem['type'] = 'service';
             $lineItem['price'] = $caseData->subtotal;
 
-            return [
+            $payload = [
                 'contact_id' => $holdedContactId,
-                'description' => $caseData->description,
+                'description' => $description,
                 'date' => date('Y-m-d', $caseData->dateUnix),
                 'currency' => 'EUR',
                 'language' => 'es',
                 'items' => [$lineItem],
             ];
+            if (null !== $documentNumber) {
+                // Número explícito: no depende de la serie automática (borra/recrea en demo sin pisar).
+                $payload['number'] = $documentNumber;
+            }
+            if ('' !== $this->envPrefix) {
+                $payload['tags'] = [$this->envPrefix];
+            }
+
+            return $payload;
         }
 
         $lineItem['subtotal'] = $caseData->subtotal;
 
-        return [
+        $payload = [
             'contactId' => $holdedContactId,
-            'desc' => $caseData->description,
+            'desc' => $description,
             'date' => $caseData->dateUnix,
             'items' => [$lineItem],
         ];
+        if (null !== $documentNumber) {
+            $payload['invoiceNum'] = $documentNumber;
+            $payload['number'] = $documentNumber;
+        }
+
+        return $payload;
+    }
+
+    private function resolveInvoiceDocumentNumber(ExpedienteInvoiceData $caseData): ?string
+    {
+        $explicit = trim((string) ($caseData->documentNumber ?? ''));
+        if ('' !== $explicit) {
+            return $explicit;
+        }
+
+        if ('' === $this->envPrefix) {
+            return null;
+        }
+
+        $key = trim((string) ($caseData->numberKey ?? ''));
+        if ('' === $key) {
+            $key = 'DOC';
+        }
+        $safeKey = strtoupper(preg_replace('/[^A-Za-z0-9]+/', '-', $key) ?? 'DOC');
+        $safeKey = trim($safeKey, '-');
+        // Timestamp + sufijo corto: tras borrar en Holded, el siguiente sync crea otro número.
+        $suffix = (new \DateTimeImmutable('now'))->format('YmdHis') . '-' . substr(bin2hex(random_bytes(2)), 0, 4);
+
+        return sprintf('%s-%s-%s', $this->envPrefix, $safeKey, $suffix);
+    }
+
+    private function prefixedDescription(string $description): string
+    {
+        $trimmed = trim($description);
+        if ('' === $this->envPrefix || '' === $trimmed) {
+            return $trimmed;
+        }
+
+        $tag = '[' . $this->envPrefix . ']';
+        if (str_starts_with($trimmed, $tag)) {
+            return $trimmed;
+        }
+
+        return $tag . ' ' . $trimmed;
     }
 
     private function appendPaymentMethodToDescription(string $description, string $paymentMethod): string

@@ -92,6 +92,68 @@ final class HoldedServiceTest extends TestCase
         self::assertStringContainsString('STRIPE', (string) ($payBody['description'] ?? ''));
     }
 
+    public function testEnvPrefixIsolatesContactsAndInvoiceNumbers(): void
+    {
+        $requests = [];
+        $client = new MockHttpClient(function (string $method, string $url, array $options) use (&$requests): MockResponse {
+            $requests[] = ['method' => $method, 'url' => $url, 'options' => $options];
+
+            if (str_contains($url, '/contacts/') && 'GET' === $method) {
+                return new MockResponse('{"error":"not found"}', ['http_code' => 404]);
+            }
+            if (str_contains($url, '/contacts') && 'GET' === $method) {
+                return new MockResponse('{"items":[]}', ['http_code' => 200]);
+            }
+            if (str_contains($url, '/contacts') && 'POST' === $method) {
+                return new MockResponse('{"id":"contact-stg-1"}', ['http_code' => 201]);
+            }
+            if (str_contains($url, '/invoices') && 'POST' === $method) {
+                return new MockResponse('{"id":"inv-stg-1"}', ['http_code' => 201]);
+            }
+
+            return new MockResponse('{}', ['http_code' => 200]);
+        });
+
+        $service = new HoldedService(
+            $client,
+            'pat_test_token',
+            'https://api.holded.com/api/v2',
+            new NullLogger(),
+            'stg',
+        );
+
+        $contactId = $service->findOrCreateContact(new ClienteHoldedData(
+            name: 'Cliente Demo',
+            email: 'd@example.com',
+            documentNumber: '12345678Z',
+            existingHoldedContactId: 'deleted-id',
+        ));
+        self::assertSame('contact-stg-1', $contactId);
+
+        $invoiceId = $service->createInvoice($contactId, new ExpedienteInvoiceData(
+            description: 'Expediente EXP-1',
+            totalWithTax: 100.0,
+            itemName: 'Honorarios',
+            subtotal: 100.0,
+            taxKey: 's_iva_exento',
+            dateUnix: 1710000000,
+            taxes: ['s_iva_exento'],
+            numberKey: 'EXP-2026/0001',
+        ));
+        self::assertSame('inv-stg-1', $invoiceId);
+
+        self::assertStringContainsString('code=STG-12345678Z', $requests[1]['url']);
+        $contactBody = json_decode($requests[2]['options']['body'] ?? '{}', true);
+        self::assertSame('STG-12345678Z', $contactBody['code'] ?? null);
+        self::assertSame('[STG] Cliente Demo', $contactBody['name'] ?? null);
+
+        $invoiceBody = json_decode($requests[3]['options']['body'] ?? '{}', true);
+        self::assertSame('[STG] Expediente EXP-1', $invoiceBody['description'] ?? null);
+        self::assertSame(['STG'], $invoiceBody['tags'] ?? null);
+        self::assertIsString($invoiceBody['number'] ?? null);
+        self::assertStringStartsWith('STG-EXP-2026-0001-', (string) ($invoiceBody['number'] ?? ''));
+    }
+
     public function testFindOrCreateContactReusesHoldedIdWhenFoundByDocument(): void
     {
         $requests = [];
@@ -129,6 +191,10 @@ final class HoldedServiceTest extends TestCase
         $client = new MockHttpClient(function (string $method, string $url, array $options) use (&$requests): MockResponse {
             $requests[] = ['method' => $method, 'url' => $url, 'options' => $options];
 
+            if (str_contains($url, '/contacts/') && 'GET' === $method) {
+                return new MockResponse('{"id":"local-id-9","code":"12345678Z"}', ['http_code' => 200]);
+            }
+
             return new MockResponse('{"id":"should-not-create"}', ['http_code' => 201]);
         });
 
@@ -147,7 +213,9 @@ final class HoldedServiceTest extends TestCase
         ));
 
         self::assertSame('local-id-9', $contactId);
-        self::assertCount(0, $requests);
+        self::assertCount(1, $requests);
+        self::assertSame('GET', $requests[0]['method']);
+        self::assertStringContainsString('/contacts/local-id-9', $requests[0]['url']);
     }
 
     public function testFindOrCreateContactMatchesDocumentIgnoringSpacesAndCase(): void

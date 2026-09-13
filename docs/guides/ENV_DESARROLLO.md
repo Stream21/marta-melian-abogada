@@ -83,9 +83,11 @@ curl -s -o factura.pdf http://localhost:8080/api/expedientes/UUID/invoice/pdf \
   - `HOLDED_API_KEY=pat_...`
   - `HOLDED_API_BASE_URL=https://api.holded.com/api/v2`
   - `HOLDED_TAX_KEY=` clave del catálogo v2 (`GET /api/v2/taxes`), p. ej. `s_iva_exento` en cuentas exentas
+  - `HOLDED_ENV_PREFIX=` vacío en producción. En staging/demo compartida: `STG` o `DEV`
 - **Autenticación:** `Authorization: Bearer <HOLDED_API_KEY>` (no usar header `key` en v2).
 - Rutas usadas por la app: `POST/GET /contacts`, `GET /contacts?code={NIF}` (lookup antes de crear), `POST /invoices`, `POST /invoices/{id}/payments`, `GET /invoices/{id}/pdf`.
 - **Cliente en factura:** al sincronizar, se consulta Holded por documento (`code`). Si existe se reutiliza el id; si no, se crea el contacto. En ambos casos se guarda en `Cliente.holdedContactId`.
+- **Prefijos por entorno** (`HOLDED_ENV_PREFIX`): si staging y desarrollo comparten la misma cuenta demo, cada entorno usa `code` de contacto `PREFIX-NIF`, nombre `[PREFIX] …`, número de factura explícito `PREFIX-EXP-…-timestamp` y tags. Así se pueden borrar facturas/contactos de prueba sin pisar la serie del otro entorno. Si la factura local apunta a un id ya borrado en Holded, el sync la recrea con un número nuevo.
 
 ---
 
@@ -157,6 +159,7 @@ MAILER_FROM_NAME=Marta Melián Abogados
 | `HOLDED_API_BASE_URL` | Mock: `http://nginx/api/mock/holded/invoicing/v1`. Real v2: `https://api.holded.com/api/v2` |
 | `HOLDED_TAX_PERCENT` | `0` (exenta de IVA/IGIC) |
 | `HOLDED_TAX_KEY` | Mock: `exento`. Real v2: clave de `GET /api/v2/taxes` (p. ej. `s_iva_exento`) |
+| `HOLDED_ENV_PREFIX` | Vacío en prod. `DEV` / `STG` si se comparte cuenta demo (aísla contactos y nº de factura). |
 | `STRIPE_SECRET_KEY` | Stripe Dashboard → API keys → Secret key (test). |
 | `STRIPE_WEBHOOK_SECRET` | Stripe → Webhooks → Endpoint → Signing secret (tras crear el endpoint con ngrok). |
 | `STRIPE_PUBLISHABLE_KEY` | Stripe Dashboard → API keys → Publishable key (test). |
