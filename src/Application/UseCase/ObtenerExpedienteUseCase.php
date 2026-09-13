@@ -6,7 +6,9 @@ namespace App\Application\UseCase;
 
 use App\Application\DTO\ExpedienteResponseMapper;
 use App\Application\Service\ContratacionCompletitudValidator;
-use App\Application\Service\RequerimientosSubfaseListadoService;
+use App\Application\Service\CobrosResumenListadoService;
+use App\Application\Service\DocumentacionSubfaseListadoService;
+use App\Application\Service\TramitacionSubfaseListadoService;
 use App\Domain\Entity\FaseNegocioExpediente;
 use App\Domain\Repository\ClienteRepositoryInterface;
 use App\Domain\Repository\ExpedienteRepositoryInterface;
@@ -20,7 +22,9 @@ final class ObtenerExpedienteUseCase
         private ClienteRepositoryInterface $clienteRepository,
         private ContratacionCompletitudValidator $contratacionCompletitud,
         private string $frontendBaseUrl,
-        private RequerimientosSubfaseListadoService $requerimientosSubfaseListado,
+        private DocumentacionSubfaseListadoService $documentacionSubfaseListado,
+        private CobrosResumenListadoService $cobrosResumenListado,
+        private TramitacionSubfaseListadoService $tramitacionSubfaseListado,
     ) {
     }
 
@@ -32,12 +36,16 @@ final class ObtenerExpedienteUseCase
         }
 
         $subfaseContratacion = null;
-        $subfaseRequerimientos = null;
+        $subfaseDocumentacion = null;
+        $subfaseTramitacionDetalle = null;
         if (FaseNegocioExpediente::Contratacion === $expediente->faseNegocio()) {
             $subfaseContratacion = $this->contratacionCompletitud->subfaseContratacionParaListado($expediente->id());
         }
-        if (FaseNegocioExpediente::Requerimientos === $expediente->faseNegocio()) {
-            $subfaseRequerimientos = $this->requerimientosSubfaseListado->paraExpediente($expediente->id());
+        if (FaseNegocioExpediente::Documentacion === $expediente->faseNegocio()) {
+            $subfaseDocumentacion = $this->documentacionSubfaseListado->paraExpediente($expediente->id());
+        }
+        if (FaseNegocioExpediente::Tramitacion === $expediente->faseNegocio()) {
+            $subfaseTramitacionDetalle = $this->tramitacionSubfaseListado->paraExpediente($expediente->id());
         }
 
         $cliente = null;
@@ -50,8 +58,10 @@ final class ObtenerExpedienteUseCase
             $this->frontendBaseUrl,
             null,
             $subfaseContratacion,
-            $subfaseRequerimientos,
+            $subfaseDocumentacion,
             $cliente,
+            $this->cobrosResumenListado->paraExpediente($expediente),
+            $subfaseTramitacionDetalle,
         );
     }
 }

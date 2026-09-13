@@ -39,7 +39,7 @@ final class DevolverDocumentoRequerimientosUseCase
             throw new \InvalidArgumentException('Expediente no encontrado.');
         }
 
-        if (FaseNegocioExpediente::Requerimientos !== $expediente->faseNegocio()) {
+        if (FaseNegocioExpediente::Documentacion !== $expediente->faseNegocio()) {
             throw new \InvalidArgumentException('El expediente no está en fase de requerimientos.');
         }
 
@@ -105,11 +105,11 @@ final class DevolverDocumentoRequerimientosUseCase
         $documentos = $this->documentoRequeridoRepository->findByExpediente($id);
         $progreso = $this->progresoCalculator->calcular($documentos, $entregasPorDocId);
 
-        if ($progreso['requerimientosListo']) {
-            if (EstadoFaseExpediente::RequerimientosListo !== $expediente->estadoFase()) {
+        if ($progreso['documentacionListo']) {
+            if (EstadoFaseExpediente::DocumentacionListo !== $expediente->estadoFase()) {
                 $this->expedienteRepository->save(
                     $expediente
-                        ->withEstadoFase(EstadoFaseExpediente::RequerimientosListo)
+                        ->withEstadoFase(EstadoFaseExpediente::DocumentacionListo)
                         ->touchEstadoCambio(),
                 );
             }
@@ -117,10 +117,10 @@ final class DevolverDocumentoRequerimientosUseCase
             return;
         }
 
-        if (EstadoFaseExpediente::RequerimientosListo === $expediente->estadoFase()) {
+        if (EstadoFaseExpediente::DocumentacionListo === $expediente->estadoFase()) {
             $this->expedienteRepository->save(
                 $expediente
-                    ->withEstadoFase(EstadoFaseExpediente::RequerimientosEnProgreso)
+                    ->withEstadoFase(EstadoFaseExpediente::DocumentacionEnProgreso)
                     ->touchEstadoCambio(),
             );
         }

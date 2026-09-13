@@ -19,12 +19,12 @@ use PHPUnit\Framework\TestCase;
 
 final class ExpedienteAvisosAggregatorTest extends TestCase
 {
-    public function testAggregateCombinaContratacionYRequerimientos(): void
+    public function testAggregateUsaNotificacionesNoLeidasComoTotal(): void
     {
         $expSinAvisos = $this->crearExpediente('exp-0');
         $expContratacion = $this->crearExpediente('exp-1');
-        $expRequerimientos = $this->crearExpediente('exp-2');
-        $expAmbos = $this->crearExpediente('exp-3');
+        $expDocumentacion = $this->crearExpediente('exp-2');
+        $expNotificaciones = $this->crearExpediente('exp-3');
 
         $contratacionRepository = new class implements ContratacionRepositoryInterface {
             public function savePaso(ContratacionPaso $paso): void
@@ -44,16 +44,9 @@ final class ExpedienteAvisosAggregatorTest extends TestCase
                     PasoContratacionCliente::DatosCliente,
                     EstadoPasoContratacion::RealizadoCliente,
                 );
-                $pasoAmbos = new ContratacionPaso(
-                    'paso-2',
-                    new ExpedienteId('exp-3'),
-                    PasoContratacionCliente::Firmas,
-                    EstadoPasoContratacion::RealizadoCliente,
-                );
 
                 return [
                     'exp-1' => [$pasoRevision],
-                    'exp-3' => [$pasoAmbos],
                 ];
             }
 
@@ -99,6 +92,13 @@ final class ExpedienteAvisosAggregatorTest extends TestCase
             {
                 return [];
             }
+
+            public function countNotificacionesNoLeidasByExpedienteIds(array $expedienteIds): array
+            {
+                return [
+                    'exp-3' => 5,
+                ];
+            }
         };
 
         $documentoRepository = new class implements ExpedienteDocumentoRepositoryInterface {
@@ -115,7 +115,6 @@ final class ExpedienteAvisosAggregatorTest extends TestCase
             {
                 return [
                     'exp-2' => 2,
-                    'exp-3' => 1,
                 ];
             }
 
@@ -144,22 +143,27 @@ final class ExpedienteAvisosAggregatorTest extends TestCase
             new ContratacionPasoValidacionService(),
         );
 
-        $result = $aggregator->aggregate([$expSinAvisos, $expContratacion, $expRequerimientos, $expAmbos]);
+        $result = $aggregator->aggregate([
+            $expSinAvisos,
+            $expContratacion,
+            $expDocumentacion,
+            $expNotificaciones,
+        ]);
 
         self::assertSame(
-            ['contratacion' => 0, 'requerimientos' => 0, 'total' => 0],
+            ['contratacion' => 0, 'documentacion' => 0, 'notificaciones' => 0, 'total' => 0],
             $result['exp-0'],
         );
         self::assertSame(
-            ['contratacion' => 1, 'requerimientos' => 0, 'total' => 1],
+            ['contratacion' => 1, 'documentacion' => 0, 'notificaciones' => 0, 'total' => 0],
             $result['exp-1'],
         );
         self::assertSame(
-            ['contratacion' => 0, 'requerimientos' => 2, 'total' => 2],
+            ['contratacion' => 0, 'documentacion' => 2, 'notificaciones' => 0, 'total' => 0],
             $result['exp-2'],
         );
         self::assertSame(
-            ['contratacion' => 1, 'requerimientos' => 1, 'total' => 2],
+            ['contratacion' => 0, 'documentacion' => 0, 'notificaciones' => 5, 'total' => 5],
             $result['exp-3'],
         );
     }

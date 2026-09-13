@@ -35,7 +35,7 @@ final class AgregarDocumentoRequerimientosUseCase
             throw new \InvalidArgumentException('Expediente no encontrado.');
         }
 
-        if (FaseNegocioExpediente::Requerimientos !== $expediente->faseNegocio()) {
+        if (FaseNegocioExpediente::Documentacion !== $expediente->faseNegocio()) {
             throw new \InvalidArgumentException('El expediente no está en fase de requerimientos.');
         }
 

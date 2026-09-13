@@ -59,4 +59,13 @@ interface ContratacionRepositoryInterface
      * @return list<string>
      */
     public function findHitosLeidosIds(): array;
+
+    /**
+     * Notificaciones sin leer por expediente (mismas reglas que el panel de avisos).
+     *
+     * @param list<string> $expedienteIds
+     *
+     * @return array<string, int>
+     */
+    public function countNotificacionesNoLeidasByExpedienteIds(array $expedienteIds): array;
 }

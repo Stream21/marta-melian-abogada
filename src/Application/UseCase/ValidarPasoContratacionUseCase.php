@@ -27,7 +27,7 @@ final class ValidarPasoContratacionUseCase
         private SincronizarClienteHoldedUseCase $sincronizarClienteHolded,
         private CreateManualPaymentUseCase $createManualPayment,
         private CalendarioPagoService $calendarioPagoService,
-        private InicializarRequerimientosUseCase $inicializarRequerimientos,
+        private InicializarDocumentacionUseCase $inicializarDocumentacion,
     ) {
     }
 
@@ -113,7 +113,7 @@ final class ValidarPasoContratacionUseCase
         if ($faseCompletada) {
             $payload = [
                 'type' => 'fase_completada',
-                'faseNegocio' => FaseNegocioExpediente::Requerimientos->value,
+                'faseNegocio' => FaseNegocioExpediente::Documentacion->value,
                 'actor' => 'sistema',
                 'expedienteNumero' => $expediente->numero(),
                 'clienteNombre' => $expediente->clientName(),
@@ -146,8 +146,7 @@ final class ValidarPasoContratacionUseCase
         if ($todosValidados) {
             $this->expedienteRepository->save(
                 $expediente
-                    ->withFaseNegocio(FaseNegocioExpediente::Requerimientos, EstadoFaseExpediente::RequerimientosEnProgreso)
-                    ->withPaymentStatus('paid')
+                    ->withFaseNegocio(FaseNegocioExpediente::Documentacion, EstadoFaseExpediente::DocumentacionEnProgreso)
                     ->touchEstadoCambio(),
             );
 
@@ -160,7 +159,7 @@ final class ValidarPasoContratacionUseCase
                 new \DateTimeImmutable('now'),
             ));
 
-            ($this->inicializarRequerimientos)($id);
+            ($this->inicializarDocumentacion)($id);
 
             return true;
         }

@@ -25,7 +25,7 @@ final class RequerimientosProgresoCalculator
      *   rechazados: int,
      *   todosObligatoriosValidados: bool,
      *   ningunoEnRevision: bool,
-     *   requerimientosListo: bool
+     *   documentacionListo: bool
      * }
      */
     public function calcular(array $documentos, array $entregasPorDocId): array
@@ -71,7 +71,7 @@ final class RequerimientosProgresoCalculator
             'rechazados' => $rechazados,
             'todosObligatoriosValidados' => $todosObligatoriosValidados,
             'ningunoEnRevision' => $ningunoEnRevision,
-            'requerimientosListo' => $todosObligatoriosValidados && $ningunoEnRevision,
+            'documentacionListo' => $todosObligatoriosValidados && $ningunoEnRevision,
         ];
     }
 

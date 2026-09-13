@@ -38,7 +38,7 @@ final class AsignarDocumentoRequerimientoAlAbogadoUseCase
             throw new \InvalidArgumentException('Expediente no encontrado.');
         }
 
-        if (FaseNegocioExpediente::Requerimientos !== $expediente->faseNegocio()) {
+        if (FaseNegocioExpediente::Documentacion !== $expediente->faseNegocio()) {
             throw new \InvalidArgumentException('El expediente no está en fase de requerimientos.');
         }
 
@@ -91,10 +91,10 @@ final class AsignarDocumentoRequerimientoAlAbogadoUseCase
 
     private function sincronizarEstadoExpediente(ExpedienteId $id, \App\Domain\Entity\Expediente $expediente): void
     {
-        if (EstadoFaseExpediente::RequerimientosListo === $expediente->estadoFase()) {
+        if (EstadoFaseExpediente::DocumentacionListo === $expediente->estadoFase()) {
             $this->expedienteRepository->save(
                 $expediente
-                    ->withEstadoFase(EstadoFaseExpediente::RequerimientosEnProgreso)
+                    ->withEstadoFase(EstadoFaseExpediente::DocumentacionEnProgreso)
                     ->touchEstadoCambio(),
             );
         }

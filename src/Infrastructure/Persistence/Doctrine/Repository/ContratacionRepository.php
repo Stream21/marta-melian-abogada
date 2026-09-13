@@ -13,6 +13,7 @@ use App\Domain\Repository\ContratacionRepositoryInterface;
 use App\Domain\ValueObject\ExpedienteId;
 use App\Infrastructure\Persistence\Doctrine\Entity\ContratacionPasoOrm;
 use App\Infrastructure\Persistence\Doctrine\Entity\ExpedienteHitoOrm;
+use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\ORM\EntityManagerInterface;
 
 final class ContratacionRepository implements ContratacionRepositoryInterface
@@ -213,6 +214,42 @@ final class ContratacionRepository implements ContratacionRepositoryInterface
         );
 
         return array_map(strval(...), $rows);
+    }
+
+    public function countNotificacionesNoLeidasByExpedienteIds(array $expedienteIds): array
+    {
+        if ([] === $expedienteIds) {
+            return [];
+        }
+
+        $rows = $this->entityManager->getConnection()->fetchAllAssociative(
+            'SELECT h.expediente_id AS expediente_id, COUNT(*) AS cnt
+             FROM expediente_hito h
+             LEFT JOIN notificacion_hito_leida l ON l.hito_id = h.id
+             WHERE h.expediente_id IN (:ids)
+               AND l.hito_id IS NULL
+               AND (
+                 h.actor = :actorCliente
+                 OR h.tipo IN (:tiposSistema)
+               )
+             GROUP BY h.expediente_id',
+            [
+                'ids' => $expedienteIds,
+                'actorCliente' => ActorHitoExpediente::Cliente->value,
+                'tiposSistema' => ['holded_sync_fallido', 'pago_stripe_completado'],
+            ],
+            [
+                'ids' => ArrayParameterType::STRING,
+                'tiposSistema' => ArrayParameterType::STRING,
+            ],
+        );
+
+        $result = [];
+        foreach ($rows as $row) {
+            $result[(string) $row['expediente_id']] = (int) $row['cnt'];
+        }
+
+        return $result;
     }
 
     private function pasoOrmToDomain(ContratacionPasoOrm $orm): ?ContratacionPaso

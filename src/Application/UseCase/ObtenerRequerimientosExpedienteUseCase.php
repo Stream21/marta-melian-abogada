@@ -23,7 +23,7 @@ final class ObtenerRequerimientosExpedienteUseCase
         private ExpedienteDocumentoArchivoRepositoryInterface $archivoRepository,
         private RequerimientosProgresoCalculator $progresoCalculator,
         private RequerimientosDocumentoFlagsService $documentoFlags,
-        private InicializarRequerimientosUseCase $inicializarRequerimientos,
+        private InicializarDocumentacionUseCase $inicializarDocumentacion,
         private string $frontendBaseUrl,
     ) {
     }
@@ -39,11 +39,11 @@ final class ObtenerRequerimientosExpedienteUseCase
             throw new \InvalidArgumentException('Expediente no encontrado.');
         }
 
-        if (FaseNegocioExpediente::Requerimientos !== $expediente->faseNegocio()) {
+        if (FaseNegocioExpediente::Documentacion !== $expediente->faseNegocio()) {
             throw new \InvalidArgumentException('El expediente no está en fase de requerimientos.');
         }
 
-        ($this->inicializarRequerimientos)($id);
+        ($this->inicializarDocumentacion)($id);
 
         $entregasPorDocId = [];
         foreach ($this->documentoEntregadoRepository->findByExpediente($id) as $entrega) {
@@ -87,7 +87,7 @@ final class ObtenerRequerimientosExpedienteUseCase
             'documentos' => $documentos,
             'escritos' => [],
             'progreso' => $progreso,
-            'puedeAvanzarFase3' => $progreso['requerimientosListo'],
+            'puedeAvanzarFase3' => $progreso['documentacionListo'],
             'esperandoAbogado' => $resumen['esperandoAbogado'],
             'agenteResponsableExpediente' => $resumen['agenteResponsableExpediente'],
         ];

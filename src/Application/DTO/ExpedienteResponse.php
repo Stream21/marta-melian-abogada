@@ -7,7 +7,7 @@ namespace App\Application\DTO;
 final readonly class ExpedienteResponse
 {
     /**
-     * @param array{contratacion: int, requerimientos: int} $avisosDetalle
+     * @param array{contratacion: int, documentacion: int, notificaciones?: int} $avisosDetalle
      * @param array{
      *     codigo: string,
      *     label: string,
@@ -36,7 +36,32 @@ final readonly class ExpedienteResponse
      *         estadoLabel: string,
      *         fecha: string|null
      *     }>
-     * }|null $subfaseRequerimientos
+     * }|null $subfaseDocumentacion
+     * @param array{
+     *     fechaPresentacion: string|null,
+     *     items: list<array{
+     *         nombre: string,
+     *         estado: string,
+     *         estadoLabel: string,
+     *         fecha: string|null
+     *     }>
+     * }|null $subfaseTramitacionDetalle
+     * @param array{
+     *     pagadas: int,
+     *     total: int,
+     *     vencidas: int,
+     *     label: string,
+     *     cobrado: float,
+     *     importeTotal: float,
+     *     pendiente: float,
+     *     items: list<array{
+     *         nombre: string,
+     *         importe: float,
+     *         estado: string,
+     *         estadoLabel: string,
+     *         fecha: string|null
+     *     }>
+     * }|null $resumenCobros
      */
     public function __construct(
         public string $id,
@@ -64,12 +89,18 @@ final readonly class ExpedienteResponse
         public string $planPago = 'unico',
         public int $numCuotas = 1,
         public ?string $accessUrl = null,
+        /** Próxima fecha de vigencia de la fase/subfase actual. */
+        public ?string $fechaVencimientoFase = null,
         public int $avisosPendientes = 0,
-        public array $avisosDetalle = ['contratacion' => 0, 'requerimientos' => 0],
+        public array $avisosDetalle = ['contratacion' => 0, 'documentacion' => 0, 'notificaciones' => 0],
         /** Subfase 1–3 dentro de contratación (identidad, firmas, pago). */
         public ?array $subfaseContratacion = null,
-        /** Progreso documental en fase requerimientos. */
-        public ?array $subfaseRequerimientos = null,
+        /** Progreso documental en fase documentación. */
+        public ?array $subfaseDocumentacion = null,
+        /** Presentación/justificante para tooltip en fase tramitación. */
+        public ?array $subfaseTramitacionDetalle = null,
+        /** Progreso de cuotas/cobros para listado. */
+        public ?array $resumenCobros = null,
     ) {
     }
 }

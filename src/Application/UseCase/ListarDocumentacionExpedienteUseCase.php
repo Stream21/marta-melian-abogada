@@ -11,6 +11,9 @@ use App\Domain\Repository\ClienteRepositoryInterface;
 use App\Domain\Repository\ExpedienteDocumentoRepositoryInterface;
 use App\Domain\Repository\ExpedienteDocumentoRequeridoRepositoryInterface;
 use App\Domain\Repository\ExpedienteFirmaRepositoryInterface;
+use App\Domain\Repository\ExpedienteRequerimientoCampoRepositoryInterface;
+use App\Domain\Repository\ExpedienteRequerimientoDocumentoRepositoryInterface;
+use App\Domain\Repository\ExpedienteRequerimientoMercurioRepositoryInterface;
 use App\Domain\Repository\ExpedienteRepositoryInterface;
 use App\Domain\Repository\TramiteDocumentoRequeridoRepositoryInterface;
 use App\Domain\ValueObject\ClienteId;
@@ -26,6 +29,9 @@ final class ListarDocumentacionExpedienteUseCase
         private ExpedienteDocumentoRequeridoRepositoryInterface $expedienteDocumentoRequeridoRepository,
         private ExpedienteDocumentoRepositoryInterface $documentoEntregadoRepository,
         private ExpedienteFirmaRepositoryInterface $firmaRepository,
+        private ExpedienteRequerimientoMercurioRepositoryInterface $requerimientoMercurioRepository,
+        private ExpedienteRequerimientoCampoRepositoryInterface $requerimientoCampoRepository,
+        private ExpedienteRequerimientoDocumentoRepositoryInterface $requerimientoDocumentoRepository,
     ) {
     }
 
@@ -103,7 +109,7 @@ final class ListarDocumentacionExpedienteUseCase
                     'estado' => $entregado?->estado()->value ?? 'pendiente',
                     'entregadoAt' => $entregado?->entregadoAt()->format(\DateTimeInterface::ATOM),
                     'descargaUrl' => null !== $entregado
-                        ? sprintf('/api/expedientes/%s/documentacion/%s/archivo', $expedienteId, $doc->id()->value())
+                        ? sprintf('/api/expedientes/%s/archivo/%s/archivo', $expedienteId, $doc->id()->value())
                         : null,
                     'mediaTipo' => 'pdf',
                 ];
@@ -120,15 +126,15 @@ final class ListarDocumentacionExpedienteUseCase
                 'tipo' => 'documento',
                 'fase' => FaseDocumentoTramite::DocumentosCliente->value,
                 'faseLabel' => FaseDocumentoTramite::DocumentosCliente->label(),
-                'faseNegocio' => FaseNegocioExpediente::Requerimientos->value,
-                'faseNegocioLabel' => FaseNegocioExpediente::Requerimientos->label(),
+                'faseNegocio' => FaseNegocioExpediente::Documentacion->value,
+                'faseNegocioLabel' => FaseNegocioExpediente::Documentacion->label(),
                 'origen' => 'requisito_expediente_' . $doc->origen()->value,
                 'origenLabel' => $doc->origen()->label(),
                 'obligatorio' => $doc->obligatorio(),
                 'estado' => $entregado?->estado()->value ?? EstadoDocumentoEntregado::Pendiente->value,
                 'entregadoAt' => $entregado?->entregadoAt()->format(\DateTimeInterface::ATOM),
                 'descargaUrl' => null !== $entregado && '' !== $entregado->archivoPath()
-                    ? sprintf('/api/expedientes/%s/documentacion/%s/archivo', $expedienteId, $doc->id()->value())
+                    ? sprintf('/api/expedientes/%s/archivo/%s/archivo', $expedienteId, $doc->id()->value())
                     : null,
                 'mediaTipo' => 'pdf',
             ];
@@ -156,6 +162,97 @@ final class ListarDocumentacionExpedienteUseCase
                 ),
                 'mediaTipo' => 'pdf',
             ];
+        }
+
+        foreach ($this->requerimientoMercurioRepository->findByExpediente($expediente->id()) as $req) {
+            $campos = $this->requerimientoCampoRepository->findByRequerimientoId($req->id());
+            if ([] !== $campos) {
+                $camposPayload = [];
+                $completados = 0;
+                foreach ($campos as $campo) {
+                    $valor = $campo->valor();
+                    if (null !== $valor && '' !== trim($valor)) {
+                        ++$completados;
+                    }
+                    $camposPayload[] = [
+                        'id' => $campo->id()->value(),
+                        'etiqueta' => $campo->etiqueta(),
+                        'tipo' => $campo->tipo()->value,
+                        'tipoLabel' => $campo->tipo()->label(),
+                        'obligatorio' => $campo->obligatorio(),
+                        'valor' => $valor,
+                    ];
+                }
+
+                $nombreFormulario = $req->formularioNombre();
+                if (null === $nombreFormulario || '' === trim($nombreFormulario)) {
+                    $nombreFormulario = 'Formulario · ' . $req->nombre();
+                }
+                $cometido = $req->formularioCometido();
+                $descripcion = (null !== $cometido && '' !== trim($cometido))
+                    ? trim($cometido)
+                    : sprintf('Formulario del requerimiento «%s».', $req->nombre());
+
+                $totalCampos = count($campos);
+                $estadoFormulario = 0 === $completados
+                    ? 'pendiente'
+                    : ($completados === $totalCampos ? 'completado' : 'parcial');
+
+                $items[] = [
+                    'id' => 'formulario-' . $req->id()->value(),
+                    'nombre' => $nombreFormulario,
+                    'descripcion' => $descripcion,
+                    'tipo' => 'formulario',
+                    'fase' => FaseDocumentoTramite::GestionAbogado->value,
+                    'faseLabel' => FaseDocumentoTramite::GestionAbogado->label(),
+                    'faseNegocio' => FaseNegocioExpediente::Tramitacion->value,
+                    'faseNegocioLabel' => FaseNegocioExpediente::Tramitacion->label(),
+                    'origen' => 'requerimiento_formulario',
+                    'origenLabel' => 'Formulario de requerimiento',
+                    'obligatorio' => true,
+                    'estado' => $estadoFormulario,
+                    'entregadoAt' => $req->updatedAt()->format(\DateTimeInterface::ATOM),
+                    'descargaUrl' => null,
+                    'mediaTipo' => 'formulario',
+                    'requerimientoId' => $req->id()->value(),
+                    'requerimientoNombre' => $req->nombre(),
+                    'campos' => $camposPayload,
+                ];
+            }
+
+            foreach ($this->requerimientoDocumentoRepository->findByRequerimientoId($req->id()) as $docReq) {
+                $path = $docReq->archivoPath();
+                if (null === $path || '' === trim($path)) {
+                    continue;
+                }
+
+                $items[] = [
+                    'id' => 'reqdoc-' . $docReq->id()->value(),
+                    'nombre' => $docReq->nombre(),
+                    'descripcion' => '' !== trim($docReq->descripcion())
+                        ? $docReq->descripcion()
+                        : sprintf('Documento del requerimiento «%s».', $req->nombre()),
+                    'tipo' => 'documento',
+                    'fase' => FaseDocumentoTramite::GestionAbogado->value,
+                    'faseLabel' => FaseDocumentoTramite::GestionAbogado->label(),
+                    'faseNegocio' => FaseNegocioExpediente::Tramitacion->value,
+                    'faseNegocioLabel' => FaseNegocioExpediente::Tramitacion->label(),
+                    'origen' => 'requerimiento_documento',
+                    'origenLabel' => 'Documento de requerimiento',
+                    'obligatorio' => $docReq->obligatorio(),
+                    'estado' => $docReq->estado()->value,
+                    'entregadoAt' => $req->updatedAt()->format(\DateTimeInterface::ATOM),
+                    'descargaUrl' => sprintf(
+                        '/api/expedientes/%s/tramitacion/requerimientos/%s/documentos/%s/archivo-descarga',
+                        $expedienteId,
+                        $req->id()->value(),
+                        $docReq->id()->value(),
+                    ),
+                    'mediaTipo' => 'pdf',
+                    'requerimientoId' => $req->id()->value(),
+                    'requerimientoNombre' => $req->nombre(),
+                ];
+            }
         }
 
         usort($items, function (array $a, array $b): int {
@@ -194,7 +291,7 @@ final class ListarDocumentacionExpedienteUseCase
             'obligatorio' => true,
             'estado' => 'entregado',
             'entregadoAt' => $entregadoAt,
-            'descargaUrl' => sprintf('/api/expedientes/%s/documentacion/identidad/%s', $expedienteId, $lado),
+            'descargaUrl' => sprintf('/api/expedientes/%s/archivo/identidad/%s', $expedienteId, $lado),
             'mediaTipo' => 'imagen',
         ];
     }
@@ -203,7 +300,7 @@ final class ListarDocumentacionExpedienteUseCase
     {
         return match ($fase) {
             FaseDocumentoTramite::DocumentacionBasica => FaseNegocioExpediente::Contratacion,
-            FaseDocumentoTramite::DocumentosCliente => FaseNegocioExpediente::Requerimientos,
+            FaseDocumentoTramite::DocumentosCliente => FaseNegocioExpediente::Documentacion,
             FaseDocumentoTramite::GestionAbogado => FaseNegocioExpediente::Tramitacion,
             FaseDocumentoTramite::Resolucion => FaseNegocioExpediente::Resolucion,
         };

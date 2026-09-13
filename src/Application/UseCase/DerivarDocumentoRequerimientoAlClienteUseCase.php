@@ -13,7 +13,6 @@ use App\Domain\Entity\EstadoFaseExpediente;
 use App\Domain\Entity\ExpedienteHito;
 use App\Domain\Entity\FaseNegocioExpediente;
 use App\Domain\Entity\SubidoPorDocumento;
-use App\Domain\Entity\TipoDocumentoRequerido;
 use App\Domain\Repository\ClienteRepositoryInterface;
 use App\Domain\Repository\ContratacionRepositoryInterface;
 use App\Domain\Repository\ExpedienteDocumentoArchivoRepositoryInterface;
@@ -51,7 +50,7 @@ final class DerivarDocumentoRequerimientoAlClienteUseCase
             throw new \InvalidArgumentException('Expediente no encontrado.');
         }
 
-        if (FaseNegocioExpediente::Requerimientos !== $expediente->faseNegocio()) {
+        if (FaseNegocioExpediente::Documentacion !== $expediente->faseNegocio()) {
             throw new \InvalidArgumentException('El expediente no está en fase de requerimientos.');
         }
 
@@ -71,7 +70,7 @@ final class DerivarDocumentoRequerimientoAlClienteUseCase
         }
 
         if (EstadoDocumentoEntregado::Validado === $entrega->estado()) {
-            if (TipoDocumentoRequerido::Conjunto !== $doc->tipo() || SubidoPorDocumento::Abogado !== $entrega->subidoPor()) {
+            if (SubidoPorDocumento::Abogado !== $entrega->subidoPor()) {
                 throw new \InvalidArgumentException('Este documento validado no puede derivarse al cliente.');
             }
         } elseif (EstadoDocumentoEntregado::Entregado === $entrega->estado()) {
@@ -128,10 +127,10 @@ final class DerivarDocumentoRequerimientoAlClienteUseCase
 
     private function sincronizarEstadoExpediente(ExpedienteId $id, \App\Domain\Entity\Expediente $expediente): void
     {
-        if (EstadoFaseExpediente::RequerimientosListo === $expediente->estadoFase()) {
+        if (EstadoFaseExpediente::DocumentacionListo === $expediente->estadoFase()) {
             $this->expedienteRepository->save(
                 $expediente
-                    ->withEstadoFase(EstadoFaseExpediente::RequerimientosEnProgreso)
+                    ->withEstadoFase(EstadoFaseExpediente::DocumentacionEnProgreso)
                     ->touchEstadoCambio(),
             );
         }

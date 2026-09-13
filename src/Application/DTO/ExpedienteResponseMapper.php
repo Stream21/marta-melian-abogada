@@ -10,26 +10,31 @@ use App\Domain\Entity\Expediente;
 final class ExpedienteResponseMapper
 {
     /**
-     * @param array{contratacion: int, requerimientos: int, total: int}|null $avisos
+     * @param array{contratacion: int, documentacion: int, notificaciones?: int, total: int}|null $avisos
      * @param array<string, mixed>|null $subfaseContratacion
-     * @param array<string, mixed>|null $subfaseRequerimientos
+     * @param array<string, mixed>|null $subfaseDocumentacion
+     * @param array<string, mixed>|null $subfaseTramitacionDetalle
+     * @param array<string, mixed>|null $resumenCobros
      */
     public static function fromDomain(
         Expediente $expediente,
         ?string $frontendBaseUrl = null,
         ?array $avisos = null,
         ?array $subfaseContratacion = null,
-        ?array $subfaseRequerimientos = null,
+        ?array $subfaseDocumentacion = null,
         ?Cliente $cliente = null,
+        ?array $resumenCobros = null,
+        ?array $subfaseTramitacionDetalle = null,
     ): ExpedienteResponse {
         $accessUrl = null;
         if (null !== $expediente->accessToken() && null !== $frontendBaseUrl) {
             $accessUrl = rtrim($frontendBaseUrl, '/') . '/acceso/' . $expediente->accessToken();
         }
 
-        $contratacion = null !== $avisos ? ($avisos['contratacion'] ?? 0) : 0;
-        $requerimientos = null !== $avisos ? ($avisos['requerimientos'] ?? 0) : 0;
-        $total = null !== $avisos ? ($avisos['total'] ?? 0) : 0;
+        $contratacion = null !== $avisos ? (int) ($avisos['contratacion'] ?? 0) : 0;
+        $documentacion = null !== $avisos ? (int) ($avisos['documentacion'] ?? 0) : 0;
+        $notificaciones = null !== $avisos ? (int) ($avisos['notificaciones'] ?? 0) : 0;
+        $total = null !== $avisos ? (int) ($avisos['total'] ?? 0) : 0;
 
         $clientName = $expediente->clientName();
         if (Cliente::NOMBRE_PROVISIONAL === $clientName) {
@@ -72,13 +77,17 @@ final class ExpedienteResponseMapper
             planPago: $expediente->planPago()->value,
             numCuotas: $expediente->numCuotas(),
             accessUrl: $accessUrl,
+            fechaVencimientoFase: $expediente->fechaVencimientoFase()?->format('Y-m-d'),
             avisosPendientes: $total,
             avisosDetalle: [
                 'contratacion' => $contratacion,
-                'requerimientos' => $requerimientos,
+                'documentacion' => $documentacion,
+                'notificaciones' => $notificaciones,
             ],
             subfaseContratacion: $subfaseContratacion,
-            subfaseRequerimientos: $subfaseRequerimientos,
+            subfaseDocumentacion: $subfaseDocumentacion,
+            subfaseTramitacionDetalle: $subfaseTramitacionDetalle,
+            resumenCobros: $resumenCobros,
         );
     }
 

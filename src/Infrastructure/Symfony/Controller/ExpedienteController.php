@@ -9,7 +9,9 @@ use App\Application\DTO\CrearExpedienteInput;
 use App\Application\DTO\ExpedienteResponseMapper;
 use App\Application\Service\ContratacionCompletitudValidator;
 use App\Application\Service\ExpedienteAvisosAggregator;
-use App\Application\Service\RequerimientosSubfaseListadoService;
+use App\Application\Service\CobrosResumenListadoService;
+use App\Application\Service\DocumentacionSubfaseListadoService;
+use App\Application\Service\TramitacionSubfaseListadoService;
 use App\Application\UseCase\AltaExpedienteUseCase;
 use App\Application\UseCase\CancelarExpedienteUseCase;
 use App\Application\UseCase\CrearExpedienteUseCase;
@@ -49,7 +51,9 @@ final class ExpedienteController extends AbstractController
         private ExpedienteAvisosAggregator $avisosAggregator,
         private ContratacionCompletitudValidator $contratacionCompletitud,
         private string $frontendBaseUrl = 'http://localhost:5173',
-        private RequerimientosSubfaseListadoService $requerimientosSubfaseListado,
+        private DocumentacionSubfaseListadoService $documentacionSubfaseListado,
+        private CobrosResumenListadoService $cobrosResumenListado,
+        private TramitacionSubfaseListadoService $tramitacionSubfaseListado,
     ) {
     }
 
@@ -58,24 +62,34 @@ final class ExpedienteController extends AbstractController
     {
         $expedientes = ($this->listarExpedientes)();
         $avisosPorExpediente = $this->avisosAggregator->aggregate($expedientes);
+        $resumenesCobros = $this->cobrosResumenListado->aggregate($expedientes);
 
-        $requerimientosIds = [];
+        $documentacionIds = [];
+        $tramitacionIds = [];
         foreach ($expedientes as $e) {
-            if (FaseNegocioExpediente::Requerimientos === $e->faseNegocio()) {
-                $requerimientosIds[] = $e->id()->value();
+            if (FaseNegocioExpediente::Documentacion === $e->faseNegocio()) {
+                $documentacionIds[] = $e->id()->value();
+            }
+            if (FaseNegocioExpediente::Tramitacion === $e->faseNegocio()) {
+                $tramitacionIds[] = $e->id()->value();
             }
         }
-        $subfasesRequerimientos = $this->requerimientosSubfaseListado->aggregate($requerimientosIds);
+        $subfasesDocumentacion = $this->documentacionSubfaseListado->aggregate($documentacionIds);
+        $subfasesTramitacion = $this->tramitacionSubfaseListado->aggregate($tramitacionIds);
 
         return new JsonResponse(array_map(
-            function ($e) use ($avisosPorExpediente, $subfasesRequerimientos) {
+            function ($e) use ($avisosPorExpediente, $subfasesDocumentacion, $subfasesTramitacion, $resumenesCobros) {
                 $subfaseContratacion = null;
-                $subfaseRequerimientos = null;
+                $subfaseDocumentacion = null;
+                $subfaseTramitacionDetalle = null;
                 if (FaseNegocioExpediente::Contratacion === $e->faseNegocio()) {
                     $subfaseContratacion = $this->contratacionCompletitud->subfaseContratacionParaListado($e->id());
                 }
-                if (FaseNegocioExpediente::Requerimientos === $e->faseNegocio()) {
-                    $subfaseRequerimientos = $subfasesRequerimientos[$e->id()->value()] ?? null;
+                if (FaseNegocioExpediente::Documentacion === $e->faseNegocio()) {
+                    $subfaseDocumentacion = $subfasesDocumentacion[$e->id()->value()] ?? null;
+                }
+                if (FaseNegocioExpediente::Tramitacion === $e->faseNegocio()) {
+                    $subfaseTramitacionDetalle = $subfasesTramitacion[$e->id()->value()] ?? null;
                 }
 
                 return ExpedienteResponseMapper::fromDomain(
@@ -83,7 +97,10 @@ final class ExpedienteController extends AbstractController
                     $this->frontendBaseUrl,
                     $avisosPorExpediente[$e->id()->value()] ?? null,
                     $subfaseContratacion,
-                    $subfaseRequerimientos,
+                    $subfaseDocumentacion,
+                    null,
+                    $resumenesCobros[$e->id()->value()] ?? null,
+                    $subfaseTramitacionDetalle,
                 );
             },
             $expedientes,

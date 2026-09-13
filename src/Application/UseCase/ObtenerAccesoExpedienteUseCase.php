@@ -22,7 +22,7 @@ final class ObtenerAccesoExpedienteUseCase
         private TramiteRepositoryInterface $tramiteRepository,
         private ServicioRepositoryInterface $servicioRepository,
         private InicializarContratacionUseCase $inicializarContratacion,
-        private InicializarRequerimientosUseCase $inicializarRequerimientos,
+        private InicializarDocumentacionUseCase $inicializarDocumentacion,
         private ContratacionAccesoPresenter $presenter,
         private RequerimientosAccesoPresenter $requerimientosPresenter,
         private TramitacionAccesoPresenter $tramitacionPresenter,
@@ -56,28 +56,31 @@ final class ObtenerAccesoExpedienteUseCase
         }
 
         $tipoServicio = null;
+        $servicioNombre = null;
         $servicioId = $expediente->servicioId();
         if (null !== $servicioId && '' !== $servicioId) {
             $servicio = $this->servicioRepository->findById(new ServicioId($servicioId));
             $tipoServicio = $servicio?->tipo()->value;
+            $servicioNombre = $servicio?->nombre();
         }
 
         if ($expediente->faseNegocio() === FaseNegocioExpediente::Contratacion) {
             ($this->inicializarContratacion)($expediente->id());
         }
 
-        if ($expediente->faseNegocio() === FaseNegocioExpediente::Requerimientos) {
-            ($this->inicializarRequerimientos)($expediente->id());
+        if ($expediente->faseNegocio() === FaseNegocioExpediente::Documentacion) {
+            ($this->inicializarDocumentacion)($expediente->id());
         }
 
         $vista = $this->presenter->present($expediente, $token);
-        $requerimientos = $this->requerimientosPresenter->present($expediente);
+        $documentacion = $this->requerimientosPresenter->present($expediente);
         $tramitacion = $this->tramitacionPresenter->present($expediente);
         $resolucion = $this->resolucionPresenter->present($expediente);
 
         return [
             'expedienteNumero' => $expediente->numero(),
             'tramiteNombre' => $tramiteNombre,
+            'servicioNombre' => $servicioNombre,
             'tipoServicio' => $tipoServicio,
             'faseNegocio' => $expediente->faseNegocio()->value,
             'faseNegocioLabel' => $expediente->faseNegocio()->label(),
@@ -91,7 +94,7 @@ final class ObtenerAccesoExpedienteUseCase
             'planPago' => $expediente->planPago()->value,
             'numCuotas' => $expediente->numCuotas(),
             ...$vista,
-            'requerimientos' => $requerimientos,
+            'documentacion' => $documentacion,
             'tramitacion' => $tramitacion,
             'resolucion' => $resolucion,
         ];

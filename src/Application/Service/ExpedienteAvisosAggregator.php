@@ -20,7 +20,12 @@ final class ExpedienteAvisosAggregator
     /**
      * @param Expediente[] $expedientes
      *
-     * @return array<string, array{contratacion: int, requerimientos: int, total: int}>
+     * @return array<string, array{
+     *     contratacion: int,
+     *     documentacion: int,
+     *     notificaciones: int,
+     *     total: int
+     * }>
      */
     public function aggregate(array $expedientes): array
     {
@@ -30,19 +35,23 @@ final class ExpedienteAvisosAggregator
 
         $ids = array_map(static fn (Expediente $expediente): string => $expediente->id()->value(), $expedientes);
         $pasosByExpediente = $this->contratacionRepository->findPasosByExpedienteIds($ids);
-        $requerimientosByExpediente = $this->documentoRepository->countPendientesRevisionByExpedienteIds($ids);
+        $documentacionByExpediente = $this->documentoRepository->countPendientesRevisionByExpedienteIds($ids);
+        $notificacionesByExpediente = $this->contratacionRepository->countNotificacionesNoLeidasByExpedienteIds($ids);
 
         $result = [];
         foreach ($expedientes as $expediente) {
             $expedienteId = $expediente->id()->value();
             $pasos = $pasosByExpediente[$expedienteId] ?? [];
             $contratacion = $this->pasoValidacionService->countPasosPendientesRevision($expediente, $pasos);
-            $requerimientos = $requerimientosByExpediente[$expedienteId] ?? 0;
+            $documentacion = $documentacionByExpediente[$expedienteId] ?? 0;
+            $notificaciones = $notificacionesByExpediente[$expedienteId] ?? 0;
 
             $result[$expedienteId] = [
                 'contratacion' => $contratacion,
-                'requerimientos' => $requerimientos,
-                'total' => $contratacion + $requerimientos,
+                'documentacion' => $documentacion,
+                'notificaciones' => $notificaciones,
+                // La columna Avisos refleja lo sin leer (mismo criterio que el panel).
+                'total' => $notificaciones,
             ];
         }
 

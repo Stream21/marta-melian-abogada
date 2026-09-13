@@ -26,7 +26,7 @@ final class RequerimientosAccesoPresenter
      */
     public function present(Expediente $expediente): ?array
     {
-        if (FaseNegocioExpediente::Requerimientos !== $expediente->faseNegocio()) {
+        if (FaseNegocioExpediente::Documentacion !== $expediente->faseNegocio()) {
             return null;
         }
 

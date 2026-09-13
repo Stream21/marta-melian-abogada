@@ -80,7 +80,6 @@ final class RequerimientosDocumentoFlagsService
                 ) || (
                     EstadoDocumentoEntregado::Validado === $estado
                     && SubidoPorDocumento::Abogado === $subidoPor
-                    && \App\Domain\Entity\TipoDocumentoRequerido::Conjunto === $doc->tipo()
                 )
             ),
             'parcialConArchivos' => $parcialConArchivos,

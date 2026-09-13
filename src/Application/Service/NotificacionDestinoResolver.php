@@ -28,6 +28,8 @@ final class NotificacionDestinoResolver
             'documento_firmado',
             'documento_requerimientos_subido',
             'documento_requerimientos_devuelto',
+            'documento_documentacion_subido',
+            'documento_documentacion_devuelto',
         ], true);
 
         if ('holded_sync_fallido' === $tipo || 'pago_stripe_completado' === $tipo) {
@@ -40,7 +42,7 @@ final class NotificacionDestinoResolver
             ];
         }
 
-        if (str_starts_with($tipo, 'documento_requerimientos_')) {
+        if (str_starts_with($tipo, 'documento_requerimientos_') || str_starts_with($tipo, 'documento_documentacion_')) {
             return [
                 'tab' => 'gestion',
                 'hitoId' => $hitoId,

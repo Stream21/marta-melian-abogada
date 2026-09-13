@@ -44,7 +44,7 @@ final class SubirDocumentoRequerimientosUseCase
             throw new \InvalidArgumentException('Enlace de acceso no válido o expirado.');
         }
 
-        if (FaseNegocioExpediente::Requerimientos !== $expediente->faseNegocio()) {
+        if (FaseNegocioExpediente::Documentacion !== $expediente->faseNegocio()) {
             throw new \InvalidArgumentException('Este expediente no está en fase de requerimientos.');
         }
 

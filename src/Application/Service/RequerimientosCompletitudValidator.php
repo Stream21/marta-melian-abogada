@@ -69,13 +69,13 @@ final class RequerimientosCompletitudValidator
 
         $todosObligatoriosValidados = $obligatorios > 0 && $validados === $obligatorios;
         $ningunoEnRevision = 0 === $enRevision;
-        $requerimientosListo = $todosObligatoriosValidados && $ningunoEnRevision;
+        $documentacionListo = $todosObligatoriosValidados && $ningunoEnRevision;
 
         $expediente = $this->expedienteRepository->findById($expedienteId);
-        if ($requerimientosListo && null !== $expediente
-            && EstadoFaseExpediente::RequerimientosListo !== $expediente->estadoFase()) {
+        if ($documentacionListo && null !== $expediente
+            && EstadoFaseExpediente::DocumentacionListo !== $expediente->estadoFase()) {
             $this->expedienteRepository->save(
-                $expediente->withEstadoFase(EstadoFaseExpediente::RequerimientosListo)->touchEstadoCambio(),
+                $expediente->withEstadoFase(EstadoFaseExpediente::DocumentacionListo)->touchEstadoCambio(),
             );
         }
 
@@ -88,7 +88,7 @@ final class RequerimientosCompletitudValidator
             'rechazados' => $rechazados,
             'todosObligatoriosValidados' => $todosObligatoriosValidados,
             'ningunoEnRevision' => $ningunoEnRevision,
-            'requerimientosListo' => $requerimientosListo,
+            'documentacionListo' => $documentacionListo,
         ];
     }
 }

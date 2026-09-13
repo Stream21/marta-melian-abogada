@@ -14,11 +14,16 @@ use App\Domain\Repository\ExpedienteDocumentoArchivoRepositoryInterface;
 use App\Domain\Repository\ExpedienteDocumentoRepositoryInterface;
 use App\Domain\Repository\ExpedienteDocumentoRequeridoRepositoryInterface;
 use App\Domain\Repository\ExpedienteFirmaRepositoryInterface;
+use App\Domain\Repository\ExpedienteRequerimientoCampoRepositoryInterface;
+use App\Domain\Repository\ExpedienteRequerimientoDocumentoRepositoryInterface;
+use App\Domain\Repository\ExpedienteRequerimientoMercurioRepositoryInterface;
 use App\Domain\Repository\ExpedienteRepositoryInterface;
 use App\Domain\Repository\TramiteDocumentoRequeridoRepositoryInterface;
 use App\Domain\ValueObject\ClienteId;
 use App\Domain\ValueObject\ExpedienteDocumentoRequeridoId;
 use App\Domain\ValueObject\ExpedienteId;
+use App\Domain\ValueObject\ExpedienteRequerimientoDocumentoId;
+use App\Domain\ValueObject\ExpedienteRequerimientoMercurioId;
 use App\Domain\ValueObject\TramiteDocumentoRequeridoId;
 use App\Domain\ValueObject\TramiteId;
 
@@ -36,6 +41,9 @@ final class DescargarZipDocumentacionExpedienteUseCase
         private ExpedienteDocumentoRequeridoRepositoryInterface $documentoRequeridoExpedienteRepository,
         private TramiteDocumentoRequeridoRepositoryInterface $documentoRequeridoTramiteRepository,
         private ExpedienteFirmaRepositoryInterface $firmaRepository,
+        private ExpedienteRequerimientoMercurioRepositoryInterface $requerimientoMercurioRepository,
+        private ExpedienteRequerimientoCampoRepositoryInterface $requerimientoCampoRepository,
+        private ExpedienteRequerimientoDocumentoRepositoryInterface $requerimientoDocumentoRepository,
         private ExpedienteFileStoragePort $fileStorage,
         private ClienteFileStoragePort $clienteFileStorage,
     ) {
@@ -66,53 +74,62 @@ final class DescargarZipDocumentacionExpedienteUseCase
         $expedienteLabel = $this->etiquetaExpediente($expediente);
 
         $entries = [];
-        foreach ($ids as $itemId) {
-            foreach ($this->resolverArchivos($expediente, $expedienteLabel, $nombresRequerimiento, $itemId) as $entry) {
-                $entries[] = $entry;
-            }
-        }
-
-        if ([] === $entries) {
-            throw new \InvalidArgumentException('Ninguno de los documentos seleccionados tiene archivo descargable.');
-        }
-
-        $tmpZip = tempnam(sys_get_temp_dir(), 'doczip_');
-        if (false === $tmpZip) {
-            throw new \RuntimeException('No se pudo crear el archivo temporal del ZIP.');
-        }
-        $zipPath = $tmpZip . '.zip';
-        @unlink($tmpZip);
-
-        $zip = new \ZipArchive();
-        if (true !== $zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE)) {
-            throw new \RuntimeException('No se pudo crear el ZIP.');
-        }
-
-        $usedNames = [];
-        $closed = false;
+        $tempFiles = [];
         try {
-            foreach ($entries as $entry) {
-                $name = $this->uniqueName($entry['name'], $usedNames);
-                $usedNames[$name] = true;
-                if (!$zip->addFile($entry['path'], $name)) {
-                    throw new \RuntimeException(sprintf('No se pudo añadir «%s» al ZIP.', $entry['name']));
+            foreach ($ids as $itemId) {
+                foreach ($this->resolverArchivos($expediente, $expedienteLabel, $nombresRequerimiento, $itemId, $tempFiles) as $entry) {
+                    $entries[] = $entry;
                 }
             }
-            if (!$zip->close()) {
-                throw new \RuntimeException('No se pudo cerrar el ZIP.');
-            }
-            $closed = true;
 
-            $content = file_get_contents($zipPath);
-            if (false === $content) {
-                throw new \RuntimeException('No se pudo leer el ZIP generado.');
+            if ([] === $entries) {
+                throw new \InvalidArgumentException('Ninguno de los documentos seleccionados tiene archivo descargable.');
+            }
+
+            $tmpZip = tempnam(sys_get_temp_dir(), 'doczip_');
+            if (false === $tmpZip) {
+                throw new \RuntimeException('No se pudo crear el archivo temporal del ZIP.');
+            }
+            $zipPath = $tmpZip . '.zip';
+            @unlink($tmpZip);
+
+            $zip = new \ZipArchive();
+            if (true !== $zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE)) {
+                throw new \RuntimeException('No se pudo crear el ZIP.');
+            }
+
+            $usedNames = [];
+            $closed = false;
+            try {
+                foreach ($entries as $entry) {
+                    $name = $this->uniqueName($entry['name'], $usedNames);
+                    $usedNames[$name] = true;
+                    if (!$zip->addFile($entry['path'], $name)) {
+                        throw new \RuntimeException(sprintf('No se pudo añadir «%s» al ZIP.', $entry['name']));
+                    }
+                }
+                if (!$zip->close()) {
+                    throw new \RuntimeException('No se pudo cerrar el ZIP.');
+                }
+                $closed = true;
+
+                $content = file_get_contents($zipPath);
+                if (false === $content) {
+                    throw new \RuntimeException('No se pudo leer el ZIP generado.');
+                }
+            } finally {
+                if (!$closed) {
+                    @$zip->close();
+                }
+                if (is_file($zipPath)) {
+                    @unlink($zipPath);
+                }
             }
         } finally {
-            if (!$closed) {
-                @$zip->close();
-            }
-            if (is_file($zipPath)) {
-                @unlink($zipPath);
+            foreach ($tempFiles as $tempFile) {
+                if (is_file($tempFile)) {
+                    @unlink($tempFile);
+                }
             }
         }
 
@@ -164,6 +181,7 @@ final class DescargarZipDocumentacionExpedienteUseCase
 
     /**
      * @param array<string, string> $nombresRequerimiento
+     * @param list<string>          $tempFiles
      *
      * @return list<array{path: string, name: string}>
      */
@@ -172,6 +190,7 @@ final class DescargarZipDocumentacionExpedienteUseCase
         string $expedienteLabel,
         array $nombresRequerimiento,
         string $itemId,
+        array &$tempFiles,
     ): array {
         if (str_starts_with($itemId, 'identidad-')) {
             return $this->resolverIdentidad($expediente->clienteId(), $expedienteLabel, $itemId);
@@ -181,12 +200,116 @@ final class DescargarZipDocumentacionExpedienteUseCase
             return $this->resolverFirma($expediente->id()->value(), $expedienteLabel, substr($itemId, 6));
         }
 
+        if (str_starts_with($itemId, 'formulario-')) {
+            return $this->resolverFormulario(
+                $expediente->id()->value(),
+                $expedienteLabel,
+                substr($itemId, strlen('formulario-')),
+                $tempFiles,
+            );
+        }
+
+        if (str_starts_with($itemId, 'reqdoc-')) {
+            return $this->resolverDocumentoRequerimiento(
+                $expedienteLabel,
+                substr($itemId, strlen('reqdoc-')),
+            );
+        }
+
         return $this->resolverDocumentoEntregado(
             $expediente->id()->value(),
             $expedienteLabel,
             $nombresRequerimiento,
             $itemId,
         );
+    }
+
+    /**
+     * @param list<string> $tempFiles
+     *
+     * @return list<array{path: string, name: string}>
+     */
+    private function resolverFormulario(
+        string $expedienteId,
+        string $expedienteLabel,
+        string $requerimientoId,
+        array &$tempFiles,
+    ): array {
+        $req = $this->requerimientoMercurioRepository->findById(
+            new ExpedienteRequerimientoMercurioId($requerimientoId),
+        );
+        if (null === $req || $req->expedienteId()->value() !== $expedienteId) {
+            throw new \InvalidArgumentException('Formulario de requerimiento no encontrado.');
+        }
+
+        $campos = $this->requerimientoCampoRepository->findByRequerimientoId($req->id());
+        if ([] === $campos) {
+            throw new \InvalidArgumentException('El formulario no tiene campos.');
+        }
+
+        $nombreFormulario = $req->formularioNombre();
+        if (null === $nombreFormulario || '' === trim($nombreFormulario)) {
+            $nombreFormulario = 'Formulario · ' . $req->nombre();
+        }
+
+        $lines = [];
+        $lines[] = $nombreFormulario;
+        $lines[] = str_repeat('=', max(12, mb_strlen($nombreFormulario)));
+        $lines[] = 'Requerimiento: ' . $req->nombre();
+        if (null !== $req->formularioCometido() && '' !== trim($req->formularioCometido())) {
+            $lines[] = 'Cometido: ' . trim($req->formularioCometido());
+        }
+        $lines[] = '';
+        foreach ($campos as $campo) {
+            $valor = $campo->valor();
+            $lines[] = $campo->etiqueta() . ':';
+            $lines[] = (null !== $valor && '' !== trim($valor)) ? trim($valor) : '(sin respuesta)';
+            $lines[] = '';
+        }
+
+        $tmp = tempnam(sys_get_temp_dir(), 'formulario_');
+        if (false === $tmp) {
+            throw new \RuntimeException('No se pudo crear el archivo temporal del formulario.');
+        }
+        $path = $tmp . '.txt';
+        @unlink($tmp);
+        if (false === file_put_contents($path, implode("\n", $lines))) {
+            throw new \RuntimeException('No se pudo escribir el formulario temporal.');
+        }
+        $tempFiles[] = $path;
+
+        return [[
+            'path' => $path,
+            'name' => $this->buildFilename($expedienteLabel, $nombreFormulario, $path),
+        ]];
+    }
+
+    /**
+     * @return list<array{path: string, name: string}>
+     */
+    private function resolverDocumentoRequerimiento(string $expedienteLabel, string $docId): array
+    {
+        $doc = $this->requerimientoDocumentoRepository->findById(
+            new ExpedienteRequerimientoDocumentoId($docId),
+        );
+        if (null === $doc) {
+            throw new \InvalidArgumentException('Documento de requerimiento no encontrado.');
+        }
+
+        $path = $doc->archivoPath();
+        if (null === $path || '' === trim($path)) {
+            throw new \InvalidArgumentException('El documento de requerimiento no tiene archivo.');
+        }
+
+        $absolute = $this->fileStorage->getAbsolutePath($path);
+        if (!is_file($absolute)) {
+            throw new \InvalidArgumentException('El archivo del documento de requerimiento no está disponible.');
+        }
+
+        return [[
+            'path' => $absolute,
+            'name' => $this->buildFilename($expedienteLabel, $doc->nombre(), $absolute),
+        ]];
     }
 
     /**
