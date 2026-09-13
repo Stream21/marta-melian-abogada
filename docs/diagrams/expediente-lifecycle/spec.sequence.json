@@ -1,0 +1,146 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "Expediente — Alta hasta fase 4",
+    "output": "diagram.html",
+    "quality_profile": "showcase",
+    "column_fit": "spread",
+    "viewBox": [960, 540],
+    "views": [
+      {
+        "id": "alta-f1",
+        "label": "Alta + F1",
+        "focus": ["abogado", "portal", "api", "twilio"],
+        "note": "Alta, portal, contratación y pago Stripe → F2."
+      },
+      {
+        "id": "f2-f4",
+        "label": "F2 a F4",
+        "focus": ["portal", "abogado", "api"],
+        "note": "Requerimientos, tramitación, resolución y archivo."
+      },
+      {
+        "id": "actores",
+        "label": "Actores",
+        "focus": ["abogado", "portal", "api", "twilio"],
+        "note": "Staff JWT, portal token, API y notificaciones."
+      }
+    ]
+  },
+  "participants": [
+    { "id": "abogado", "type": "frontend", "label": "Abogado SPA", "sublabel": "staff" },
+    { "id": "portal", "type": "frontend", "label": "Portal", "sublabel": "token" },
+    { "id": "api", "type": "backend", "label": "API", "sublabel": "Symfony" },
+    { "id": "twilio", "type": "external", "label": "Twilio", "sublabel": "notify" }
+  ],
+  "segments": [
+    { "from": 150, "to": 245, "label": "Alta" },
+    { "from": 250, "to": 405, "label": "F1 Contratación" },
+    { "from": 410, "to": 490, "label": "F2–F4" }
+  ],
+  "messages": [
+    {
+      "id": "alta",
+      "from": "abogado",
+      "to": "api",
+      "y": 168,
+      "label": "POST /expedientes/alta",
+      "variant": "emphasis"
+    },
+    {
+      "id": "notify",
+      "from": "api",
+      "to": "twilio",
+      "y": 200,
+      "label": "notificar accessUrl",
+      "variant": "dashed"
+    },
+    {
+      "id": "alta-ok",
+      "from": "api",
+      "to": "abogado",
+      "y": 232,
+      "label": "{expediente, accessUrl}",
+      "variant": "return"
+    },
+    {
+      "id": "portal",
+      "from": "portal",
+      "to": "api",
+      "y": 264,
+      "label": "acceso + datos_cliente",
+      "variant": "emphasis"
+    },
+    {
+      "id": "val-datos",
+      "from": "abogado",
+      "to": "api",
+      "y": 296,
+      "label": "validar datos_cliente",
+      "variant": "security"
+    },
+    {
+      "id": "firmas",
+      "from": "portal",
+      "to": "api",
+      "y": 328,
+      "label": "OTP + firmas"
+    },
+    {
+      "id": "val-firmas",
+      "from": "abogado",
+      "to": "api",
+      "y": 360,
+      "label": "validar firmas",
+      "variant": "security"
+    },
+    {
+      "id": "pago",
+      "from": "portal",
+      "to": "api",
+      "y": 392,
+      "label": "pago Stripe → F2",
+      "variant": "emphasis"
+    },
+    {
+      "id": "req-f3",
+      "from": "abogado",
+      "to": "api",
+      "y": 424,
+      "label": "docs req. + avanzar F3",
+      "variant": "security"
+    },
+    {
+      "id": "cierre",
+      "from": "abogado",
+      "to": "api",
+      "y": 456,
+      "label": "F3→F4 resolucion + archivar",
+      "variant": "emphasis"
+    }
+  ],
+  "activations": [
+    { "participant": "abogado", "from": 163, "to": 465, "type": "frontend" },
+    { "participant": "portal", "from": 259, "to": 405, "type": "frontend" },
+    { "participant": "api", "from": 163, "to": 465, "type": "backend" },
+    { "participant": "twilio", "from": 195, "to": 215, "type": "external" }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Fases",
+      "items": ["contratacion → requerimientos → tramitacion → resolucion"]
+    },
+    {
+      "dot": "emerald",
+      "title": "Happy path",
+      "items": ["Stripe cierra F1; abogado valida y tramita hasta F4"]
+    },
+    {
+      "dot": "rose",
+      "title": "Cierre",
+      "items": ["resolucion + archivar → expediente archivado"]
+    }
+  ]
+}

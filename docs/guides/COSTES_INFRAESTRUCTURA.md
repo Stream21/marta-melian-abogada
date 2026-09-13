@@ -151,5 +151,5 @@ El coste real depende del volumen y importe de los cobros mensuales.
 ## Referencias
 
 - Configuración Docker: `docker-compose.yml`
-- Variables de entorno: `.env.example`, `docs/ENV_DESARROLLO.md`
+- Variables de entorno: `.env.example`, `docs/guides/ENV_DESARROLLO.md`
 - Integraciones: Holded (facturación), Stripe (pagos), Twilio (SMS/WhatsApp), Symfony Mailer (correo)

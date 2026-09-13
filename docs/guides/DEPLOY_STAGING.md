@@ -40,7 +40,7 @@ Tu PC (código)  →  git push  →  GitHub  →  git pull en VPS  →  deploy-s
 
 4. **No subas** `.env`, `config/jwt/*.pem` ni secretos.
 
-Documentación local útil: `docs/ENV_DESARROLLO.md`, `docs/NGROK_DESARROLLO.md`.
+Documentación local útil: `docs/guides/ENV_DESARROLLO.md`, `docs/guides/NGROK_DESARROLLO.md`.
 
 ---
 

@@ -47,7 +47,7 @@ docker compose exec php composer require symfony/orm-pack
 
 ## Staging (VPS / Marta)
 
-Desarrollo local → GitHub → VPS: ver [docs/DEPLOY_STAGING.md](docs/DEPLOY_STAGING.md).
+Desarrollo local → GitHub → VPS: ver [docs/guides/DEPLOY_STAGING.md](docs/guides/DEPLOY_STAGING.md).
 
 URL staging: https://app.martamelianguerraabogados.com
 

@@ -1,0 +1,248 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Bufete Melián — Mapa de endpoints API",
+    "output": "bufete-api-endpoints-map.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/Stream21/marta-melian-abogada.git",
+      "provider": "github",
+      "revision": "5f949b72519bcea7d335980ede5093779d0e749a"
+    },
+    "views": [
+      {
+        "id": "primary-staff",
+        "label": "Camino staff (JWT)",
+        "focus": ["spa", "auth", "clientes", "expedientes", "payments"],
+        "note": "Login JWT y flujo principal: clientes → expedientes → cobros."
+      },
+      {
+        "id": "portal-publico",
+        "label": "Portal cliente (token)",
+        "focus": ["portal", "acceso", "payments", "webhooks"],
+        "note": "Rutas públicas /api/acceso/{token} y webhooks Stripe."
+      },
+      {
+        "id": "fases-expediente",
+        "label": "Fases del expediente",
+        "focus": ["expedientes", "contratacion", "requerimientos", "acceso"],
+        "note": "Contratación y requerimientos anidados bajo el expediente."
+      }
+    ]
+  },
+  "components": [
+    {
+      "id": "spa",
+      "type": "frontend",
+      "label": "React SPA",
+      "sublabel": "Bearer JWT",
+      "pos": [30, 185],
+      "size": [118, 52],
+      "sources": [{ "path": "frontend/src/api/client.ts", "line": 13, "label": "TOKEN_KEY" }]
+    },
+    {
+      "id": "portal",
+      "type": "frontend",
+      "label": "Portal cliente",
+      "sublabel": "token de acceso",
+      "pos": [30, 300],
+      "size": [118, 52]
+    },
+    {
+      "id": "auth",
+      "type": "security",
+      "label": "/api/auth",
+      "sublabel": "1 ruta · pública",
+      "pos": [200, 80],
+      "size": [124, 52],
+      "tag": "login",
+      "sources": [{ "path": "config/packages/security.yaml", "line": 17, "label": "json_login" }]
+    },
+    {
+      "id": "clientes",
+      "type": "backend",
+      "label": "/api/clientes",
+      "sublabel": "9 rutas · JWT",
+      "pos": [200, 185],
+      "size": [124, 52],
+      "sources": [{ "path": "src/Infrastructure/Symfony/Controller/ClienteController.php", "line": 30, "label": "ClienteController" }]
+    },
+    {
+      "id": "expedientes",
+      "type": "backend",
+      "label": "/api/expedientes",
+      "sublabel": "58 rutas · JWT",
+      "pos": [390, 185],
+      "size": [132, 52],
+      "sources": [{ "path": "src/Infrastructure/Symfony/Controller/ExpedienteController.php", "line": 34, "label": "ExpedienteController" }]
+    },
+    {
+      "id": "contratacion",
+      "type": "backend",
+      "label": "…/contratacion",
+      "sublabel": "pasos + firmas",
+      "pos": [390, 80],
+      "size": [132, 52],
+      "sources": [{ "path": "src/Infrastructure/Symfony/Controller/ContratacionController.php", "line": 29, "label": "ContratacionController" }]
+    },
+    {
+      "id": "requerimientos",
+      "type": "backend",
+      "label": "…/requerimientos",
+      "sublabel": "docs + validar",
+      "pos": [390, 300],
+      "size": [132, 52],
+      "sources": [{ "path": "src/Infrastructure/Symfony/Controller/RequerimientosController.php", "line": 30, "label": "RequerimientosController" }]
+    },
+    {
+      "id": "payments",
+      "type": "backend",
+      "label": "/api/payments",
+      "sublabel": "link · manual · 3x",
+      "pos": [590, 185],
+      "size": [124, 52],
+      "sources": [{ "path": "src/Infrastructure/Symfony/Controller/PaymentController.php", "line": 19, "label": "PaymentController" }]
+    },
+    {
+      "id": "acceso",
+      "type": "external",
+      "label": "/api/acceso/{token}",
+      "sublabel": "19 rutas · público",
+      "pos": [200, 300],
+      "size": [132, 52],
+      "sources": [{ "path": "src/Infrastructure/Symfony/Controller/AccesoController.php", "line": 50, "label": "AccesoController" }]
+    },
+    {
+      "id": "config",
+      "type": "backend",
+      "label": "Config / catálogos",
+      "sublabel": "servicios · trámites",
+      "pos": [590, 80],
+      "size": [132, 52],
+      "sources": [{ "path": "src/Infrastructure/Symfony/Controller/ServicioController.php", "line": 22, "label": "ServicioController" }]
+    },
+    {
+      "id": "webhooks",
+      "type": "security",
+      "label": "/api/webhooks",
+      "sublabel": "Stripe · público",
+      "pos": [590, 300],
+      "size": [124, 52],
+      "sources": [{ "path": "src/Infrastructure/Symfony/Controller/StripeWebhookController.php", "line": 13, "label": "StripeWebhook" }]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "Superficie API Symfony (/api)",
+      "wraps": ["auth", "clientes", "expedientes", "contratacion", "requerimientos", "payments", "acceso", "config", "webhooks"]
+    },
+    {
+      "kind": "security-group",
+      "label": "Público (sin JWT)",
+      "wraps": ["auth", "acceso", "webhooks"]
+    }
+  ],
+  "connections": [
+    {
+      "id": "spa-auth",
+      "from": "spa",
+      "to": "auth",
+      "label": "POST login",
+      "variant": "emphasis",
+      "fromSide": "top",
+      "toSide": "left"
+    },
+    {
+      "id": "spa-clientes",
+      "from": "spa",
+      "to": "clientes",
+      "label": "CRUD + OCR",
+      "variant": "emphasis",
+      "labelDy": -20
+    },
+    {
+      "id": "clientes-exp",
+      "from": "clientes",
+      "to": "expedientes",
+      "label": "alta / listado",
+      "variant": "emphasis",
+      "labelDy": -22
+    },
+    {
+      "id": "exp-payments",
+      "from": "expedientes",
+      "to": "payments",
+      "label": "cobros",
+      "variant": "emphasis"
+    },
+    {
+      "id": "exp-contratacion",
+      "from": "expedientes",
+      "to": "contratacion",
+      "label": "fase 1",
+      "fromSide": "top",
+      "toSide": "bottom"
+    },
+    {
+      "id": "exp-requerimientos",
+      "from": "expedientes",
+      "to": "requerimientos",
+      "label": "fase 2",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelDy": 24
+    },
+    {
+      "id": "portal-acceso",
+      "from": "portal",
+      "to": "acceso",
+      "label": "token URL",
+      "variant": "emphasis"
+    },
+    {
+      "id": "payments-webhooks",
+      "from": "payments",
+      "to": "webhooks",
+      "label": "Stripe events",
+      "variant": "dashed",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelDy": 24
+    },
+    {
+      "id": "payments-config",
+      "from": "contratacion",
+      "to": "config",
+      "label": "catálogos",
+      "variant": "dashed"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "I/O — Auth y clientes",
+      "items": [
+        "POST /api/auth/login → {email,password} ⇒ {token}",
+        "GET/POST /api/clientes · ClienteInput (+ OCR multipart)"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "I/O — Expedientes y fases",
+      "items": [
+        "POST /api/expedientes/alta ⇒ {expediente, accessUrl}",
+        "…/contratacion y …/requerimientos · validar/devolver/subir"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "I/O — Portal y pagos",
+      "items": [
+        "GET /api/acceso/{token} ⇒ payload portal completo",
+        "payments + webhooks Stripe · confirm-session público"
+      ]
+    }
+  ]
+}

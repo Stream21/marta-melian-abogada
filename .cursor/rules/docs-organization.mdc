@@ -1,0 +1,13 @@
+---
+description: Organize docs artifacts by request folder; never dump files flat in docs/
+alwaysApply: true
+---
+
+# Docs organization
+
+- **Never** write new diagrams, Archify HTML/JSON, visual-check sidecars, or ad-hoc analysis dumps as flat files under `docs/`.
+- **One folder per request/topic** under `docs/diagrams/<kebab-topic>/` (or `docs/guides/` for operational how-tos).
+- Put **all** related outputs of a request in that folder: `.html`, `.json` specs, `visual-check.*`, PNGs, notes.
+- Prefer short filenames inside the folder (e.g. `diagram.html`, `spec.json`) when creating new work; when moving legacy files, keep existing names.
+- Existing guides live in `docs/guides/` (`DEPLOY_STAGING.md`, `ENV_DESARROLLO.md`, etc.). Do not mix them with diagram artifacts.
+- Update any README/links that pointed at old flat `docs/*.html` paths when relocating.

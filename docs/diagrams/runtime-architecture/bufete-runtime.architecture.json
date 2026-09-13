@@ -1,0 +1,243 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Bufete Melián — Runtime Architecture",
+    "locale": "en",
+    "output": "bufete-runtime-architecture.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/Stream21/marta-melian-abogada.git",
+      "provider": "github",
+      "revision": "5f949b72519bcea7d335980ede5093779d0e749a"
+    },
+    "views": [
+      {
+        "id": "primary-request",
+        "label": "Primary request path",
+        "focus": ["users", "react", "nginx", "php", "postgres"],
+        "note": "Browser SPA to Nginx/PHP-FPM hexagonal API to PostgreSQL."
+      },
+      {
+        "id": "auth-boundary",
+        "label": "Auth trust boundary",
+        "focus": ["users", "react", "jwt", "php"],
+        "note": "Lexik JWT issued at login; Bearer token on /api routes."
+      },
+      {
+        "id": "integrations",
+        "label": "External integrations",
+        "focus": ["php", "mercure", "twilio", "stripe", "mailer"],
+        "note": "Realtime, messaging, payments, and email leave the API as side paths."
+      }
+    ]
+  },
+  "components": [
+    {
+      "id": "users",
+      "type": "external",
+      "label": "Users",
+      "sublabel": "Staff + client portal",
+      "pos": [40, 250],
+      "size": [130, 60]
+    },
+    {
+      "id": "react",
+      "type": "frontend",
+      "label": "React SPA",
+      "sublabel": "Vite :5173",
+      "pos": [240, 250],
+      "size": [130, 60],
+      "sources": [{ "path": "frontend/src/api/client.ts", "line": 1, "label": "API client" }]
+    },
+    {
+      "id": "nginx",
+      "type": "cloud",
+      "label": "Nginx",
+      "sublabel": ":8080 → PHP-FPM",
+      "pos": [440, 250],
+      "size": [130, 60],
+      "sources": [{ "path": "docker/nginx/default.conf", "line": 15, "label": "fastcgi" }]
+    },
+    {
+      "id": "php",
+      "type": "backend",
+      "label": "Symfony API",
+      "sublabel": "PHP-FPM hexagonal",
+      "pos": [640, 250],
+      "size": [140, 60],
+      "sources": [
+        { "path": "src/Infrastructure/Symfony/Controller/ExpedienteController.php", "label": "controllers" },
+        { "path": "src/Application/UseCase/GeneratePaymentLinkUseCase.php", "label": "use cases" }
+      ]
+    },
+    {
+      "id": "jwt",
+      "type": "security",
+      "label": "Lexik JWT",
+      "sublabel": "Bearer auth",
+      "pos": [640, 100],
+      "size": [140, 56],
+      "tag": "stateless",
+      "sources": [{ "path": "config/packages/security.yaml", "line": 12, "label": "firewalls" }]
+    },
+    {
+      "id": "postgres",
+      "type": "database",
+      "label": "PostgreSQL",
+      "sublabel": "16 :5432",
+      "pos": [860, 250],
+      "size": [130, 60],
+      "sources": [{ "path": "docker-compose.yml", "line": 117, "label": "postgres" }]
+    },
+    {
+      "id": "mercure",
+      "type": "messagebus",
+      "label": "Mercure Hub",
+      "sublabel": "SSE :3000",
+      "pos": [640, 400],
+      "size": [140, 56],
+      "sources": [{ "path": "src/Infrastructure/Realtime/MercureContratacionPublisher.php", "label": "publishers" }]
+    },
+    {
+      "id": "twilio",
+      "type": "external",
+      "label": "Twilio",
+      "sublabel": "SMS / WhatsApp",
+      "pos": [860, 400],
+      "size": [130, 56],
+      "sources": [{ "path": "src/Infrastructure/ApiClient/TwilioService.php", "label": "TwilioPort" }]
+    },
+    {
+      "id": "stripe",
+      "type": "external",
+      "label": "Stripe",
+      "sublabel": "Payments",
+      "pos": [860, 100],
+      "size": [130, 56],
+      "sources": [{ "path": "src/Infrastructure/ApiClient/StripeService.php", "label": "Stripe" }]
+    },
+    {
+      "id": "mailer",
+      "type": "external",
+      "label": "SMTP / Mailpit",
+      "sublabel": ":1025 / UI :8025",
+      "pos": [440, 400],
+      "size": [130, 56],
+      "sources": [{ "path": "src/Infrastructure/Notification/SymfonyMailerEmailService.php", "label": "mailer" }]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "Docker Compose (WSL runtime)",
+      "wraps": ["react", "nginx", "php", "jwt", "postgres", "mercure", "mailer"]
+    },
+    {
+      "kind": "security-group",
+      "label": "API trust boundary :8080",
+      "wraps": ["nginx", "php", "jwt"]
+    }
+  ],
+  "connections": [
+    {
+      "id": "users-to-react",
+      "from": "users",
+      "to": "react",
+      "label": "HTTPS / local",
+      "variant": "emphasis"
+    },
+    {
+      "id": "react-to-nginx",
+      "from": "react",
+      "to": "nginx",
+      "label": "REST /api",
+      "variant": "emphasis"
+    },
+    {
+      "id": "nginx-to-php",
+      "from": "nginx",
+      "to": "php",
+      "label": "FastCGI :9000",
+      "variant": "emphasis"
+    },
+    {
+      "id": "php-to-postgres",
+      "from": "php",
+      "to": "postgres",
+      "label": "Doctrine SQL",
+      "variant": "emphasis"
+    },
+    {
+      "id": "jwt-to-php",
+      "from": "jwt",
+      "to": "php",
+      "label": "verify Bearer",
+      "variant": "security",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelDy": 24
+    },
+    {
+      "id": "php-to-mercure",
+      "from": "php",
+      "to": "mercure",
+      "label": "publish events",
+      "variant": "dashed",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelDy": 48
+    },
+    {
+      "id": "php-to-twilio",
+      "from": "php",
+      "to": "twilio",
+      "label": "notify",
+      "variant": "dashed"
+    },
+    {
+      "id": "php-to-stripe",
+      "from": "php",
+      "to": "stripe",
+      "label": "checkout",
+      "variant": "dashed",
+      "fromSide": "top",
+      "toSide": "left"
+    },
+    {
+      "id": "php-to-mailer",
+      "from": "php",
+      "to": "mailer",
+      "label": "SMTP",
+      "variant": "dashed",
+      "fromSide": "bottom",
+      "toSide": "right"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Primary path",
+      "items": [
+        "React SPA → Nginx :8080 → Symfony PHP-FPM",
+        "Controllers → UseCases → Doctrine → PostgreSQL 16"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Hexagonal layers",
+      "items": [
+        "Domain ports stay framework-free",
+        "Infrastructure: Controllers, Doctrine, ApiClients"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Trust & externals",
+      "items": [
+        "Lexik JWT on /api; public acceso/webhooks",
+        "Mercure, Twilio, Stripe, SMTP, Holded outbound"
+      ]
+    }
+  ]
+}

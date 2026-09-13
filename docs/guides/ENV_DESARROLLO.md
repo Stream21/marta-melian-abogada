@@ -4,9 +4,11 @@ Guía para obtener credenciales de **desarrollador / sandbox** y ajustar `.env` 
 
 ---
 
-## 1. Holded (facturación)
+## 1. Holded (facturación) — Las Palmas / exenta de IVA
 
-Holded **no tiene sandbox** separado. Para desarrollo local la app incluye un **mock** que simula la API de facturación (incluido PDF).
+Holded **no tiene sandbox** separado. Para desarrollo local la app incluye un **mock** alineado con la API legacy `invoicing/v1` (header `key`, contactos, factura única, cobros parciales `/pay`, PDF). La **API real** usa **v2** con `Authorization: Bearer` (PAT `pat_...`) y rutas `/api/v2/...`.
+
+Régimen: autónomo en **Las Palmas de Gran Canaria** → **exenta de IVA/IGIC (0%)**. Los honorarios acordados se facturan tal cual. Clientes particulares: IRPF 0%.
 
 ### Mock local (recomendado en dev)
 
@@ -14,30 +16,76 @@ En `.env`:
 
 ```env
 HOLDED_API_KEY=dev-mock-key-123
-HOLDED_BASE_URL=http://nginx/api/mock/holded
-HOLDED_API_URL=http://nginx/api/mock/holded
+HOLDED_API_BASE_URL=http://nginx/api/mock/holded/invoicing/v1
 HOLDED_MOCK_KEY=dev-mock-key-123
+HOLDED_TAX_PERCENT=0
+HOLDED_TAX_KEY=exento
 ```
 
-- **Docker:** usa `http://nginx/api/mock/holded` (el contenedor PHP llama al nginx interno).
+- **Docker:** `http://nginx/api/mock/holded/invoicing/v1` (PHP → nginx interno).
 - **Sin Docker:** sustituye `nginx` por `localhost:8080`.
-- Los cobros Stripe/manuales crean facturas simuladas y descargan un PDF de prueba con número `FAC-AAAA-NNNN`.
+- Estrategia: **una factura** por el total del expediente; cada cuota llama a `POST .../pay`.
 
-Endpoints mock:
+Endpoints mock (oficiales):
 
-| Uso | Ruta |
-|-----|------|
-| Cobros (HoldedPort) | `/api/mock/holded/invoicing/v1/invoices` |
-| Módulo clientes/facturas | `/api/mock/holded/v1/contacts`, `/v1/documents/invoice` |
+| Uso | Método / Ruta |
+|-----|----------------|
+| Contactos | `POST/GET /api/mock/holded/invoicing/v1/contacts` (`GET ?code=` filtra por documento) |
+| Factura | `POST /api/mock/holded/invoicing/v1/documents/invoice` |
+| Cobro parcial | `POST /api/mock/holded/invoicing/v1/documents/invoice/{id}/pay` |
+| PDF | `GET /api/mock/holded/invoicing/v1/documents/invoice/{id}/pdf` |
 
-### Cuenta real (staging/producción)
+Alias legacy: `/api/mock/holded/v1/...` reenvía al mock unificado.
 
-- **Registro:** [https://app.holded.com](https://app.holded.com)
-- **API Key:** Holded → Configuración → Integraciones → API
+### Ejemplos curl (mock)
+
+```bash
+# Crear contacto
+curl -s -X POST http://localhost:8080/api/mock/holded/invoicing/v1/contacts \
+  -H "key: dev-mock-key-123" -H "Content-Type: application/json" \
+  -d '{"name":"Cliente Test","email":"test@example.com","code":"X1234567L","type":"client","isperson":true,"billAddress":{"address":"Calle 1","city":"Las Palmas","postalCode":"35001","country":"ES"}}'
+
+# Crear factura (exenta: subtotal = total, sin impuestos)
+curl -s -X POST http://localhost:8080/api/mock/holded/invoicing/v1/documents/invoice \
+  -H "key: dev-mock-key-123" -H "Content-Type: application/json" \
+  -d '{"contactId":"CONTACT_ID","desc":"Expediente 2026-001","date":1710000000,"items":[{"name":"Honorarios","subtotal":1000,"units":1,"taxes":["exento"]}]}'
+
+# Registrar cobro parcial (cuota)
+curl -s -X POST http://localhost:8080/api/mock/holded/invoicing/v1/documents/invoice/INVOICE_ID/pay \
+  -H "key: dev-mock-key-123" -H "Content-Type: application/json" \
+  -d '{"date":1710000000,"amount":500,"desc":"Cuota 1","paymentMethod":"STRIPE"}'
+
+# Descargar PDF
+curl -s -o factura.pdf http://localhost:8080/api/mock/holded/invoicing/v1/documents/invoice/INVOICE_ID/pdf \
+  -H "key: dev-mock-key-123"
+```
+
+Cobro manual desde la app (autenticado):
+
+```bash
+curl -s -X POST http://localhost:8080/api/payments/manual \
+  -H "Authorization: Bearer TOKEN" -H "Content-Type: application/json" \
+  -d '{"expedienteId":"UUID","amount":"500.00","cuotaNumero":1}'
+```
+
+Descarga factura del expediente:
+
+```bash
+curl -s -o factura.pdf http://localhost:8080/api/expedientes/UUID/invoice/pdf \
+  -H "Authorization: Bearer TOKEN"
+```
+
+### Cuenta real (API v2 + Bearer)
+
+- **Registro:** [https://app.holded.com](https://app.holded.com) — cuenta en régimen **Canarias / exento** según su fiscalidad.
+- **Token:** Configuración → Integraciones → API → Personal Access Token (`pat_...`).
 - **En `.env`:**
-  - `HOLDED_API_KEY=` → clave real
-  - `HOLDED_BASE_URL=https://api.holded.com`
-  - `HOLDED_API_URL=https://api.holded.com` (solo si el módulo de clientes apunta a la API real)
+  - `HOLDED_API_KEY=pat_...`
+  - `HOLDED_API_BASE_URL=https://api.holded.com/api/v2`
+  - `HOLDED_TAX_KEY=` clave del catálogo v2 (`GET /api/v2/taxes`), p. ej. `s_iva_exento` en cuentas exentas
+- **Autenticación:** `Authorization: Bearer <HOLDED_API_KEY>` (no usar header `key` en v2).
+- Rutas usadas por la app: `POST/GET /contacts`, `GET /contacts?code={NIF}` (lookup antes de crear), `POST /invoices`, `POST /invoices/{id}/payments`, `GET /invoices/{id}/pdf`.
+- **Cliente en factura:** al sincronizar, se consulta Holded por documento (`code`). Si existe se reutiliza el id; si no, se crea el contacto. En ambos casos se guarda en `Cliente.holdedContactId`.
 
 ---
 
@@ -106,7 +154,9 @@ MAILER_FROM_NAME=Marta Melián Abogados
 |----------|------------------|
 | `DATABASE_URL` | Coherente con `POSTGRES_*` (ej. usuario `bufete`, contraseña la misma que `POSTGRES_PASSWORD`). |
 | `HOLDED_API_KEY` | Holded → Configuración → Integraciones → API. |
-| `HOLDED_BASE_URL` | `https://api.holded.com` |
+| `HOLDED_API_BASE_URL` | Mock: `http://nginx/api/mock/holded/invoicing/v1`. Real v2: `https://api.holded.com/api/v2` |
+| `HOLDED_TAX_PERCENT` | `0` (exenta de IVA/IGIC) |
+| `HOLDED_TAX_KEY` | Mock: `exento`. Real v2: clave de `GET /api/v2/taxes` (p. ej. `s_iva_exento`) |
 | `STRIPE_SECRET_KEY` | Stripe Dashboard → API keys → Secret key (test). |
 | `STRIPE_WEBHOOK_SECRET` | Stripe → Webhooks → Endpoint → Signing secret (tras crear el endpoint con ngrok). |
 | `STRIPE_PUBLISHABLE_KEY` | Stripe Dashboard → API keys → Publishable key (test). |
