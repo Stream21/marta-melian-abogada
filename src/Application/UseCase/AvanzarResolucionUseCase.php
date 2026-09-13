@@ -8,7 +8,6 @@ use App\Domain\Entity\ActorHitoExpediente;
 use App\Domain\Entity\EstadoFaseExpediente;
 use App\Domain\Entity\ExpedienteHito;
 use App\Domain\Entity\FaseNegocioExpediente;
-use App\Domain\Entity\SubfaseTramitacion;
 use App\Domain\Repository\ContratacionRepositoryInterface;
 use App\Domain\Repository\ExpedientePresentacionTelematicaRepositoryInterface;
 use App\Domain\Repository\ExpedienteRequerimientoMercurioRepositoryInterface;
@@ -50,7 +49,6 @@ final class AvanzarResolucionUseCase
         $this->expedienteRepository->save(
             $expediente
                 ->withFaseNegocio(FaseNegocioExpediente::Resolucion, EstadoFaseExpediente::PendienteCliente)
-                ->withSubfaseTramitacion(SubfaseTramitacion::ListoResolucion)
                 ->touchEstadoCambio(),
         );
 

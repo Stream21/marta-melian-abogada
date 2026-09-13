@@ -37,7 +37,7 @@ final class AvanzarTramitacionUseCase
             throw new \InvalidArgumentException('Expediente no encontrado.');
         }
 
-        if (FaseNegocioExpediente::Requerimientos !== $expediente->faseNegocio()) {
+        if (FaseNegocioExpediente::Documentacion !== $expediente->faseNegocio()) {
             throw new \InvalidArgumentException('El expediente no está en fase de requerimientos.');
         }
 
@@ -52,7 +52,7 @@ final class AvanzarTramitacionUseCase
         $documentos = $this->documentoRequeridoRepository->findByExpediente($id);
         $progreso = $this->progresoCalculator->calcular($documentos, $entregasPorDocId);
 
-        if (!$progreso['requerimientosListo']) {
+        if (!$progreso['documentacionListo']) {
             throw new \InvalidArgumentException(
                 'Debe validar todos los documentos obligatorios antes de pasar a tramitación.',
             );
@@ -61,7 +61,7 @@ final class AvanzarTramitacionUseCase
         $this->expedienteRepository->save(
             $expediente
                 ->withFaseNegocio(FaseNegocioExpediente::Tramitacion, EstadoFaseExpediente::Completada)
-                ->withSubfaseTramitacion(SubfaseTramitacion::PreparacionPresentacion)
+                ->withSubfaseTramitacion(SubfaseTramitacion::PendienteTramitacion)
                 ->touchEstadoCambio(),
         );
 

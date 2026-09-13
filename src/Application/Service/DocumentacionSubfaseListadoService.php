@@ -13,9 +13,9 @@ use App\Domain\Repository\ExpedienteDocumentoRequeridoRepositoryInterface;
 use App\Domain\ValueObject\ExpedienteId;
 
 /**
- * Subfase de requerimientos para listados: progreso documental + detalle para tooltip.
+ * Subfase de documentación para listados: progreso documental + detalle para tooltip.
  */
-final class RequerimientosSubfaseListadoService
+final class DocumentacionSubfaseListadoService
 {
     public function __construct(
         private ExpedienteDocumentoRequeridoRepositoryInterface $documentoRequeridoRepository,
@@ -155,13 +155,7 @@ final class RequerimientosSubfaseListadoService
 
         $label = 0 === $total
             ? 'Sin documentos'
-            : sprintf('%d/%d docs', $validados, $total);
-
-        if ($progreso['enRevision'] > 0) {
-            $label .= ' · revisión';
-        } elseif ($pendientes > 0 && $validados < $total) {
-            $label .= sprintf(' · faltan %d', $pendientes);
-        }
+            : sprintf('%d/%d', $validados, $total);
 
         return [
             'validados' => $validados,

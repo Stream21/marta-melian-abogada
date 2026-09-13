@@ -32,16 +32,16 @@ final class AvanzarFaseTramitacionUseCase
             throw new \InvalidArgumentException('Expediente no encontrado.');
         }
 
-        if (FaseNegocioExpediente::Requerimientos !== $expediente->faseNegocio()) {
+        if (FaseNegocioExpediente::Documentacion !== $expediente->faseNegocio()) {
             throw new \InvalidArgumentException('El expediente no está en fase de requerimientos.');
         }
 
         $progreso = $this->completitudValidator->resumen($id);
-        if (!$progreso['requerimientosListo']) {
+        if (!$progreso['documentacionListo']) {
             throw new \InvalidArgumentException('Aún hay documentos obligatorios pendientes de validar.');
         }
 
-        if (EstadoFaseExpediente::RequerimientosListo !== $expediente->estadoFase()) {
+        if (EstadoFaseExpediente::DocumentacionListo !== $expediente->estadoFase()) {
             throw new \InvalidArgumentException('El expediente aún no está listo para pasar a tramitación.');
         }
 

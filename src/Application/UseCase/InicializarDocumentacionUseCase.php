@@ -24,7 +24,7 @@ use App\Domain\ValueObject\ExpedienteId;
 use App\Domain\ValueObject\ServicioId;
 use App\Domain\ValueObject\TramiteId;
 
-final class InicializarRequerimientosUseCase
+final class InicializarDocumentacionUseCase
 {
     public function __construct(
         private ExpedienteRepositoryInterface $expedienteRepository,
@@ -44,7 +44,7 @@ final class InicializarRequerimientosUseCase
             throw new \InvalidArgumentException('Expediente no encontrado.');
         }
 
-        if (FaseNegocioExpediente::Requerimientos !== $expediente->faseNegocio()) {
+        if (FaseNegocioExpediente::Documentacion !== $expediente->faseNegocio()) {
             return;
         }
 
@@ -55,7 +55,7 @@ final class InicializarRequerimientosUseCase
 
             $this->expedienteRepository->save(
                 $expediente
-                    ->withEstadoFase(EstadoFaseExpediente::RequerimientosEnProgreso)
+                    ->withEstadoFase(EstadoFaseExpediente::DocumentacionEnProgreso)
                     ->touchEstadoCambio(),
             );
 
@@ -70,7 +70,7 @@ final class InicializarRequerimientosUseCase
 
             $this->realtime->publishContratacionUpdate($expedienteId->value(), [
                 'type' => 'fase_requerimientos_iniciada',
-                'faseNegocio' => FaseNegocioExpediente::Requerimientos->value,
+                'faseNegocio' => FaseNegocioExpediente::Documentacion->value,
                 'actor' => 'sistema',
                 'expedienteNumero' => $expediente->numero(),
                 'clienteNombre' => $expediente->clientName(),

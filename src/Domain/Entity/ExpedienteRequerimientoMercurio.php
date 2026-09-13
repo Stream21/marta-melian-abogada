@@ -20,6 +20,8 @@ final readonly class ExpedienteRequerimientoMercurio
         private ?string $archivoPath = null,
         private ?string $archivoNombre = null,
         private ?string $justificantePresentacionPath = null,
+        private ?string $formularioNombre = null,
+        private ?string $formularioCometido = null,
         private \DateTimeImmutable $createdAt = new \DateTimeImmutable('now'),
         private \DateTimeImmutable $updatedAt = new \DateTimeImmutable('now'),
     ) {
@@ -101,6 +103,16 @@ final readonly class ExpedienteRequerimientoMercurio
         return $this->justificantePresentacionPath;
     }
 
+    public function formularioNombre(): ?string
+    {
+        return $this->formularioNombre;
+    }
+
+    public function formularioCometido(): ?string
+    {
+        return $this->formularioCometido;
+    }
+
     public function createdAt(): \DateTimeImmutable
     {
         return $this->createdAt;
@@ -109,6 +121,29 @@ final readonly class ExpedienteRequerimientoMercurio
     public function updatedAt(): \DateTimeImmutable
     {
         return $this->updatedAt;
+    }
+
+    public function withFormularioMeta(?string $nombre, ?string $cometido): self
+    {
+        $nombreTrim = null !== $nombre ? trim($nombre) : null;
+        $cometidoTrim = null !== $cometido ? trim($cometido) : null;
+
+        return new self(
+            $this->id,
+            $this->expedienteId,
+            $this->tipo,
+            $this->destino,
+            $this->nombre,
+            $this->descripcion,
+            $this->estado,
+            $this->archivoPath,
+            $this->archivoNombre,
+            $this->justificantePresentacionPath,
+            '' !== ($nombreTrim ?? '') ? $nombreTrim : null,
+            '' !== ($cometidoTrim ?? '') ? $cometidoTrim : null,
+            $this->createdAt,
+            new \DateTimeImmutable('now'),
+        );
     }
 
     public function withArchivo(string $path, string $nombre): self
@@ -129,6 +164,8 @@ final readonly class ExpedienteRequerimientoMercurio
             $path,
             $nombre,
             $this->justificantePresentacionPath,
+            $this->formularioNombre,
+            $this->formularioCometido,
             $this->createdAt,
             new \DateTimeImmutable('now'),
         );
@@ -155,10 +192,12 @@ final readonly class ExpedienteRequerimientoMercurio
             $this->destino,
             $this->nombre,
             $this->descripcion,
-            EstadoRequerimientoMercurio::Cerrado,
+            EstadoRequerimientoMercurio::Presentado,
             $path,
             $nombre,
             $justificantePath,
+            $this->formularioNombre,
+            $this->formularioCometido,
             $this->createdAt,
             new \DateTimeImmutable('now'),
         );
@@ -173,10 +212,92 @@ final readonly class ExpedienteRequerimientoMercurio
             $this->destino,
             $this->nombre,
             $this->descripcion,
-            EstadoRequerimientoMercurio::Cerrado,
+            EstadoRequerimientoMercurio::Presentado,
             $this->archivoPath,
             $this->archivoNombre,
             $this->justificantePresentacionPath,
+            $this->formularioNombre,
+            $this->formularioCometido,
+            $this->createdAt,
+            new \DateTimeImmutable('now'),
+        );
+    }
+
+    public function withEstado(EstadoRequerimientoMercurio $estado): self
+    {
+        return new self(
+            $this->id,
+            $this->expedienteId,
+            $this->tipo,
+            $this->destino,
+            $this->nombre,
+            $this->descripcion,
+            $estado,
+            $this->archivoPath,
+            $this->archivoNombre,
+            $this->justificantePresentacionPath,
+            $this->formularioNombre,
+            $this->formularioCometido,
+            $this->createdAt,
+            new \DateTimeImmutable('now'),
+        );
+    }
+
+    /**
+     * Expone el requerimiento al portal del cliente (documentos/campos para el cliente).
+     */
+    public function abrirParaCliente(): self
+    {
+        if (!$this->estado->estaAbierto()) {
+            return $this;
+        }
+
+        return new self(
+            $this->id,
+            $this->expedienteId,
+            $this->tipo,
+            DestinoRequerimientoMercurio::Cliente,
+            $this->nombre,
+            $this->descripcion,
+            EstadoRequerimientoMercurio::PendienteCliente,
+            $this->archivoPath,
+            $this->archivoNombre,
+            $this->justificantePresentacionPath,
+            $this->formularioNombre,
+            $this->formularioCometido,
+            $this->createdAt,
+            new \DateTimeImmutable('now'),
+        );
+    }
+
+    /**
+     * Presentación en Mercurio (PDF de presentación + justificante) tras completar ítems del requerimiento.
+     */
+    public function marcarPresentadoEnMercurio(
+        string $presentacionPath,
+        string $presentacionNombre,
+        string $justificantePath,
+    ): self {
+        if ('' === trim($presentacionPath)) {
+            throw new \InvalidArgumentException('Debe adjuntar el documento de presentación en Mercurio.');
+        }
+        if ('' === trim($justificantePath)) {
+            throw new \InvalidArgumentException('Debe adjuntar el justificante de presentación en Mercurio.');
+        }
+
+        return new self(
+            $this->id,
+            $this->expedienteId,
+            $this->tipo,
+            $this->destino,
+            $this->nombre,
+            $this->descripcion,
+            EstadoRequerimientoMercurio::Presentado,
+            $presentacionPath,
+            $presentacionNombre,
+            $justificantePath,
+            $this->formularioNombre,
+            $this->formularioCometido,
             $this->createdAt,
             new \DateTimeImmutable('now'),
         );

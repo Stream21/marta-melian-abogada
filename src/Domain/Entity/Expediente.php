@@ -34,6 +34,7 @@ final readonly class Expediente
         /** @var list<array{numero: int, importe: float, fechaVencimiento: string, estado: string}>|null */
         private ?array $calendarioPagos = null,
         private ?SubfaseTramitacion $subfaseTramitacion = null,
+        private ?string $holdedInvoiceId = null,
     ) {
     }
 
@@ -80,6 +81,11 @@ final readonly class Expediente
     public function paymentStatus(): string
     {
         return $this->paymentStatus;
+    }
+
+    public function holdedInvoiceId(): ?string
+    {
+        return $this->holdedInvoiceId;
     }
 
     public function clienteId(): ?string
@@ -220,6 +226,14 @@ final readonly class Expediente
         return $this->rebuild(paymentStatus: $paymentStatus);
     }
 
+    public function withHoldedInvoiceId(?string $holdedInvoiceId): self
+    {
+        return $this->rebuild(
+            holdedInvoiceId: $holdedInvoiceId,
+            holdedInvoiceIdProvided: true,
+        );
+    }
+
     public function withClientName(string $clientName): self
     {
         return $this->rebuild(clientName: $clientName);
@@ -295,6 +309,8 @@ final readonly class Expediente
         bool $calendarioPagosProvided = false,
         ?SubfaseTramitacion $subfaseTramitacion = null,
         bool $subfaseTramitacionProvided = false,
+        ?string $holdedInvoiceId = null,
+        bool $holdedInvoiceIdProvided = false,
     ): self {
         return new self(
             $this->id,
@@ -321,6 +337,7 @@ final readonly class Expediente
             $fechaFirmaContrato ?? $this->fechaFirmaContrato,
             $calendarioPagosProvided ? $calendarioPagos : $this->calendarioPagos,
             $subfaseTramitacionProvided ? $subfaseTramitacion : $this->subfaseTramitacion,
+            $holdedInvoiceIdProvided ? $holdedInvoiceId : $this->holdedInvoiceId,
         );
     }
 

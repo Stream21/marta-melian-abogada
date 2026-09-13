@@ -85,6 +85,9 @@ class ExpedienteOrm
     #[ORM\Column(type: Types::JSON, nullable: true)]
     private ?array $calendarioPagos = null;
 
+    #[ORM\Column(type: Types::STRING, length: 100, nullable: true)]
+    private ?string $holdedInvoiceId = null;
+
     public function getId(): string
     {
         return $this->id;
@@ -329,5 +332,15 @@ class ExpedienteOrm
     public function setCalendarioPagos(?array $calendarioPagos): void
     {
         $this->calendarioPagos = $calendarioPagos;
+    }
+
+    public function getHoldedInvoiceId(): ?string
+    {
+        return $this->holdedInvoiceId;
+    }
+
+    public function setHoldedInvoiceId(?string $holdedInvoiceId): void
+    {
+        $this->holdedInvoiceId = $holdedInvoiceId;
     }
 }

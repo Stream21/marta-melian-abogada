@@ -12,7 +12,8 @@ use App\Domain\Repository\ExpedienteRequerimientoMercurioRepositoryInterface;
 use App\Domain\Repository\ExpedienteRepositoryInterface;
 
 /**
- * Recalcula la subfase de tramitación según presentación, seguimiento y requerimientos abiertos.
+ * Recalcula la subfase de tramitación:
+ * pendiente_tramitacion | tramitado | pendiente_requerimiento.
  */
 final class TramitacionSubfaseSyncService
 {
@@ -33,16 +34,16 @@ final class TramitacionSubfaseSyncService
         $abiertos = $this->requerimientoRepository->countAbiertosByExpediente($expediente->id());
 
         if ($abiertos > 0) {
-            $subfase = SubfaseTramitacion::RequerimientoAbierto;
+            $subfase = SubfaseTramitacion::PendienteRequerimiento;
         } elseif (null === $presentacion) {
-            $subfase = SubfaseTramitacion::PreparacionPresentacion;
-        } elseif (null === $presentacion->numeroExpedienteExtranjeria() || '' === $presentacion->numeroExpedienteExtranjeria()) {
-            $subfase = SubfaseTramitacion::PendienteRecepcion;
-        } elseif ($marcarListoResolucion || SubfaseTramitacion::ListoResolucion === $expediente->subfaseTramitacion()) {
-            $subfase = SubfaseTramitacion::ListoResolucion;
+            $subfase = SubfaseTramitacion::PendienteTramitacion;
         } else {
-            $subfase = SubfaseTramitacion::EnSeguimiento;
+            $subfase = SubfaseTramitacion::Tramitado;
         }
+
+        // $marcarListoResolucion se conserva por compatibilidad de firma; la salida a
+        // resolución se gestiona con AvanzarResolucionUseCase, no como subfase propia.
+        unset($marcarListoResolucion);
 
         if ($expediente->subfaseTramitacion() === $subfase) {
             return $expediente;

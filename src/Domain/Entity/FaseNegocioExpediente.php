@@ -7,7 +7,7 @@ namespace App\Domain\Entity;
 enum FaseNegocioExpediente: string
 {
     case Contratacion = 'contratacion';
-    case Requerimientos = 'requerimientos';
+    case Documentacion = 'documentacion';
     case Tramitacion = 'tramitacion';
     case Resolucion = 'resolucion';
 
@@ -15,7 +15,7 @@ enum FaseNegocioExpediente: string
     {
         return match ($this) {
             self::Contratacion => 'Contratación',
-            self::Requerimientos => 'Requerimientos',
+            self::Documentacion => 'Documentación',
             self::Tramitacion => 'Tramitación',
             self::Resolucion => 'Resolución',
         };

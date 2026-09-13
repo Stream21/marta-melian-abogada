@@ -6,20 +6,16 @@ namespace App\Domain\Entity;
 
 enum SubfaseTramitacion: string
 {
-    case PreparacionPresentacion = 'preparacion_presentacion';
-    case PendienteRecepcion = 'pendiente_recepcion';
-    case EnSeguimiento = 'en_seguimiento';
-    case RequerimientoAbierto = 'requerimiento_abierto';
-    case ListoResolucion = 'listo_resolucion';
+    case PendienteTramitacion = 'pendiente_tramitacion';
+    case Tramitado = 'tramitado';
+    case PendienteRequerimiento = 'pendiente_requerimiento';
 
     public function label(): string
     {
         return match ($this) {
-            self::PreparacionPresentacion => 'Preparación de presentación',
-            self::PendienteRecepcion => 'Pendiente de recepción',
-            self::EnSeguimiento => 'En seguimiento',
-            self::RequerimientoAbierto => 'Requerimiento abierto',
-            self::ListoResolucion => 'Listo para resolución',
+            self::PendienteTramitacion => 'Pendiente de tramitación',
+            self::Tramitado => 'Tramitado',
+            self::PendienteRequerimiento => 'Pendiente de requerimiento',
         };
     }
 
@@ -27,11 +23,9 @@ enum SubfaseTramitacion: string
     public function actorBandeja(): string
     {
         return match ($this) {
-            self::PreparacionPresentacion,
-            self::RequerimientoAbierto,
-            self::ListoResolucion => 'despacho',
-            self::PendienteRecepcion,
-            self::EnSeguimiento => 'mercurio',
+            self::PendienteTramitacion,
+            self::PendienteRequerimiento => 'despacho',
+            self::Tramitado => 'mercurio',
         };
     }
 
@@ -46,6 +40,12 @@ enum SubfaseTramitacion: string
             return null;
         }
 
-        return self::tryFrom($value);
+        // Compatibilidad con valores previos a la consolidación de subfases.
+        return match ($value) {
+            'preparacion_presentacion' => self::PendienteTramitacion,
+            'pendiente_recepcion', 'en_seguimiento', 'listo_resolucion' => self::Tramitado,
+            'requerimiento_abierto', 'recopilacion_datos' => self::PendienteRequerimiento,
+            default => self::tryFrom($value),
+        };
     }
 }

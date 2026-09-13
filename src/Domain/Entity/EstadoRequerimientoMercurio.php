@@ -16,8 +16,7 @@ enum EstadoRequerimientoMercurio: string
         return match ($this) {
             self::PendienteCliente => 'Pendiente de cliente',
             self::PendienteDespacho => 'Pendiente de despacho',
-            self::Presentado => 'Presentado',
-            self::Cerrado => 'Cerrado',
+            self::Presentado, self::Cerrado => 'Presentado',
         };
     }
 

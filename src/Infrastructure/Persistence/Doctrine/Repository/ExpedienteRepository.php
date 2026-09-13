@@ -155,6 +155,7 @@ final class ExpedienteRepository implements ExpedienteRepositoryInterface
             $orm->getFechaFirmaContrato(),
             $this->normalizarCalendarioPagos($orm->getCalendarioPagos()),
             SubfaseTramitacion::fromString($orm->getSubfaseTramitacion()),
+            $orm->getHoldedInvoiceId(),
         );
     }
 
@@ -219,5 +220,6 @@ final class ExpedienteRepository implements ExpedienteRepositoryInterface
         $orm->setFechaUltimoCambioEstado($expediente->fechaUltimoCambioEstado());
         $orm->setFechaFirmaContrato($expediente->fechaFirmaContrato());
         $orm->setCalendarioPagos($expediente->calendarioPagos());
+        $orm->setHoldedInvoiceId($expediente->holdedInvoiceId());
     }
 }
