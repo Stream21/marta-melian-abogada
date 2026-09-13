@@ -21,6 +21,8 @@ TRUNCATE TABLE
     expediente_documento_requerido,
     expediente_escrito,
     expediente_contratacion_paso,
+    expediente_requerimiento_documento,
+    expediente_requerimiento_campo,
     expediente_presentacion_telematica,
     expediente_requerimiento_mercurio,
     expediente_resolucion,
