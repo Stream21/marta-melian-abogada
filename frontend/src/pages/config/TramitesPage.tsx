@@ -15,8 +15,8 @@ export function TramitesPage() {
   const [estadoError, setEstadoError] = useState<string | null>(null);
 
   const { data: servicios = [] } = useQuery({
-    queryKey: ['servicios', { incluirInactivos: true }],
-    queryFn: () => api.getServicios({ incluirInactivos: true }),
+    queryKey: ['servicios', { incluirInactivos: false }],
+    queryFn: () => api.getServicios({ incluirInactivos: false }),
   });
 
   const servicioOptions = useMemo(
