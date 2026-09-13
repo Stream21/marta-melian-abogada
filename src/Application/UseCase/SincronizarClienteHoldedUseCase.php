@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Application\UseCase;
 
-use App\Application\Port\HoldedContactPort;
+use App\Application\DTO\Holded\ClienteHoldedData;
+use App\Application\Port\HoldedPort;
+use App\Application\Service\DocumentoFiscalValidator;
 use App\Domain\Repository\ClienteRepositoryInterface;
 use App\Domain\ValueObject\ClienteId;
 use Psr\Log\LoggerInterface;
@@ -13,7 +15,8 @@ final class SincronizarClienteHoldedUseCase
 {
     public function __construct(
         private ClienteRepositoryInterface $clienteRepository,
-        private HoldedContactPort $holdedContact,
+        private HoldedPort $holdedPort,
+        private DocumentoFiscalValidator $documentoValidator,
         private LoggerInterface $logger,
     ) {
     }
@@ -46,11 +49,27 @@ final class SincronizarClienteHoldedUseCase
         }
 
         try {
-            $holdedId = $this->holdedContact->createContact(
-                $nombre,
-                $email,
-                $cliente->numDocumento(),
-            );
+            $doc = trim($cliente->numDocumento());
+            if ('' !== $doc) {
+                $this->documentoValidator->assertValid(
+                    $cliente->tipoDocumento() !== '' ? $cliente->tipoDocumento() : 'PASAPORTE',
+                    $doc,
+                    $cliente->countryCode(),
+                );
+            }
+
+            $holdedId = $this->holdedPort->findOrCreateContact(new ClienteHoldedData(
+                name: $nombre,
+                email: $email,
+                documentNumber: $doc !== '' ? $doc : $cliente->id()->value(),
+                documentType: $cliente->tipoDocumento(),
+                address: $cliente->domicilio(),
+                city: $cliente->ciudad(),
+                postalCode: $cliente->codigoPostal(),
+                countryCode: $cliente->countryCode(),
+                existingHoldedContactId: $forzar ? null : $cliente->holdedContactId(),
+                phone: $cliente->telefono(),
+            ));
 
             $this->clienteRepository->save($cliente->withHoldedSincronizado($holdedId));
 

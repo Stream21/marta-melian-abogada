@@ -92,6 +92,9 @@ final class HandleStripeWebhookUseCase
                 ) {
                     $result = $this->holdedSync->sync($payment, $expediente);
                     $this->paymentRepository->save($result['payment']);
+                    if ($result['expediente']->holdedInvoiceId() !== $expediente->holdedInvoiceId()) {
+                        $this->expedienteRepository->save($result['expediente']);
+                    }
                 }
             }
 

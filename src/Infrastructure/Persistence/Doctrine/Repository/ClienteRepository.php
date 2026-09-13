@@ -168,6 +168,7 @@ final class ClienteRepository implements ClienteRepositoryInterface
         $telefono = $cliente->telefono();
         $orm->setTelefono('' === $telefono ? null : $telefono);
         $orm->setEmail($cliente->email());
+        $orm->setCountryCode($cliente->countryCode());
         $orm->setHoldedContactId($cliente->holdedContactId());
         $orm->setHoldedEstado($cliente->holdedEstado()->value);
         $orm->setHoldedSyncedAt($cliente->holdedSyncedAt());
@@ -198,6 +199,7 @@ final class ClienteRepository implements ClienteRepositoryInterface
             $orm->getNombreMadre(),
             $orm->getTelefono() ?? '',
             $orm->getEmail(),
+            $orm->getCountryCode() ?: 'ES',
             $orm->getCreatedAt(),
             $orm->getUpdatedAt(),
             $orm->getHoldedContactId(),

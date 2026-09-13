@@ -30,6 +30,7 @@ final class ClienteResponseMapper
             'nombreMadre' => $cliente->nombreMadre(),
             'telefono' => $cliente->telefono(),
             'email' => $cliente->email(),
+            'countryCode' => $cliente->countryCode(),
             'holdedContactId' => $cliente->holdedContactId(),
             'holdedEstado' => $cliente->holdedEstado()->value,
             'holdedEstadoLabel' => $cliente->holdedEstado()->label(),

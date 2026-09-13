@@ -4,29 +4,31 @@ declare(strict_types=1);
 
 namespace App\Application\Service;
 
+use App\Application\DTO\Holded\ClienteHoldedData;
+use App\Application\DTO\Holded\ExpedienteInvoiceData;
+use App\Application\Port\HoldedPort;
 use App\Domain\Entity\Invoice;
 use App\Domain\Repository\ExpedienteRepositoryInterface;
 use App\Domain\Repository\InvoiceRepositoryInterface;
 use App\Domain\ValueObject\ExpedienteId;
-use App\Infrastructure\ApiClient\HoldedApiClient;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Uid\Uuid;
 
+/**
+ * Módulo facturación legacy (UI ModoHolded): usa el mismo HoldedPort unificado.
+ */
 final class PaymentFacadeService
 {
     public function __construct(
-        private readonly HoldedApiClient $holdedApiClient,
+        private readonly HoldedPort $holdedPort,
         private readonly ExpedienteRepositoryInterface $expedienteRepository,
         private readonly InvoiceRepositoryInterface $invoiceRepository,
+        private readonly IgicInvoiceCalculator $igicCalculator,
         private readonly LoggerInterface $logger,
         private readonly string $projectDir,
     ) {
     }
 
-    /**
-     * Creates an invoice linked to an expediente.
-     * Finds or creates a Holded contact using the expediente's clientName and the optional email.
-     */
     public function createFromExpediente(
         string $expedienteId,
         string $concepto,
@@ -41,11 +43,11 @@ final class PaymentFacadeService
             throw new \InvalidArgumentException("Expediente not found: {$expedienteId}");
         }
 
-        $contactId = $this->findOrCreateContact(
-            $expediente->clientName(),
-            $email,
-            $expediente->caseReference(),
-        );
+        $contactId = $this->holdedPort->findOrCreateContact(new ClienteHoldedData(
+            name: $expediente->clientName(),
+            email: $email !== '' ? $email : 'contacto+' . $expedienteId . '@oportunidad.bufete.local',
+            documentNumber: $expediente->caseReference() !== '' ? $expediente->caseReference() : $expediente->numero(),
+        ));
 
         return $this->buildInvoice(
             contactId: $contactId,
@@ -57,9 +59,6 @@ final class PaymentFacadeService
         );
     }
 
-    /**
-     * Creates a quick invoice for an already-existing Holded contact (from /clientes page).
-     */
     public function createFromContact(
         string $contactId,
         string $concepto,
@@ -77,29 +76,11 @@ final class PaymentFacadeService
     }
 
     /**
-     * Returns all contacts from the Holded mock API.
-     *
-     * @return array<int, array<string, mixed>>
+     * @return list<array<string, mixed>>
      */
     public function listContacts(): array
     {
-        return $this->holdedApiClient->listContacts();
-    }
-
-    /**
-     * Looks up an existing contact by email; creates a new one if none found.
-     */
-    private function findOrCreateContact(string $name, string $email, string $code = ''): string
-    {
-        if ($email !== '') {
-            foreach ($this->holdedApiClient->listContacts() as $contact) {
-                if (isset($contact['email']) && $contact['email'] === $email) {
-                    return (string) $contact['id'];
-                }
-            }
-        }
-
-        return $this->holdedApiClient->createContact($name, $email, $code);
+        return $this->holdedPort->listContacts();
     }
 
     private function buildInvoice(
@@ -110,16 +91,25 @@ final class PaymentFacadeService
         string $phone,
         ?string $expedienteId,
     ): Invoice {
-        $invoiceData = $this->holdedApiClient->createInvoice($contactId, [
-            ['desc' => $concepto, 'quantity' => 1, 'price' => $importe],
-        ]);
+        $breakdown = $this->igicCalculator->fromTotalWithTax($importe);
+        $nowCanary = new \DateTimeImmutable('now', new \DateTimeZone('Atlantic/Canary'));
 
-        $holdedId = (string) ($invoiceData['id'] ?? '');
-        $numero   = (string) ($invoiceData['number'] ?? '');
-        $total    = (float) ($invoiceData['total'] ?? $importe);
+        $holdedId = $this->holdedPort->createInvoice(
+            $contactId,
+            new ExpedienteInvoiceData(
+                description: $concepto,
+                totalWithTax: $breakdown['total'],
+                itemName: $concepto,
+                subtotal: $breakdown['subtotal'],
+                taxKey: $breakdown['taxKey'],
+                dateUnix: $nowCanary->getTimestamp(),
+                taxes: $breakdown['taxes'],
+            ),
+        );
 
-        $pdfContent = $this->holdedApiClient->downloadInvoicePdf($holdedId);
-        $pdfPath    = $this->savePdf($contactId, $numero, $pdfContent);
+        $pdfContent = $this->holdedPort->getInvoicePdf($holdedId);
+        $numero = 'FAC-' . $nowCanary->format('Ymd-His');
+        $pdfPath = $this->savePdf($contactId, $numero, $pdfContent);
 
         $invoice = new Invoice(
             id: Uuid::v4()->toRfc4122(),
@@ -128,8 +118,8 @@ final class PaymentFacadeService
             numero: $numero,
             concepto: $concepto,
             modalidad: $modalidad,
-            fecha: new \DateTimeImmutable(),
-            importe: $total,
+            fecha: $nowCanary,
+            importe: $breakdown['total'],
             estadoHolded: 'draft',
             pdfPath: $pdfPath,
             createdAt: new \DateTimeImmutable(),
@@ -139,7 +129,7 @@ final class PaymentFacadeService
 
         if ($phone !== '') {
             $this->logger->info(
-                \sprintf('[TWILIO-SIM] WhatsApp→%s: Factura %s (%.2f€) generada.', $phone, $numero, $total),
+                \sprintf('[TWILIO-SIM] WhatsApp→%s: Factura %s (%.2f€) generada.', $phone, $numero, $breakdown['total']),
             );
         }
 
@@ -148,8 +138,8 @@ final class PaymentFacadeService
 
     private function savePdf(string $contactId, string $numero, string $content): string
     {
-        $relDir  = 'storage/invoices/client_' . $contactId;
-        $absDir  = $this->projectDir . '/public/' . $relDir;
+        $relDir = 'storage/invoices/client_' . $contactId;
+        $absDir = $this->projectDir . '/public/' . $relDir;
 
         if (!is_dir($absDir)) {
             mkdir($absDir, 0755, true);

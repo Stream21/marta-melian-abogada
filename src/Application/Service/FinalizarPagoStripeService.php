@@ -110,10 +110,9 @@ final class FinalizarPagoStripeService
             $calendario = $this->calendarioCobrosService->marcarCuotaPagada($calendario, $cuotaNumero);
         }
 
-        $expedienteActualizado = $expediente->withPaymentStatus('paid')->touchEstadoCambio();
-        if (null !== $calendario) {
-            $expedienteActualizado = $expedienteActualizado->withCalendarioPagos($calendario);
-        }
+        $expedienteActualizado = $this->holdedSync
+            ->applyPaymentStatus($expediente, $calendario)
+            ->touchEstadoCambio();
         $this->expedienteRepository->save($expedienteActualizado);
 
         $pasoPago = $this->contratacionRepository->findPaso($payment->expedienteId(), PasoContratacionCliente::Pago);
@@ -186,6 +185,9 @@ final class FinalizarPagoStripeService
     {
         $result = $this->holdedSync->sync($payment, $expediente);
         $this->paymentRepository->save($result['payment']);
+        if ($result['expediente']->holdedInvoiceId() !== $expediente->holdedInvoiceId()) {
+            $this->expedienteRepository->save($result['expediente']);
+        }
 
         if (!$result['success']) {
             $this->logger->warning('Pago Stripe: cobro registrado, Holded pendiente', [

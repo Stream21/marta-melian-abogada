@@ -93,7 +93,12 @@ final class ObtenerFacturacionExpedienteUseCase
                 'pendientes' => $holdedPendientes,
                 'errores' => $holdedErrores,
                 'requiereAccion' => ($holdedPendientes + $holdedErrores) > 0,
+                'invoiceId' => $expediente->holdedInvoiceId(),
+                'invoicePdfUrl' => null !== $expediente->holdedInvoiceId() && '' !== $expediente->holdedInvoiceId()
+                    ? '/api/expedientes/' . $expediente->id()->value() . '/invoice/pdf'
+                    : null,
             ],
+            'paymentStatus' => $expediente->paymentStatus(),
             'historialPagos' => $historial,
         ];
     }

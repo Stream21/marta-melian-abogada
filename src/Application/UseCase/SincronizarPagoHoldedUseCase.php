@@ -45,6 +45,9 @@ final class SincronizarPagoHoldedUseCase
 
         $result = $this->holdedSync->sync($payment, $expediente, true);
         $this->paymentRepository->save($result['payment']);
+        if ($result['expediente']->holdedInvoiceId() !== $expediente->holdedInvoiceId()) {
+            $this->expedienteRepository->save($result['expediente']);
+        }
 
         if (!$result['success']) {
             return [

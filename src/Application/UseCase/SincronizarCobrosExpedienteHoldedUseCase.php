@@ -59,6 +59,8 @@ final class SincronizarCobrosExpedienteHoldedUseCase
         foreach ($pendientes as $payment) {
             $result = $this->holdedSync->sync($payment, $expediente, true);
             $this->paymentRepository->save($result['payment']);
+            $expediente = $result['expediente'];
+            $this->expedienteRepository->save($expediente);
 
             if ($result['success']) {
                 ++$sincronizados;

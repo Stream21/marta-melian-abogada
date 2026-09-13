@@ -121,6 +121,45 @@ final class CalendarioCobrosService
 
     /**
      * @param list<array{numero: int, importe: float, fechaVencimiento: string, estado: string}>|null $calendario
+     */
+    public function resolverPaymentStatus(?array $calendario, float $honorarios, ?float $importeCobradoExtra = null): string
+    {
+        if (null !== $calendario && [] !== $calendario) {
+            $total = 0.0;
+            $pagado = 0.0;
+            foreach ($calendario as $cuota) {
+                $importe = (float) ($cuota['importe'] ?? 0);
+                $total += $importe;
+                if ('pagado' === ($cuota['estado'] ?? '')) {
+                    $pagado += $importe;
+                }
+            }
+
+            if ($pagado <= 0.009) {
+                return 'pending';
+            }
+
+            $objetivo = $total > 0 ? $total : $honorarios;
+            if ($pagado + 0.009 >= $objetivo) {
+                return 'paid';
+            }
+
+            return 'partial';
+        }
+
+        if (null !== $importeCobradoExtra && $importeCobradoExtra > 0.009) {
+            if ($honorarios <= 0 || $importeCobradoExtra + 0.009 >= $honorarios) {
+                return 'paid';
+            }
+
+            return 'partial';
+        }
+
+        return 'pending';
+    }
+
+    /**
+     * @param list<array{numero: int, importe: float, fechaVencimiento: string, estado: string}>|null $calendario
      *
      * @return list<array{numero: int, importe: float, fechaVencimiento: string, estado: string}>
      */

@@ -31,6 +31,7 @@ final readonly class Cliente
         private string $nombreMadre = '',
         private string $telefono = '',
         private string $email = '',
+        private string $countryCode = 'ES',
         private ?\DateTimeImmutable $createdAt = null,
         private ?\DateTimeImmutable $updatedAt = null,
         private ?string $holdedContactId = null,
@@ -139,6 +140,13 @@ final readonly class Cliente
         return $this->email;
     }
 
+    public function countryCode(): string
+    {
+        $code = strtoupper(trim($this->countryCode));
+
+        return '' !== $code ? $code : 'ES';
+    }
+
     public function createdAt(): ?\DateTimeImmutable
     {
         return $this->createdAt;
@@ -221,6 +229,7 @@ final readonly class Cliente
             $this->nombreMadre,
             $this->telefono,
             $this->email,
+            $this->countryCode,
             $this->createdAt,
             $this->updatedAt,
             $this->holdedContactId,
@@ -250,6 +259,7 @@ final readonly class Cliente
         string $nombreMadre,
         string $telefono,
         string $email,
+        ?string $countryCode = null,
     ): self {
         return new self(
             $this->id,
@@ -268,6 +278,7 @@ final readonly class Cliente
             $nombreMadre,
             $telefono,
             $email,
+            null !== $countryCode ? strtoupper(trim($countryCode)) ?: 'ES' : $this->countryCode(),
             $this->createdAt,
             $this->updatedAt,
             $this->holdedContactId,
@@ -278,6 +289,28 @@ final readonly class Cliente
             $this->documentoIdentidadAnversoPath,
             $this->documentoIdentidadReversoPath,
             $this->documentoIdentidadEscaneadoAt,
+        );
+    }
+
+    public function withCountryCode(string $countryCode): self
+    {
+        return $this->withDatos(
+            $this->nombre,
+            $this->nacionalidad,
+            $this->tipoDocumento,
+            $this->numDocumento,
+            $this->fechaNacimiento,
+            $this->lugarNacimiento,
+            $this->estadoCivil,
+            $this->domicilio,
+            $this->codigoPostal,
+            $this->ciudad,
+            $this->provincia,
+            $this->nombrePadre,
+            $this->nombreMadre,
+            $this->telefono,
+            $this->email,
+            $countryCode,
         );
     }
 
@@ -322,6 +355,7 @@ final readonly class Cliente
             $this->nombreMadre,
             $this->telefono,
             $this->email,
+            $this->countryCode,
             $this->createdAt,
             $this->updatedAt,
             $holdedContactId,
@@ -354,6 +388,7 @@ final readonly class Cliente
             $this->nombreMadre,
             $this->telefono,
             $this->email,
+            $this->countryCode,
             $this->createdAt,
             $this->updatedAt,
             $this->holdedContactId,

@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Infrastructure\Mock;
 
 /**
- * Genera PDFs mínimos pero válidos para simular facturas de Holded en desarrollo.
+ * PDF de prueba: sede Las Palmas, régimen exento de IVA/IGIC.
  */
 final class HoldedMockPdfGenerator
 {
@@ -15,9 +15,19 @@ final class HoldedMockPdfGenerator
         float $total,
         ?string $reference = null,
         ?string $concept = null,
+        ?float $subtotal = null,
+        ?float $taxAmount = null,
+        float $taxPercent = 0.0,
     ): string {
+        $now = new \DateTimeImmutable('now', new \DateTimeZone('Atlantic/Canary'));
+
         $lines = [
             'FACTURA (SIMULACION HOLDED)',
+            'Emisor: Marta Melian Guerra - Autonomo',
+            'NIF: 44737558-M',
+            'C. Picachos, 43, local 2, 35200 Telde',
+            'Las Palmas de Gran Canaria (Canarias)',
+            '--------------------------------',
             'Numero: ' . $number,
             'Cliente: ' . $clientName,
         ];
@@ -30,8 +40,20 @@ final class HoldedMockPdfGenerator
             $lines[] = 'Concepto: ' . $concept;
         }
 
-        $lines[] = 'Importe: ' . number_format($total, 2, '.', '') . ' EUR';
-        $lines[] = 'Fecha: ' . (new \DateTimeImmutable())->format('d/m/Y');
+        if (null !== $subtotal) {
+            $lines[] = 'Base: ' . number_format($subtotal, 2, '.', '') . ' EUR';
+        }
+
+        if ($taxPercent > 0.009 && null !== $taxAmount) {
+            $lines[] = 'Impuesto ' . number_format($taxPercent, 0) . '%: '
+                . number_format($taxAmount, 2, '.', '') . ' EUR';
+        } else {
+            $lines[] = 'Operacion EXENTA de IVA / IGIC (0%)';
+        }
+
+        $lines[] = 'TOTAL: ' . number_format($total, 2, '.', '') . ' EUR';
+        $lines[] = 'Fecha (Atlantic/Canary): ' . $now->format('d/m/Y H:i');
+        $lines[] = 'IRPF: 0% (cliente particular B2C)';
 
         return $this->buildPdf($lines);
     }
@@ -42,12 +64,12 @@ final class HoldedMockPdfGenerator
     private function buildPdf(array $lines): string
     {
         $stream = "BT\n";
-        $stream .= "/F1 12 Tf\n";
-        $stream .= "50 780 Td\n";
+        $stream .= "/F1 11 Tf\n";
+        $stream .= "50 800 Td\n";
 
         foreach ($lines as $index => $line) {
             if ($index > 0) {
-                $stream .= "0 -22 Td\n";
+                $stream .= "0 -16 Td\n";
             }
             $stream .= '(' . $this->escapePdfString($line) . ") Tj\n";
         }

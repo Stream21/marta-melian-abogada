@@ -23,7 +23,7 @@ final class InvoiceController extends AbstractController
     ) {
     }
 
-    /** Proxy to HoldedApiClient::listContacts(). */
+    /** Lista contactos Holded (mock o API real). */
     #[Route(path: '/contacts', name: 'contacts_list', methods: ['GET'])]
     public function listContacts(): JsonResponse
     {

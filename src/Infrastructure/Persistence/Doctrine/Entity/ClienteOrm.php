@@ -60,6 +60,9 @@ class ClienteOrm
     #[ORM\Column(type: Types::STRING, length: 255, options: ['default' => ''])]
     private string $email = '';
 
+    #[ORM\Column(type: Types::STRING, length: 2, options: ['default' => 'ES'])]
+    private string $countryCode = 'ES';
+
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private \DateTimeImmutable $createdAt;
 
@@ -248,6 +251,16 @@ class ClienteOrm
     public function setEmail(string $email): void
     {
         $this->email = $email;
+    }
+
+    public function getCountryCode(): string
+    {
+        return $this->countryCode;
+    }
+
+    public function setCountryCode(string $countryCode): void
+    {
+        $this->countryCode = $countryCode;
     }
 
     public function getCreatedAt(): \DateTimeImmutable
