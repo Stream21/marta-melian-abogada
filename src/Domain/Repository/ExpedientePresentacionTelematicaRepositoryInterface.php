@@ -14,5 +14,12 @@ interface ExpedientePresentacionTelematicaRepositoryInterface
 
     public function findByExpediente(ExpedienteId $expedienteId): ?ExpedientePresentacionTelematica;
 
+    /**
+     * @param list<string> $expedienteIds
+     *
+     * @return array<string, ExpedientePresentacionTelematica>
+     */
+    public function findByExpedienteIds(array $expedienteIds): array;
+
     public function findById(ExpedientePresentacionTelematicaId $id): ?ExpedientePresentacionTelematica;
 }

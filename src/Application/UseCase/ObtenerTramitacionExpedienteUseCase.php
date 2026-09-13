@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Application\UseCase;
 
+use App\Application\Service\RequerimientoMercurioPayloadBuilder;
 use App\Application\Service\TramitacionSubfaseSyncService;
 use App\Domain\Entity\FaseNegocioExpediente;
 use App\Domain\Entity\PlataformaTramitacion;
@@ -23,6 +24,7 @@ final class ObtenerTramitacionExpedienteUseCase
         private ExpedienteRequerimientoMercurioRepositoryInterface $requerimientoRepository,
         private TramiteRepositoryInterface $tramiteRepository,
         private TramitacionSubfaseSyncService $subfaseSync,
+        private RequerimientoMercurioPayloadBuilder $requerimientoPayload,
         private string $frontendBaseUrl,
     ) {
     }
@@ -59,23 +61,7 @@ final class ObtenerTramitacionExpedienteUseCase
 
         $requerimientos = [];
         foreach ($this->requerimientoRepository->findByExpediente($id) as $req) {
-            $requerimientos[] = [
-                'id' => $req->id()->value(),
-                'tipo' => $req->tipo()->value,
-                'tipoLabel' => $req->tipo()->label(),
-                'destino' => $req->destino()->value,
-                'destinoLabel' => $req->destino()->label(),
-                'nombre' => $req->nombre(),
-                'descripcion' => $req->descripcion(),
-                'estado' => $req->estado()->value,
-                'estadoLabel' => $req->estado()->label(),
-                'tieneArchivo' => null !== $req->archivoPath() && '' !== $req->archivoPath(),
-                'archivoNombre' => $req->archivoNombre(),
-                'tieneJustificante' => null !== $req->justificantePresentacionPath()
-                    && '' !== $req->justificantePresentacionPath(),
-                'createdAt' => $req->createdAt()->format(\DateTimeInterface::ATOM),
-                'updatedAt' => $req->updatedAt()->format(\DateTimeInterface::ATOM),
-            ];
+            $requerimientos[] = $this->requerimientoPayload->buildRequerimiento($req, false);
         }
 
         return [
@@ -98,10 +84,7 @@ final class ObtenerTramitacionExpedienteUseCase
             ],
             'requerimientos' => $requerimientos,
             'puedeAvanzarResolucion' => null !== $subfase
-                && (
-                    SubfaseTramitacion::EnSeguimiento === $subfase
-                    || SubfaseTramitacion::ListoResolucion === $subfase
-                )
+                && SubfaseTramitacion::Tramitado === $subfase
                 && 0 === $this->requerimientoRepository->countAbiertosByExpediente($id)
                 && null !== $presentacion
                 && null !== $presentacion->numeroExpedienteExtranjeria(),

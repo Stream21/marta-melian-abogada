@@ -33,6 +33,10 @@ services:
     App\Domain\Repository\FirmaOtpRepositoryInterface: '@App\Infrastructure\Persistence\Doctrine\Repository\FirmaOtpRepository'
     App\Domain\Repository\ExpedientePresentacionTelematicaRepositoryInterface: '@App\Infrastructure\Persistence\Doctrine\Repository\ExpedientePresentacionTelematicaRepository'
     App\Domain\Repository\ExpedienteRequerimientoMercurioRepositoryInterface: '@App\Infrastructure\Persistence\Doctrine\Repository\ExpedienteRequerimientoMercurioRepository'
+    App\Domain\Repository\ExpedienteRequerimientoDocumentoRepositoryInterface: '@App\Infrastructure\Persistence\Doctrine\Repository\ExpedienteRequerimientoDocumentoRepository'
+    App\Domain\Repository\ExpedienteRequerimientoCampoRepositoryInterface: '@App\Infrastructure\Persistence\Doctrine\Repository\ExpedienteRequerimientoCampoRepository'
+    App\Domain\Repository\ServicioCampoFormularioRepositoryInterface: '@App\Infrastructure\Persistence\Doctrine\Repository\ServicioCampoFormularioRepository'
+    App\Domain\Repository\TramiteCampoFormularioRepositoryInterface: '@App\Infrastructure\Persistence\Doctrine\Repository\TramiteCampoFormularioRepository'
     App\Domain\Repository\ExpedienteResolucionRepositoryInterface: '@App\Infrastructure\Persistence\Doctrine\Repository\ExpedienteResolucionRepository'
     App\Domain\Repository\ExpedienteRecordatorioFuturoRepositoryInterface: '@App\Infrastructure\Persistence\Doctrine\Repository\ExpedienteRecordatorioFuturoRepository'
     App\Application\Port\DespachoFileStoragePort: '@App\Infrastructure\Storage\DespachoFileStorage'
@@ -89,7 +93,12 @@ services:
     App\Infrastructure\ApiClient\HoldedService:
         arguments:
             $holdedApiKey: '%env(HOLDED_API_KEY)%'
-            $holdedBaseUrl: '%env(HOLDED_BASE_URL)%'
+            $holdedApiBaseUrl: '%env(HOLDED_API_BASE_URL)%'
+
+    App\Application\Service\IgicInvoiceCalculator:
+        arguments:
+            $taxPercent: '%env(float:HOLDED_TAX_PERCENT)%'
+            $taxKey: '%env(HOLDED_TAX_KEY)%'
 
     App\Infrastructure\ApiClient\StripeService:
         arguments:
@@ -211,20 +220,12 @@ services:
         arguments:
             $projectDir: '%kernel.project_dir%'
 
-    App\Infrastructure\ApiClient\HoldedApiClient:
-        arguments:
-            $holdedApiUrl: '%env(HOLDED_API_URL)%'
-            $holdedMockKey: '%env(HOLDED_MOCK_KEY)%'
-
-    App\Infrastructure\Symfony\Controller\HoldedMockController:
-        arguments:
-            $projectDir: '%kernel.project_dir%'
-            $holdedMockKey: '%env(HOLDED_MOCK_KEY)%'
-
     App\Infrastructure\Symfony\Controller\HoldedInvoicingMockController:
         arguments:
             $projectDir: '%kernel.project_dir%'
             $holdedMockKey: '%env(HOLDED_MOCK_KEY)%'
+            $holdedTaxPercent: '%env(float:HOLDED_TAX_PERCENT)%'
+            $holdedTaxKey: '%env(HOLDED_TAX_KEY)%'
 
     App\Application\Service\PaymentFacadeService:
         arguments:

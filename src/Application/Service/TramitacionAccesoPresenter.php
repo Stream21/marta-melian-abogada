@@ -19,6 +19,7 @@ final class TramitacionAccesoPresenter
         private ExpedientePresentacionTelematicaRepositoryInterface $presentacionRepository,
         private ExpedienteRequerimientoMercurioRepositoryInterface $requerimientoRepository,
         private TramitacionSubfaseSyncService $subfaseSync,
+        private RequerimientoMercurioPayloadBuilder $requerimientoPayload,
     ) {
     }
 
@@ -37,27 +38,23 @@ final class TramitacionAccesoPresenter
 
         $requerimientosCliente = [];
         foreach ($this->requerimientoRepository->findByExpediente($expediente->id()) as $req) {
-            if (DestinoRequerimientoMercurio::Cliente !== $req->destino()) {
+            $payload = $this->requerimientoPayload->buildRequerimiento($req, true);
+            $hasClientDocs = [] !== ($payload['documentos'] ?? []);
+            $hasCampos = [] !== ($payload['campos'] ?? []);
+            if (
+                DestinoRequerimientoMercurio::Cliente !== $req->destino()
+                && !$hasClientDocs
+                && !$hasCampos
+            ) {
                 continue;
             }
-            $requerimientosCliente[] = [
-                'id' => $req->id()->value(),
-                'tipo' => $req->tipo()->value,
-                'tipoLabel' => $req->tipo()->label(),
-                'nombre' => $req->nombre(),
-                'descripcion' => $req->descripcion(),
-                'estado' => $req->estado()->value,
-                'estadoLabel' => $req->estado()->label(),
-                'tieneArchivo' => null !== $req->archivoPath() && '' !== $req->archivoPath(),
-                'puedeSubir' => $req->estado()->value === 'pendiente_cliente',
-            ];
+            $requerimientosCliente[] = $payload;
         }
 
         $estadoCliente = match ($subfase) {
-            SubfaseTramitacion::PreparacionPresentacion => 'preparacion',
-            SubfaseTramitacion::PendienteRecepcion => 'pendiente_tramitacion',
-            SubfaseTramitacion::EnSeguimiento, SubfaseTramitacion::ListoResolucion => 'en_seguimiento',
-            SubfaseTramitacion::RequerimientoAbierto => [] !== array_filter(
+            SubfaseTramitacion::PendienteTramitacion => 'preparacion',
+            SubfaseTramitacion::Tramitado => 'en_seguimiento',
+            SubfaseTramitacion::PendienteRequerimiento => [] !== array_filter(
                 $requerimientosCliente,
                 static fn (array $r) => ($r['estado'] ?? '') === 'pendiente_cliente',
             ) ? 'accion_requerida' : 'en_tramite_despacho',

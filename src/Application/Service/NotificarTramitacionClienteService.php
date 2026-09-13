@@ -41,26 +41,36 @@ final class NotificarTramitacionClienteService
         Expediente $expediente,
         Cliente $cliente,
         string $numeroExpedienteExtranjeria,
+        bool $esActualizacion = false,
     ): bool {
-        return $this->enviar(
-            $cliente,
-            sprintf('Seguimiento disponible — Expediente %s', $expediente->numero()),
-            sprintf(
-                "Ya puede consultar el estado de su solicitud del expediente %s.\n\n"
-                . "Número de expediente de extranjería: %s\n\n"
-                . "Cómo consultar:\n"
-                . "1) Web: %s\n"
-                . "2) SMS gratuito: envíe el texto «EXPE %s» al 651 714 610\n\n"
-                . "Los datos que facilite la Administración tienen carácter meramente informativo.\n\n"
-                . "Portal del expediente:\n%s",
+        $asunto = $esActualizacion
+            ? sprintf('Seguimiento actualizado — Expediente %s', $expediente->numero())
+            : sprintf('Seguimiento disponible — Expediente %s', $expediente->numero());
+        $intro = $esActualizacion
+            ? sprintf(
+                "Se ha actualizado el número de seguimiento de su solicitud del expediente %s.\n\n"
+                . "Nuevo número de expediente de extranjería: %s\n\n",
                 $expediente->numero(),
                 $numeroExpedienteExtranjeria,
-                self::INFOEXT_URL,
+            )
+            : sprintf(
+                "Ya puede consultar el estado de su solicitud del expediente %s.\n\n"
+                . "Número de expediente de extranjería: %s\n\n",
+                $expediente->numero(),
                 $numeroExpedienteExtranjeria,
-                $this->accessUrl($expediente),
-            ),
+            );
+
+        return $this->enviar(
+            $cliente,
+            $asunto,
+            $intro
+            . "Cómo consultar:\n"
+            . '1) Web: '.self::INFOEXT_URL."\n"
+            . sprintf("2) SMS gratuito: envíe el texto «EXPE %s» al 651 714 610\n\n", $numeroExpedienteExtranjeria)
+            . "Los datos que facilite la Administración tienen carácter meramente informativo.\n\n"
+            . "Portal del expediente:\n".$this->accessUrl($expediente),
             $expediente->numero(),
-            'seguimiento',
+            $esActualizacion ? 'seguimiento_actualizado' : 'seguimiento',
         );
     }
 

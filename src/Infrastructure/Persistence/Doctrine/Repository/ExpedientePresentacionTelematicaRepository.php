@@ -48,6 +48,28 @@ final class ExpedientePresentacionTelematicaRepository implements ExpedientePres
         return $orm instanceof ExpedientePresentacionTelematicaOrm ? $this->ormToDomain($orm) : null;
     }
 
+    public function findByExpedienteIds(array $expedienteIds): array
+    {
+        if ([] === $expedienteIds) {
+            return [];
+        }
+
+        /** @var ExpedientePresentacionTelematicaOrm[] $orms */
+        $orms = $this->entityManager->getRepository(ExpedientePresentacionTelematicaOrm::class)
+            ->createQueryBuilder('p')
+            ->where('p.expedienteId IN (:ids)')
+            ->setParameter('ids', $expedienteIds)
+            ->getQuery()
+            ->getResult();
+
+        $result = [];
+        foreach ($orms as $orm) {
+            $result[$orm->getExpedienteId()] = $this->ormToDomain($orm);
+        }
+
+        return $result;
+    }
+
     public function findById(ExpedientePresentacionTelematicaId $id): ?ExpedientePresentacionTelematica
     {
         $orm = $this->entityManager->find(ExpedientePresentacionTelematicaOrm::class, $id->value());

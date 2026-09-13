@@ -19,6 +19,8 @@ use App\Application\UseCase\ObtenerAccesoExpedienteUseCase;
 use App\Application\UseCase\RegistrarFirmaDocumentoUseCase;
 use App\Application\UseCase\SubirDocumentoContratacionUseCase;
 use App\Application\UseCase\SubirDocumentoRequerimientosUseCase;
+use App\Application\UseCase\GuardarCamposRequerimientoMercurioUseCase;
+use App\Application\UseCase\SubirArchivoDocumentoRequerimientoMercurioUseCase;
 use App\Application\UseCase\SubirArchivoRequerimientoMercurioUseCase;
 use App\Application\UseCase\VerificarOtpFirmaAccesoUseCase;
 use App\Domain\Entity\TipoEscrito;
@@ -60,6 +62,8 @@ final class AccesoController extends AbstractController
         private SubirDocumentoContratacionUseCase $subirDocumento,
         private SubirDocumentoRequerimientosUseCase $subirDocumentoRequerimientos,
         private SubirArchivoRequerimientoMercurioUseCase $subirArchivoRequerimientoMercurio,
+        private SubirArchivoDocumentoRequerimientoMercurioUseCase $subirArchivoDocumentoRequerimientoMercurio,
+        private GuardarCamposRequerimientoMercurioUseCase $guardarCamposRequerimientoMercurio,
         private RegistrarFirmaDocumentoUseCase $registrarFirma,
         private EnviarOtpFirmaAccesoUseCase $enviarOtpFirma,
         private VerificarOtpFirmaAccesoUseCase $verificarOtpFirma,
@@ -120,7 +124,7 @@ final class AccesoController extends AbstractController
         }
     }
 
-    #[Route(path: '/{token}/requerimientos/documentos/{docId}', name: 'subir_documento_requerimientos', methods: ['POST'])]
+    #[Route(path: '/{token}/documentacion/documentos/{docId}', name: 'subir_documento_documentacion', methods: ['POST'])]
     public function subirDocumentoRequerimientos(string $token, string $docId, Request $request): JsonResponse
     {
         $archivos = $this->archivosExtractor->extract($request);
@@ -141,6 +145,64 @@ final class AccesoController extends AbstractController
             }
 
             return SafeJsonResponse::message($message, Response::HTTP_BAD_REQUEST);
+        }
+    }
+
+    #[Route(path: '/{token}/tramitacion/requerimientos/{reqId}/documentos/{docId}/archivo', name: 'tramitacion_req_documento_archivo', methods: ['POST'])]
+    public function subirArchivoDocumentoRequerimientoMercurio(string $token, string $reqId, string $docId, Request $request): JsonResponse
+    {
+        $expediente = $this->expedienteRepository->findByAccessToken($token);
+        if (null === $expediente) {
+            return new JsonResponse(['message' => 'Enlace no válido.'], Response::HTTP_NOT_FOUND);
+        }
+
+        $file = $request->files->get('archivo') ?? $request->files->get('file');
+        if (!is_object($file) || !method_exists($file, 'getContent')) {
+            return new JsonResponse(['message' => 'Debe adjuntar un archivo.'], Response::HTTP_BAD_REQUEST);
+        }
+
+        try {
+            ($this->subirArchivoDocumentoRequerimientoMercurio)(
+                $expediente->id()->value(),
+                $reqId,
+                $docId,
+                [
+                    'content' => (string) $file->getContent(),
+                    'filename' => method_exists($file, 'getClientOriginalName')
+                        ? (string) $file->getClientOriginalName()
+                        : 'documento.pdf',
+                ],
+                true,
+            );
+
+            return new SafeJsonResponse(($this->obtenerAcceso)($token));
+        } catch (\InvalidArgumentException|\RuntimeException $e) {
+            return SafeJsonResponse::message($e->getMessage(), Response::HTTP_BAD_REQUEST);
+        }
+    }
+
+    #[Route(path: '/{token}/tramitacion/requerimientos/{reqId}/campos', name: 'tramitacion_req_campos', methods: ['PATCH', 'POST'])]
+    public function guardarCamposRequerimientoMercurioPortal(string $token, string $reqId, Request $request): JsonResponse
+    {
+        $expediente = $this->expedienteRepository->findByAccessToken($token);
+        if (null === $expediente) {
+            return new JsonResponse(['message' => 'Enlace no válido.'], Response::HTTP_NOT_FOUND);
+        }
+
+        $data = json_decode($request->getContent(), true) ?? [];
+        $valores = is_array($data['valores'] ?? null) ? $data['valores'] : (is_array($data['campos'] ?? null) ? $data['campos'] : []);
+
+        try {
+            ($this->guardarCamposRequerimientoMercurio)(
+                $expediente->id()->value(),
+                $reqId,
+                $valores,
+                true,
+            );
+
+            return new SafeJsonResponse(($this->obtenerAcceso)($token));
+        } catch (\InvalidArgumentException|\RuntimeException $e) {
+            return SafeJsonResponse::message($e->getMessage(), Response::HTTP_BAD_REQUEST);
         }
     }
 
@@ -176,7 +238,7 @@ final class AccesoController extends AbstractController
         }
     }
 
-    #[Route(path: '/{token}/requerimientos/documentos/{docId}/archivo', name: 'documento_requerimientos_archivo', methods: ['GET'])]
+    #[Route(path: '/{token}/documentacion/documentos/{docId}/archivo', name: 'documento_documentacion_archivo', methods: ['GET'])]
     public function documentoRequerimientosArchivo(string $token, string $docId, Request $request): Response
     {
         $expediente = $this->expedienteRepository->findByAccessToken($token);

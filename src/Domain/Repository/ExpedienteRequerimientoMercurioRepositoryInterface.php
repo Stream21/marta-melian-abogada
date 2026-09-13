@@ -17,6 +17,13 @@ interface ExpedienteRequerimientoMercurioRepositoryInterface
      */
     public function findByExpediente(ExpedienteId $expedienteId): array;
 
+    /**
+     * @param list<string> $expedienteIds
+     *
+     * @return array<string, list<ExpedienteRequerimientoMercurio>>
+     */
+    public function findByExpedienteIds(array $expedienteIds): array;
+
     public function findById(ExpedienteRequerimientoMercurioId $id): ?ExpedienteRequerimientoMercurio;
 
     public function countAbiertosByExpediente(ExpedienteId $expedienteId): int;

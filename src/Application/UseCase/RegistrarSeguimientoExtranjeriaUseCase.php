@@ -44,16 +44,27 @@ final class RegistrarSeguimientoExtranjeriaUseCase
             throw new \InvalidArgumentException('Registre primero la presentación telemática.');
         }
 
+        $anterior = $presentacion->numeroExpedienteExtranjeria();
         $actualizada = $presentacion->withSeguimiento($numeroExpedienteExtranjeria);
+        $nuevo = $actualizada->numeroExpedienteExtranjeria();
+
+        if ($anterior === $nuevo) {
+            return;
+        }
+
         $this->presentacionRepository->save($actualizada);
 
+        $esActualizacion = null !== $anterior && '' !== $anterior;
         $this->contratacionRepository->saveHito(new ExpedienteHito(
             bin2hex(random_bytes(16)),
             $id,
-            'seguimiento_extranjeria_asignado',
+            $esActualizacion ? 'seguimiento_extranjeria_actualizado' : 'seguimiento_extranjeria_asignado',
             sprintf(
-                'Número de expediente de extranjería asignado: %s.',
-                $actualizada->numeroExpedienteExtranjeria(),
+                $esActualizacion
+                    ? 'Número de expediente de extranjería actualizado: %s (antes %s).'
+                    : 'Número de expediente de extranjería asignado: %s.',
+                $nuevo,
+                $anterior,
             ),
             ActorHitoExpediente::Abogado,
             new \DateTimeImmutable('now'),
@@ -67,7 +78,8 @@ final class RegistrarSeguimientoExtranjeriaUseCase
                 $this->notificar->notificarSeguimientoAsignado(
                     $expediente,
                     $cliente,
-                    (string) $actualizada->numeroExpedienteExtranjeria(),
+                    (string) $nuevo,
+                    $esActualizacion,
                 );
             }
         }

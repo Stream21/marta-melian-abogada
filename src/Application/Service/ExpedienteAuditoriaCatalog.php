@@ -8,8 +8,14 @@ final class ExpedienteAuditoriaCatalog
 {
     public function categoriaForTipo(string $tipo): string
     {
-        if (str_starts_with($tipo, 'documento_requerimientos') || 'documento_requerido_anadido' === $tipo || 'fase_requerimientos_iniciada' === $tipo) {
-            return 'requerimientos';
+        if (
+            str_starts_with($tipo, 'documento_requerimientos')
+            || str_starts_with($tipo, 'documento_documentacion')
+            || 'documento_requerido_anadido' === $tipo
+            || 'fase_requerimientos_iniciada' === $tipo
+            || 'fase_documentacion_iniciada' === $tipo
+        ) {
+            return 'documentacion';
         }
 
         if (str_contains($tipo, 'presentacion_telematica') || str_contains($tipo, 'seguimiento_extranjeria') || str_contains($tipo, 'requerimiento_mercurio') || 'fase_tramitacion_iniciada' === $tipo || 'fase_resolucion_iniciada' === $tipo) {
@@ -60,7 +66,8 @@ final class ExpedienteAuditoriaCatalog
     {
         return match ($categoria) {
             'contratacion' => 'Contratación',
-            'requerimientos' => 'Requerimientos',
+            'documentacion' => 'Documentación',
+            'requerimientos' => 'Documentación',
             'tramitacion' => 'Tramitación',
             'resolucion' => 'Resolución',
             'comunicacion' => 'Comunicación',
@@ -98,7 +105,8 @@ final class ExpedienteAuditoriaCatalog
             'notificacion_enviada' => 'Notificación enviada',
             'notificacion_alta_expediente' => 'Alta expediente notificada',
             'notificacion_enlace_enviado' => 'Enlace enviado al cliente',
-            'fase_requerimientos_iniciada' => 'Inicio requerimientos',
+            'fase_requerimientos_iniciada' => 'Inicio documentación',
+            'fase_documentacion_iniciada' => 'Inicio documentación',
             'fase_tramitacion_iniciada' => 'Inicio tramitación',
             'fase_resolucion_iniciada' => 'Inicio resolución',
             'resolucion_registrada' => 'Resolución registrada',
@@ -107,13 +115,17 @@ final class ExpedienteAuditoriaCatalog
             'expediente_archivado' => 'Expediente archivado',
             'presentacion_telematica_registrada' => 'Presentación telemática',
             'seguimiento_extranjeria_asignado' => 'Seguimiento extranjería',
+            'seguimiento_extranjeria_actualizado' => 'Seguimiento extranjería actualizado',
             'requerimiento_mercurio_anadido' => 'Requerimiento Mercurio añadido',
             'requerimiento_mercurio_archivo' => 'Archivo requerimiento Mercurio',
             'requerimiento_mercurio_presentado' => 'Requerimiento Mercurio presentado',
-            'documento_requerimientos_subido' => 'Documento subido (requerimientos)',
-            'documento_requerimientos_validado' => 'Documento validado (requerimientos)',
-            'documento_requerimientos_devuelto' => 'Documento devuelto (requerimientos)',
-            'documento_requerido_anadido' => 'Documento requerido añadido',
+            'documento_requerimientos_subido' => 'Documento subido (documentación)',
+            'documento_requerimientos_validado' => 'Documento validado (documentación)',
+            'documento_requerimientos_devuelto' => 'Documento devuelto (documentación)',
+            'documento_documentacion_subido' => 'Documento subido (documentación)',
+            'documento_documentacion_validado' => 'Documento validado (documentación)',
+            'documento_documentacion_devuelto' => 'Documento devuelto (documentación)',
+            'documento_requerido_anadido' => 'Documento de documentación añadido',
             'expediente_cancelado' => 'Expediente cancelado',
             'expediente_reabierto' => 'Expediente reabierto',
             'expediente_archivado' => 'Expediente archivado',

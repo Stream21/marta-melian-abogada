@@ -38,6 +38,8 @@ final class ExpedienteRequerimientoMercurioRepository implements ExpedienteReque
         $orm->setArchivoPath($requerimiento->archivoPath());
         $orm->setArchivoNombre($requerimiento->archivoNombre());
         $orm->setJustificantePresentacionPath($requerimiento->justificantePresentacionPath());
+        $orm->setFormularioNombre($requerimiento->formularioNombre());
+        $orm->setFormularioCometido($requerimiento->formularioCometido());
         $orm->setCreatedAt($requerimiento->createdAt());
         $orm->setUpdatedAt($requerimiento->updatedAt());
 
@@ -53,6 +55,32 @@ final class ExpedienteRequerimientoMercurioRepository implements ExpedienteReque
         );
 
         return array_map($this->ormToDomain(...), $orms);
+    }
+
+    public function findByExpedienteIds(array $expedienteIds): array
+    {
+        if ([] === $expedienteIds) {
+            return [];
+        }
+
+        /** @var ExpedienteRequerimientoMercurioOrm[] $orms */
+        $orms = $this->entityManager->getRepository(ExpedienteRequerimientoMercurioOrm::class)
+            ->createQueryBuilder('r')
+            ->where('r.expedienteId IN (:ids)')
+            ->setParameter('ids', $expedienteIds)
+            ->orderBy('r.updatedAt', 'ASC')
+            ->getQuery()
+            ->getResult();
+
+        $result = [];
+        foreach ($expedienteIds as $expedienteId) {
+            $result[$expedienteId] = [];
+        }
+        foreach ($orms as $orm) {
+            $result[$orm->getExpedienteId()][] = $this->ormToDomain($orm);
+        }
+
+        return $result;
     }
 
     public function findById(ExpedienteRequerimientoMercurioId $id): ?ExpedienteRequerimientoMercurio
@@ -91,6 +119,8 @@ final class ExpedienteRequerimientoMercurioRepository implements ExpedienteReque
             $orm->getArchivoPath(),
             $orm->getArchivoNombre(),
             $orm->getJustificantePresentacionPath(),
+            $orm->getFormularioNombre(),
+            $orm->getFormularioCometido(),
             $orm->getCreatedAt(),
             $orm->getUpdatedAt(),
         );
