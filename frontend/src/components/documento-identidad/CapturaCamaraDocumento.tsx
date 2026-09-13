@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Camera, Loader2, X } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { capturarVideoRecortado, evaluarFrameCaptura } from '@/lib/captura-documento-calidad';
 import {
   analizarMarcoConOcr,
@@ -423,25 +422,56 @@ export function CapturaCamaraDocumento({
         </div>
       )}
 
-      {/* Pie mínimo */}
-      <div className="absolute inset-x-0 bottom-0 z-10 space-y-3 bg-gradient-to-t from-black/80 via-black/50 to-transparent px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-10">
+      {/* Pie: pista + obturador grande (intuitivo en móvil para personas mayores) */}
+      <div className="absolute inset-x-0 bottom-0 z-10 flex flex-col items-center gap-3 bg-gradient-to-t from-black/85 via-black/55 to-transparent px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-12">
         {error ? (
           <p className="text-center text-sm text-amber-200">{error}</p>
+        ) : autoActivo ? (
+          <p className="text-center text-base font-semibold text-white">Capturando…</p>
         ) : (
-          mostrandoBarra &&
-          pista && <p className="text-center text-sm text-white/85">{autoActivo ? 'Capturando…' : pista}</p>
+          <>
+            {mostrandoBarra && pista ? (
+              <p className="max-w-sm text-center text-sm text-white/80">{pista}</p>
+            ) : null}
+            {listo ? (
+              <p
+                className={cn(
+                  'text-center text-lg font-bold tracking-wide text-white',
+                  'motion-safe:animate-captura-cta-blink',
+                )}
+              >
+                Pulse aquí para sacar la foto
+              </p>
+            ) : null}
+          </>
         )}
-        <Button
+
+        <button
           type="button"
-          size="lg"
-          variant="secondary"
-          className="h-12 w-full bg-white/15 text-white hover:bg-white/25"
           onClick={capturar}
           disabled={!listo || !!error || autoActivo}
+          aria-label={autoActivo ? 'Capturando' : 'Pulse aquí para sacar la foto'}
+          className={cn(
+            'relative flex h-[4.75rem] w-[4.75rem] shrink-0 items-center justify-center rounded-full',
+            'border-[3px] border-white bg-white/95 text-foreground shadow-lg',
+            'transition-transform active:scale-95',
+            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black',
+            'disabled:cursor-not-allowed disabled:opacity-60',
+            listo && !error && !autoActivo && 'motion-safe:animate-captura-shutter-pulse',
+          )}
         >
-          <Camera className="mr-2 h-5 w-5" />
-          {autoActivo ? 'Capturando…' : 'Capturar ahora'}
-        </Button>
+          {autoActivo ? (
+            <Loader2 className="h-8 w-8 animate-spin motion-reduce:animate-none" />
+          ) : (
+            <Camera className="h-8 w-8" aria-hidden />
+          )}
+        </button>
+
+        {!error && listo && !autoActivo ? (
+          <p className="text-center text-xs text-white/65">
+            También puede esperar: la foto se hará sola al encajar el documento
+          </p>
+        ) : null}
       </div>
     </div>
   );

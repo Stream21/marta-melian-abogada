@@ -196,7 +196,7 @@ export function ImagenDocumentoCaptura({
             type="button"
             onClick={abrirCamara}
             disabled={procesando}
-            aria-label="Pulse para abrir la cámara"
+            aria-label="Pulse aquí para sacar la foto"
             className={cn(
               'group relative overflow-hidden rounded-2xl bg-transparent shadow-none',
               'transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
@@ -217,9 +217,27 @@ export function ImagenDocumentoCaptura({
               <span aria-hidden className="pointer-events-none absolute right-2 top-2 h-5 w-5 border-r-2 border-t-2 border-primary" />
               <span aria-hidden className="pointer-events-none absolute bottom-2 left-2 h-5 w-5 border-b-2 border-l-2 border-primary" />
               <span aria-hidden className="pointer-events-none absolute bottom-2 right-2 h-5 w-5 border-b-2 border-r-2 border-primary" />
-              <div className="absolute inset-0 flex items-center justify-center">
-                <span className="flex h-16 w-16 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-md transition-transform group-hover:scale-105 group-active:scale-95">
-                  <Camera className="h-8 w-8" />
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 px-4">
+                <span
+                  className={cn(
+                    'flex h-[4.75rem] w-[4.75rem] items-center justify-center rounded-full',
+                    'bg-primary text-primary-foreground shadow-md',
+                    'transition-transform group-active:scale-95',
+                    'motion-safe:animate-captura-shutter-pulse-brand',
+                  )}
+                >
+                  <Camera className="h-9 w-9" aria-hidden />
+                </span>
+                <span
+                  className={cn(
+                    'max-w-[14rem] text-center text-base font-bold leading-snug text-primary',
+                    'motion-safe:animate-captura-cta-blink',
+                  )}
+                >
+                  Pulse aquí para sacar la foto
+                </span>
+                <span className="max-w-[16rem] text-center text-xs text-muted-foreground">
+                  Se abrirá la cámara. Encaje el documento en el marco.
                 </span>
               </div>
               </div>

@@ -1,4 +1,6 @@
 parameters:
+    # Fallback si HOLDED_ENV_PREFIX no está definida (default:: solo devolvía null).
+    holded_env_prefix_default: ''
 
 services:
     _defaults:
@@ -94,7 +96,7 @@ services:
         arguments:
             $holdedApiKey: '%env(HOLDED_API_KEY)%'
             $holdedApiBaseUrl: '%env(HOLDED_API_BASE_URL)%'
-            $holdedEnvPrefix: '%env(default::HOLDED_ENV_PREFIX)%'
+            $holdedEnvPrefix: '%env(default:holded_env_prefix_default:HOLDED_ENV_PREFIX)%'
 
     App\Application\Service\IgicInvoiceCalculator:
         arguments:

@@ -278,8 +278,60 @@ html.portal-focus-lock #root {
   animation: scroll-hint-pulse 1.8s ease-in-out infinite;
 }
 
+@keyframes captura-shutter-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.55);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 0 14px rgba(255, 255, 255, 0);
+    transform: scale(1.04);
+  }
+}
+
+@keyframes captura-shutter-pulse-brand {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--primary) 45%, transparent);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 0 16px color-mix(in srgb, var(--primary) 0%, transparent);
+    transform: scale(1.05);
+  }
+}
+
+@keyframes captura-cta-blink {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.motion-safe\:animate-captura-shutter-pulse {
+  animation: captura-shutter-pulse 1.6s ease-in-out infinite;
+}
+
+.motion-safe\:animate-captura-shutter-pulse-brand {
+  animation: captura-shutter-pulse-brand 1.6s ease-in-out infinite;
+}
+
+.motion-safe\:animate-captura-cta-blink {
+  animation: captura-cta-blink 1.2s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .motion-safe\:animate-scroll-hint-pulse {
+    animation: none !important;
+  }
+
+  .motion-safe\:animate-captura-shutter-pulse,
+  .motion-safe\:animate-captura-shutter-pulse-brand,
+  .motion-safe\:animate-captura-cta-blink {
     animation: none !important;
   }
 }

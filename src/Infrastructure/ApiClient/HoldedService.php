@@ -29,9 +29,9 @@ final class HoldedService implements HoldedPort
         private string $holdedApiKey,
         private string $holdedApiBaseUrl,
         private LoggerInterface $logger,
-        string $holdedEnvPrefix = '',
+        ?string $holdedEnvPrefix = null,
     ) {
-        $this->envPrefix = strtoupper(trim($holdedEnvPrefix));
+        $this->envPrefix = strtoupper(trim((string) ($holdedEnvPrefix ?? '')));
     }
 
     public function findOrCreateContact(ClienteHoldedData $clientData): string
