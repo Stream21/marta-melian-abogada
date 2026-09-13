@@ -5,7 +5,7 @@ import { ExternalLink } from 'lucide-react';
 import { api } from '@/api/client';
 import type { ExpedienteNotificacionSearch } from '@/lib/notificacion-destino';
 import { ContratacionGestionPanel } from '@/components/expedientes/contratacion/ContratacionGestionPanel';
-import { RequerimientosGestionPanel } from '@/components/expedientes/requerimientos/RequerimientosGestionPanel';
+import { DocumentacionGestionPanel } from '@/components/expedientes/documentacion/DocumentacionGestionPanel';
 import { TramitacionPanel } from '@/components/expedientes/tramitacion/TramitacionPanel';
 import { ResolucionPanel } from '@/components/expedientes/resolucion/ResolucionPanel';
 import { ExpedienteEscritosPanel } from '@/components/expedientes/escritos/ExpedienteEscritosPanel';
@@ -14,6 +14,7 @@ import { ExpedienteDocumentacionPanel } from '@/components/expedientes/Expedient
 import { ExpedienteAuditoriaPanel } from '@/components/expedientes/ExpedienteAuditoriaPanel';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
+import { ExpedienteSubfaseBadge } from '@/components/expedientes/ExpedienteSubfaseBadge';
 import { ExpedienteGestionToolbarActions } from '@/components/expedientes/ExpedienteGestionToolbarActions';
 import { ExpedienteEstadoActions } from '@/components/expedientes/ExpedienteEstadoActions';
 import { consumirNotificacionAlta } from '@/lib/email-notificacion';
@@ -24,13 +25,6 @@ interface ExpedienteDetailPageProps {
   expedienteId: string;
   notificacionSearch?: ExpedienteNotificacionSearch;
 }
-
-const FASE_LABELS: Record<string, string> = {
-  contratacion: 'Contratación',
-  requerimientos: 'Requerimientos',
-  tramitacion: 'Tramitación',
-  resolucion: 'Resolución',
-};
 
 export function ExpedienteDetailPage({ expedienteId, notificacionSearch }: ExpedienteDetailPageProps) {
   const navigate = useNavigate();
@@ -47,7 +41,8 @@ export function ExpedienteDetailPage({ expedienteId, notificacionSearch }: Exped
     queryFn: () => api.getExpediente(expedienteId),
   });
 
-  const tabFromNotificacion = notificacionSearch?.tab;
+  const tabFromNotificacion =
+    notificacionSearch?.tab === 'documentacion' ? 'archivo' : notificacionSearch?.tab;
   const [activeTab, setActiveTab] = useState(tabFromNotificacion ?? 'gestion');
 
   useEffect(() => {
@@ -112,18 +107,13 @@ export function ExpedienteDetailPage({ expedienteId, notificacionSearch }: Exped
               </p>
             )}
 
-            {expediente.faseNegocio && expediente.faseNegocio !== 'contratacion' && (
-              <Badge variant="info">
-                {FASE_LABELS[expediente.faseNegocio] ?? expediente.faseNegocio}
-              </Badge>
-            )}
             {expediente.faseNegocio === 'tramitacion' && expediente.actorBandejaTramitacion && (
               <Badge variant={expediente.actorBandejaTramitacion === 'despacho' ? 'warning' : 'info'}>
                 {expediente.actorBandejaTramitacion === 'despacho' ? 'En despacho' : 'En Mercurio'}
               </Badge>
             )}
-            {expediente.faseNegocio === 'tramitacion' && expediente.subfaseTramitacionLabel ? (
-              <Badge variant="secondary">{expediente.subfaseTramitacionLabel}</Badge>
+            {expediente.faseNegocio === 'tramitacion' ? (
+              <ExpedienteSubfaseBadge expediente={expediente} />
             ) : null}
           </div>
         )}
@@ -150,7 +140,7 @@ export function ExpedienteDetailPage({ expedienteId, notificacionSearch }: Exped
             <TabsTrigger value="escritos" disabled={expediente?.faseNegocio === 'contratacion'}>
               Escritos
             </TabsTrigger>
-            <TabsTrigger value="documentacion">Documentación</TabsTrigger>
+            <TabsTrigger value="archivo">Archivo</TabsTrigger>
             <TabsTrigger value="auditoria">Auditoría</TabsTrigger>
             <TabsTrigger value="facturacion">Facturación</TabsTrigger>
           </TabsList>
@@ -183,15 +173,15 @@ export function ExpedienteDetailPage({ expedienteId, notificacionSearch }: Exped
               abrirRevision={notificacionSearch?.revision === '1'}
               onFocusConsumed={limpiarNotificacionSearch}
             />
-          ) : expediente?.faseNegocio === 'requerimientos' ? (
-            <RequerimientosGestionPanel
+          ) : expediente?.faseNegocio === 'documentacion' ? (
+            <DocumentacionGestionPanel
               expedienteId={expedienteId}
               focusDocumentoId={notificacionSearch?.documento}
               abrirRevision={notificacionSearch?.revision === '1'}
               onFocusConsumed={limpiarNotificacionSearch}
             />
           ) : expediente?.faseNegocio === 'tramitacion' ? (
-            <TramitacionPanel expedienteId={expedienteId} numero={expediente.numero} />
+            <TramitacionPanel expedienteId={expedienteId} />
           ) : expediente?.faseNegocio === 'resolucion' ? (
             <ResolucionPanel expedienteId={expedienteId} numero={expediente.numero} />
           ) : expediente ? (
@@ -209,7 +199,7 @@ export function ExpedienteDetailPage({ expedienteId, notificacionSearch }: Exped
             <StubTab label="Escritos" />
           )}
         </TabsContent>
-        <TabsContent value="documentacion">
+        <TabsContent value="archivo">
           <ExpedienteDocumentacionPanel expedienteId={expedienteId} />
         </TabsContent>
         <TabsContent value="auditoria">
@@ -232,7 +222,7 @@ function FaseEscritosNoDisponible() {
     <div className="panel p-8 text-center">
       <p className="font-medium">Escritos no disponibles en fase de contratación</p>
       <p className="mt-2 mx-auto max-w-md text-sm text-muted-foreground">
-        Los escritos adicionales (requerimientos, tramitación, resolución) estarán disponibles a
+        Los escritos adicionales (documentación, tramitación, resolución) estarán disponibles a
         partir de la fase 2. En contratación solo se generan los documentos legales firmados por el
         cliente.
       </p>

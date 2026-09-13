@@ -4,7 +4,7 @@ import { useMercureContratacion } from '@/hooks/useMercureContratacion';
 import {
   api,
   openAuthenticatedDocument,
-  type RequerimientosDocumentoResponse,
+  type DocumentacionDocumentoResponse,
 } from '@/api/client';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -14,10 +14,9 @@ import {
   ActiveDocumentUploadsPanel,
   type ActiveDocumentUpload,
 } from '@/components/cliente-portal/ActiveDocumentUploadsPanel';
-import { DocumentoLimiteBadge } from '@/components/cliente-portal/DocumentoLimiteBadge';
-import { DocumentoPdfGaleria } from '@/components/expedientes/requerimientos/DocumentoPdfGaleria';
-import { RequerimientosDocumentoRevisionModal } from './RequerimientosDocumentoRevisionModal';
-import { RequerimientosDerivarClienteModal } from './RequerimientosDerivarClienteModal';
+import { DocumentoPdfGaleria } from '@/components/expedientes/documentacion/DocumentoPdfGaleria';
+import { DocumentacionDocumentoRevisionModal } from './DocumentacionDocumentoRevisionModal';
+import { DocumentacionDerivarClienteModal } from './DocumentacionDerivarClienteModal';
 import {
   Dialog,
   DialogContent,
@@ -27,7 +26,7 @@ import {
 import { cn } from '@/lib/utils';
 import { CheckCircle2, Clock, FileText, RotateCcw, UserRound, XCircle } from 'lucide-react';
 
-interface RequerimientosGestionPanelProps {
+interface DocumentacionGestionPanelProps {
   expedienteId: string;
   focusDocumentoId?: string;
   abrirRevision?: boolean;
@@ -61,7 +60,7 @@ function estadoIcon(estado: string) {
 }
 
 function puedeAdjuntarAbogado(
-  doc: RequerimientosDocumentoResponse,
+  doc: DocumentacionDocumentoResponse,
   reemplazando: boolean,
 ): boolean {
   if (doc.puedeSubirAbogado === false) return false;
@@ -71,50 +70,49 @@ function puedeAdjuntarAbogado(
   return doc.puedeSubirAbogado === true;
 }
 
-function esAportadoPorAbogado(doc: RequerimientosDocumentoResponse): boolean {
+function esAportadoPorAbogado(doc: DocumentacionDocumentoResponse): boolean {
   return doc.estado === 'validado' && doc.subidoPor === 'abogado';
 }
 
-function esValidadoPorCliente(doc: RequerimientosDocumentoResponse): boolean {
+function esValidadoPorCliente(doc: DocumentacionDocumentoResponse): boolean {
   return doc.estado === 'validado' && doc.subidoPor === 'cliente';
 }
 
-function esParcialAbogado(doc: RequerimientosDocumentoResponse): boolean {
+function esParcialAbogado(doc: DocumentacionDocumentoResponse): boolean {
   return Boolean(doc.parcialConArchivos && doc.responsableActual === 'abogado');
 }
 
-export function RequerimientosGestionPanel({
+export function DocumentacionGestionPanel({
   expedienteId,
   focusDocumentoId,
   abrirRevision,
   onFocusConsumed,
-}: RequerimientosGestionPanelProps) {
+}: DocumentacionGestionPanelProps) {
   const queryClient = useQueryClient();
   useMercureContratacion(expedienteId);
   const focusHandled = useRef<string | null>(null);
 
-  const [modalDoc, setModalDoc] = useState<RequerimientosDocumentoResponse | null>(null);
+  const [modalDoc, setModalDoc] = useState<DocumentacionDocumentoResponse | null>(null);
   const [modalModo, setModalModo] = useState<'revision' | 'devolucion'>('revision');
-  const [galeriaDoc, setGaleriaDoc] = useState<RequerimientosDocumentoResponse | null>(null);
+  const [galeriaDoc, setGaleriaDoc] = useState<DocumentacionDocumentoResponse | null>(null);
   const [uploadingId, setUploadingId] = useState<string | null>(null);
   const [activeUploads, setActiveUploads] = useState<ActiveDocumentUpload[]>([]);
   const [abriendoPdfId, setAbriendoPdfId] = useState<string | null>(null);
   const [uploadVersion, setUploadVersion] = useState(0);
   const [reemplazandoDocId, setReemplazandoDocId] = useState<string | null>(null);
   const [confirmacionSubidaId, setConfirmacionSubidaId] = useState<string | null>(null);
-  const [derivarDoc, setDerivarDoc] = useState<RequerimientosDocumentoResponse | null>(null);
-  const [modoSubidaPorDoc, setModoSubidaPorDoc] = useState<Record<string, 'validar' | 'aportar'>>({});
+  const [derivarDoc, setDerivarDoc] = useState<DocumentacionDocumentoResponse | null>(null);
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ['requerimientos', expedienteId],
-    queryFn: () => api.getRequerimientos(expedienteId),
+    queryKey: ['documentacion-fase', expedienteId],
+    queryFn: () => api.getDocumentacion(expedienteId),
     refetchInterval: 8000,
   });
 
   const validarMutation = useMutation({
-    mutationFn: (docId: string) => api.validarDocumentoRequerimientos(expedienteId, docId),
+    mutationFn: (docId: string) => api.validarDocumentoDocumentacion(expedienteId, docId),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['requerimientos', expedienteId] });
+      void queryClient.invalidateQueries({ queryKey: ['documentacion-fase', expedienteId] });
       void queryClient.invalidateQueries({ queryKey: ['expedientes'] });
       setModalDoc(null);
       setModalModo('revision');
@@ -123,9 +121,9 @@ export function RequerimientosGestionPanel({
 
   const devolverMutation = useMutation({
     mutationFn: ({ docId, nota }: { docId: string; nota: string }) =>
-      api.devolverDocumentoRequerimientos(expedienteId, docId, nota),
+      api.devolverDocumentoDocumentacion(expedienteId, docId, nota),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['requerimientos', expedienteId] });
+      void queryClient.invalidateQueries({ queryKey: ['documentacion-fase', expedienteId] });
       setModalDoc(null);
       setModalModo('revision');
     },
@@ -140,9 +138,9 @@ export function RequerimientosGestionPanel({
       docId: string;
       files: File[];
       modo: 'validar' | 'aportar';
-    }) => api.subirDocumentoRequerimientosAbogado(expedienteId, docId, files, modo),
+    }) => api.subirDocumentoDocumentacionAbogado(expedienteId, docId, files, modo),
     onSuccess: (_data, variables) => {
-      void queryClient.invalidateQueries({ queryKey: ['requerimientos', expedienteId] });
+      void queryClient.invalidateQueries({ queryKey: ['documentacion-fase', expedienteId] });
       void queryClient.invalidateQueries({ queryKey: ['expedientes'] });
       setUploadVersion((v) => v + 1);
       if (variables.modo === 'validar') {
@@ -157,17 +155,17 @@ export function RequerimientosGestionPanel({
   });
 
   const asignarAbogadoMutation = useMutation({
-    mutationFn: (docId: string) => api.asignarDocumentoRequerimientoAbogado(expedienteId, docId),
+    mutationFn: (docId: string) => api.asignarDocumentoDocumentacionAbogado(expedienteId, docId),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['requerimientos', expedienteId] });
+      void queryClient.invalidateQueries({ queryKey: ['documentacion-fase', expedienteId] });
     },
   });
 
   const derivarClienteMutation = useMutation({
     mutationFn: ({ docId, nota }: { docId: string; nota: string }) =>
-      api.derivarDocumentoRequerimientoCliente(expedienteId, docId, nota),
+      api.derivarDocumentoDocumentacionCliente(expedienteId, docId, nota),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['requerimientos', expedienteId] });
+      void queryClient.invalidateQueries({ queryKey: ['documentacion-fase', expedienteId] });
       setDerivarDoc(null);
     },
   });
@@ -196,20 +194,20 @@ export function RequerimientosGestionPanel({
   }, [data, focusDocumentoId, abrirRevision, onFocusConsumed]);
 
   if (isLoading) {
-    return <p className="text-muted-foreground py-8 text-center">Cargando requerimientos…</p>;
+    return <p className="text-muted-foreground py-8 text-center">Cargando documentación…</p>;
   }
 
   if (error || !data) {
     return (
       <p className="text-destructive py-8 text-center">
-        No se pudo cargar la fase de requerimientos.
+        No se pudo cargar la fase de documentación.
       </p>
     );
   }
 
-  const listo = data.progreso.requerimientosListo;
+  const listo = data.progreso.documentacionListo;
 
-  const abrirDocumento = async (doc: RequerimientosDocumentoResponse) => {
+  const abrirDocumento = async (doc: DocumentacionDocumentoResponse) => {
     const archivos = doc.archivos ?? [];
     if (archivos.length > 1) {
       setGaleriaDoc(doc);
@@ -220,7 +218,7 @@ export function RequerimientosGestionPanel({
     try {
       const archivoId = archivos[0]?.id;
       await openAuthenticatedDocument(
-        api.requerimientosDocumentoArchivoUrl(expedienteId, doc.id, archivoId),
+        api.documentacionFaseDocumentoArchivoUrl(expedienteId, doc.id, archivoId),
       );
     } catch (e) {
       window.alert(e instanceof Error ? e.message : 'No se pudo abrir el documento.');
@@ -234,34 +232,24 @@ export function RequerimientosGestionPanel({
       <div className="panel p-6">
         <div className="flex flex-wrap items-start justify-between gap-4 mb-6">
           <div>
-            <p className="section-label">Fase 2</p>
-            <h2 className="panel-title">Requerimientos documentales</h2>
-            <p className="text-sm text-muted-foreground mt-1">
+            <h2 className="text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
+              Fase 2 · Documentación
+            </h2>
+            <p className="mt-1.5 text-sm text-muted-foreground">
               Valide los documentos del cliente o adjúntelos usted directamente. Cada archivo subido se
               guarda como PDF independiente.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            {data.progreso.enRevision > 0 && (
+              <Badge variant="warning">
+                {data.progreso.enRevision} en revisión
+              </Badge>
+            )}
             <Badge variant={listo ? 'success' : 'secondary'}>
               {data.progreso.validados}/{data.progreso.total} docs
-              {data.progreso.enRevision > 0
-                ? ' · revisión'
-                : data.progreso.pendientesEntrega + data.progreso.rechazados > 0
-                  ? ` · faltan ${data.progreso.pendientesEntrega + data.progreso.rechazados}`
-                  : ''}
             </Badge>
-            <Badge variant={listo ? 'success' : 'warning'}>
-              {listo ? 'Listo para presentación' : 'En progreso'}
-            </Badge>
-            {data.progreso.enRevision > 0 && (
-              <Badge variant="warning">{data.progreso.enRevision} en revisión</Badge>
-            )}
-            {data.agenteResponsableExpediente === 'cliente' && (
-              <Badge variant="secondary">Pendiente del cliente</Badge>
-            )}
-            {data.agenteResponsableExpediente === 'abogado' && (
-              <Badge variant="info">Acción del abogado</Badge>
-            )}
+            {listo && <Badge variant="success">Listo para presentación</Badge>}
           </div>
         </div>
 
@@ -280,8 +268,9 @@ export function RequerimientosGestionPanel({
               const mostrarPdf = doc.tieneArchivo && !mostrarRevision;
               const aportadoPorAbogado = esAportadoPorAbogado(doc);
               const parcialAbogado = esParcialAbogado(doc);
-              const mostrarSubida = puedeAdjuntarAbogado(doc, reemplazandoDocId === doc.id);
-              const modoSubida = modoSubidaPorDoc[doc.id] ?? (doc.tipo === 'conjunto' ? 'aportar' : 'validar');
+              const mostrarSubida =
+                puedeAdjuntarAbogado(doc, reemplazandoDocId === doc.id) && !doc.puedeTomarAbogado;
+              const modoSubida = doc.tipo === 'conjunto' ? 'aportar' : 'validar';
               const mostrarConfirmacionSubida = confirmacionSubidaId === doc.id && aportadoPorAbogado;
               const archivos = doc.archivos ?? [];
               const mostrarPdfParcial = parcialAbogado && archivos.length > 0;
@@ -302,17 +291,8 @@ export function RequerimientosGestionPanel({
                       <div className="flex flex-wrap items-center gap-2">
                         <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
                         <span className="font-medium">{doc.nombre}</span>
-                        {doc.obligatorio && <Badge variant="secondary">Obligatorio</Badge>}
+                        {doc.obligatorio && <Badge variant="warning">Obligatorio</Badge>}
                         <Badge variant={estadoBadgeVariant(doc.estado)}>{doc.estadoLabel}</Badge>
-                        {doc.responsableActual === 'abogado' && doc.estado !== 'validado' && (
-                          <Badge variant="info">A cargo del abogado</Badge>
-                        )}
-                        {doc.responsableActual === 'cliente' &&
-                          (doc.estado === 'pendiente' || doc.estado === 'rechazado') && (
-                            <Badge variant="secondary">Pendiente del cliente</Badge>
-                          )}
-                        <Badge variant="outline">{doc.origenLabel}</Badge>
-                        <DocumentoLimiteBadge tipo={doc.tipo} maxImagenes={doc.maxImagenes} />
                       </div>
                       {doc.descripcion && (
                         <p className="text-sm text-muted-foreground">{doc.descripcion}</p>
@@ -357,7 +337,7 @@ export function RequerimientosGestionPanel({
                           disabled={asignarAbogadoMutation.isPending}
                           onClick={() => asignarAbogadoMutation.mutate(doc.id)}
                         >
-                          Tomar requisito
+                          Adjuntar por abogado
                         </Button>
                       )}
                       {doc.puedeDerivarCliente && (
@@ -459,7 +439,7 @@ export function RequerimientosGestionPanel({
                               {aportadoPorAbogado
                                 ? 'Sustituir el documento adjuntado'
                                 : parcialAbogado
-                                  ? 'Añadir más archivos antes de derivar'
+                                  ? 'Añadir más archivos'
                                   : 'Adjuntar en nombre del cliente'}
                             </p>
                             {aportadoPorAbogado && (
@@ -473,30 +453,6 @@ export function RequerimientosGestionPanel({
                               </Button>
                             )}
                           </div>
-                          {!aportadoPorAbogado && (
-                            <div className="flex flex-wrap gap-2">
-                              <Button
-                                type="button"
-                                size="sm"
-                                variant={modoSubida === 'validar' ? 'default' : 'outline'}
-                                onClick={() =>
-                                  setModoSubidaPorDoc((prev) => ({ ...prev, [doc.id]: 'validar' }))
-                                }
-                              >
-                                Validar y cerrar
-                              </Button>
-                              <Button
-                                type="button"
-                                size="sm"
-                                variant={modoSubida === 'aportar' ? 'default' : 'outline'}
-                                onClick={() =>
-                                  setModoSubidaPorDoc((prev) => ({ ...prev, [doc.id]: 'aportar' }))
-                                }
-                              >
-                                Aportar y derivar después
-                              </Button>
-                            </div>
-                          )}
                           <DocumentoArchivoUploadControl
                             tipo={doc.tipo}
                             maxImagenes={doc.maxImagenes}
@@ -512,7 +468,7 @@ export function RequerimientosGestionPanel({
                                 : null
                             }
                             readyLabel="Listo — adjuntar documento"
-                            showLimiteHeader={false}
+                            showLimiteHeader
                             onUpload={(files) => {
                               setUploadingId(doc.id);
                               setActiveUploads((prev) => [
@@ -541,7 +497,7 @@ export function RequerimientosGestionPanel({
         </div>
       </div>
 
-      <RequerimientosDerivarClienteModal
+      <DocumentacionDerivarClienteModal
         doc={derivarDoc}
         open={derivarDoc !== null}
         onClose={() => setDerivarDoc(null)}
@@ -550,7 +506,7 @@ export function RequerimientosGestionPanel({
         error={derivarClienteMutation.error?.message ?? null}
       />
 
-      <RequerimientosDocumentoRevisionModal
+      <DocumentacionDocumentoRevisionModal
         doc={modalDoc}
         open={modalDoc !== null}
         onClose={() => {
@@ -558,7 +514,7 @@ export function RequerimientosGestionPanel({
           setModalModo('revision');
         }}
         buildArchivoUrl={(archivoId) =>
-          api.requerimientosDocumentoArchivoUrl(expedienteId, modalDoc!.id, archivoId)
+          api.documentacionFaseDocumentoArchivoUrl(expedienteId, modalDoc!.id, archivoId)
         }
         modo={modalModo}
         onValidar={(docId) => validarMutation.mutate(docId)}
@@ -577,7 +533,7 @@ export function RequerimientosGestionPanel({
             <DocumentoPdfGaleria
               archivos={galeriaDoc.archivos ?? []}
               buildUrl={(archivoId) =>
-                api.requerimientosDocumentoArchivoUrl(expedienteId, galeriaDoc.id, archivoId)
+                api.documentacionFaseDocumentoArchivoUrl(expedienteId, galeriaDoc.id, archivoId)
               }
               title={galeriaDoc.nombre}
             />

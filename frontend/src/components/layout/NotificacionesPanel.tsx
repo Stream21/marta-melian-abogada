@@ -44,7 +44,7 @@ function notificacionVisual(n: NotificacionResponse) {
   if (n.tipo.includes('pago') || n.tipo.includes('stripe')) {
     return { icon: CheckCircle, iconBg: 'bg-emerald-100', iconColor: 'text-emerald-700' };
   }
-  if (n.tipo.includes('requerimientos')) {
+  if (n.tipo.includes('documentacion') || n.tipo.includes('requerimientos')) {
     return { icon: FileText, iconBg: 'bg-violet-100', iconColor: 'text-violet-700' };
   }
   if (n.tipo.includes('firma') || n.tipo.includes('paso_completado')) {

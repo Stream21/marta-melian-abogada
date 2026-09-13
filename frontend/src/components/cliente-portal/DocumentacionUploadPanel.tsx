@@ -8,7 +8,7 @@ import {
   FileWarning,
   Upload,
 } from 'lucide-react';
-import { api, type AccesoRequerimientosDocumentoResponse } from '@/api/client';
+import { api, type AccesoDocumentacionDocumentoResponse } from '@/api/client';
 import { DocumentoArchivoUploadControl } from '@/components/cliente-portal/DocumentoArchivoUploadControl';
 import {
   ActiveDocumentUploadsPanel,
@@ -18,14 +18,14 @@ import { DocumentoArchivosSubidosList } from '@/components/cliente-portal/Docume
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 
-interface RequerimientosUploadPanelProps {
+interface DocumentacionUploadPanelProps {
   token: string;
-  documentos: AccesoRequerimientosDocumentoResponse[];
+  documentos: AccesoDocumentacionDocumentoResponse[];
 }
 
 type GrupoId = 'accion' | 'revision' | 'completados';
 
-function estadoLabel(doc: AccesoRequerimientosDocumentoResponse) {
+function estadoLabel(doc: AccesoDocumentacionDocumentoResponse) {
   if (doc.estadoLabel) return doc.estadoLabel;
   switch (doc.estado) {
     case 'validado':
@@ -39,7 +39,7 @@ function estadoLabel(doc: AccesoRequerimientosDocumentoResponse) {
   }
 }
 
-function clasificarGrupo(doc: AccesoRequerimientosDocumentoResponse): GrupoId {
+function clasificarGrupo(doc: AccesoDocumentacionDocumentoResponse): GrupoId {
   if (doc.estado === 'validado') return 'completados';
   if (doc.estado === 'entregado') return 'revision';
   // Lo gestiona el abogado: no mezclarlo con lo que el cliente debe subir.
@@ -104,16 +104,14 @@ function DocumentoRequisitoCard({
   uploading,
   uploadVersion,
   errorMessage,
-  confirmacionEnvio,
   onUpload,
   expanded,
   onToggle,
 }: {
-  doc: AccesoRequerimientosDocumentoResponse;
+  doc: AccesoDocumentacionDocumentoResponse;
   uploading: boolean;
   uploadVersion: number;
   errorMessage: string | null;
-  confirmacionEnvio: boolean;
   onUpload: (files: File[]) => void;
   expanded: boolean;
   onToggle: () => void;
@@ -178,26 +176,30 @@ function DocumentoRequisitoCard({
           <div className="flex flex-wrap items-center gap-2">
             <h4 className="text-base font-semibold leading-snug text-foreground">
               {doc.nombre}
+              {doc.obligatorio && requiereAccion && (
+                <span className="ml-1 text-amber-700" title="Obligatorio" aria-label="Obligatorio">
+                  *
+                </span>
+              )}
             </h4>
-            {doc.obligatorio && requiereAccion && (
-              <Badge variant="warning">Obligatorio</Badge>
-            )}
           </div>
-          <div className="mt-1.5">
-            <Badge
-              variant={
-                validado
-                  ? 'success'
-                  : enRevision
-                    ? 'warning'
-                    : rechazado
-                      ? 'destructive'
-                      : 'secondary'
-              }
-            >
-              {estadoLabel(doc)}
-            </Badge>
-          </div>
+          {!pendiente && (
+            <div className="mt-1.5">
+              <Badge
+                variant={
+                  validado
+                    ? 'success'
+                    : enRevision
+                      ? 'warning'
+                      : rechazado
+                        ? 'destructive'
+                        : 'secondary'
+                }
+              >
+                {estadoLabel(doc)}
+              </Badge>
+            </div>
+          )}
           {!expanded && doc.descripcion && requiereAccion && (
             <p className="mt-1.5 line-clamp-1 text-sm text-muted-foreground">
               {doc.descripcion}
@@ -223,22 +225,16 @@ function DocumentoRequisitoCard({
             <DocumentoArchivosSubidosList archivos={doc.archivos ?? []} />
           )}
 
-          {confirmacionEnvio && (
-            <div className="flex gap-2 rounded-lg border border-emerald-200 bg-emerald-50/80 p-3 text-sm text-emerald-900">
-              <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+          {enRevision && (
+            <div className="flex gap-2 rounded-lg border border-amber-200 bg-amber-50/80 p-3 text-sm text-amber-950">
+              <Clock className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
               <div>
                 <p className="font-semibold">Enviado correctamente</p>
-                <p className="mt-0.5 text-emerald-800/90">
-                  Su abogado lo revisará. Quedará bloqueado hasta que lo valide o lo devuelva.
+                <p className="mt-0.5 text-amber-900/90">
+                  Su abogado lo revisará. No podrá modificarlo hasta que lo valide o lo devuelva.
                 </p>
               </div>
             </div>
-          )}
-
-          {enRevision && !confirmacionEnvio && (
-            <p className="text-sm text-amber-900">
-              En revisión. No podrá modificarlo hasta que su abogado actúe.
-            </p>
           )}
 
           {derivadoAlCliente && (
@@ -246,7 +242,7 @@ function DocumentoRequisitoCard({
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
               <p>
                 Su abogado aportó parte de la documentación. Complete lo que falta en este
-                requisito.
+                documento.
               </p>
             </div>
           )}
@@ -303,26 +299,24 @@ function DocumentoRequisitoCard({
   );
 }
 
-export function RequerimientosUploadPanel({ token, documentos }: RequerimientosUploadPanelProps) {
+export function DocumentacionUploadPanel({ token, documentos }: DocumentacionUploadPanelProps) {
   const queryClient = useQueryClient();
   const [uploadingId, setUploadingId] = useState<string | null>(null);
   const [activeUploads, setActiveUploads] = useState<ActiveDocumentUpload[]>([]);
   const [errorDocId, setErrorDocId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [uploadVersion, setUploadVersion] = useState(0);
-  const [confirmacionEnvioId, setConfirmacionEnvioId] = useState<string | null>(null);
-  const [expandedDocId, setExpandedDocId] = useState<string | null>(null);
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(() => new Set());
   const [accordionInicializado, setAccordionInicializado] = useState(false);
 
   const uploadMutation = useMutation({
     mutationFn: ({ docId, files }: { docId: string; files: File[] }) =>
-      api.subirDocumentoRequerimientos(token, docId, files),
+      api.subirDocumentoDocumentacion(token, docId, files),
     onSuccess: (_data, variables) => {
       setErrorDocId(null);
       setErrorMessage(null);
       setUploadVersion((v) => v + 1);
-      setConfirmacionEnvioId(variables.docId);
-      setExpandedDocId(variables.docId);
+      setExpandedIds((prev) => new Set(prev).add(variables.docId));
       void queryClient.invalidateQueries({ queryKey: ['acceso', token] });
     },
     onError: (error, variables) => {
@@ -336,9 +330,9 @@ export function RequerimientosUploadPanel({ token, documentos }: RequerimientosU
   });
 
   const grupos = useMemo(() => {
-    const accion: AccesoRequerimientosDocumentoResponse[] = [];
-    const revision: AccesoRequerimientosDocumentoResponse[] = [];
-    const completados: AccesoRequerimientosDocumentoResponse[] = [];
+    const accion: AccesoDocumentacionDocumentoResponse[] = [];
+    const revision: AccesoDocumentacionDocumentoResponse[] = [];
+    const completados: AccesoDocumentacionDocumentoResponse[] = [];
 
     for (const doc of documentos) {
       const g = clasificarGrupo(doc);
@@ -357,7 +351,7 @@ export function RequerimientosUploadPanel({ token, documentos }: RequerimientosU
     if (accordionInicializado || documentos.length === 0) return;
     setAccordionInicializado(true);
     if (primerPendienteId) {
-      setExpandedDocId(primerPendienteId);
+      setExpandedIds(new Set([primerPendienteId]));
     }
   }, [accordionInicializado, documentos.length, primerPendienteId]);
 
@@ -370,14 +364,19 @@ export function RequerimientosUploadPanel({ token, documentos }: RequerimientosU
   }
 
   const toggleDoc = (docId: string) => {
-    setExpandedDocId((actual) => (actual === docId ? null : docId));
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(docId)) {
+        next.delete(docId);
+      } else {
+        next.add(docId);
+      }
+      return next;
+    });
   };
 
-  const renderCard = (doc: AccesoRequerimientosDocumentoResponse) => {
-    const expanded =
-      expandedDocId === doc.id ||
-      uploadingId === doc.id ||
-      (confirmacionEnvioId === doc.id && doc.estado === 'entregado');
+  const renderCard = (doc: AccesoDocumentacionDocumentoResponse) => {
+    const expanded = expandedIds.has(doc.id) || uploadingId === doc.id;
 
     return (
       <DocumentoRequisitoCard
@@ -386,15 +385,13 @@ export function RequerimientosUploadPanel({ token, documentos }: RequerimientosU
         uploading={uploadingId === doc.id}
         uploadVersion={uploadVersion}
         errorMessage={errorDocId === doc.id ? errorMessage : null}
-        confirmacionEnvio={confirmacionEnvioId === doc.id && doc.estado === 'entregado'}
         expanded={expanded}
         onToggle={() => toggleDoc(doc.id)}
         onUpload={(files) => {
           setUploadingId(doc.id);
-          setExpandedDocId(doc.id);
+          setExpandedIds((prev) => new Set(prev).add(doc.id));
           setErrorDocId(null);
           setErrorMessage(null);
-          setConfirmacionEnvioId(null);
           setActiveUploads((prev) => [
             ...prev.filter((item) => item.docId !== doc.id),
             {

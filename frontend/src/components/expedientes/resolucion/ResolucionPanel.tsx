@@ -9,7 +9,6 @@ import {
   FileText,
   FileUp,
   Loader2,
-  Scale,
   Send,
   ThumbsDown,
   ThumbsUp,
@@ -67,20 +66,16 @@ export function ResolucionPanel({ expedienteId, numero }: ResolucionPanelProps) 
 
   return (
     <div className="space-y-6">
-      <div className="panel space-y-4 p-6">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="flex items-start gap-3">
-            <div className="panel-header-icon">
-              <Scale className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="section-label">Fase 4 · {numero}</p>
-              <h2 className="panel-title mt-1">Resolución</h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {data.tramiteNombre ??
-                  'Registre el sentido de la resolución, gestiones posteriores y cierre.'}
-              </p>
-            </div>
+      <div className="panel p-6">
+        <div className="flex flex-wrap items-start justify-between gap-4 mb-6">
+          <div>
+            <h2 className="text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
+              Fase 4 · Resolución
+            </h2>
+            <p className="mt-1.5 text-sm text-muted-foreground">
+              {data.tramiteNombre ??
+                'Registre el sentido de la resolución, gestiones posteriores y cierre.'}
+            </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             {data.resolucion && (
@@ -99,6 +94,7 @@ export function ResolucionPanel({ expedienteId, numero }: ResolucionPanelProps) 
             <Badge variant={data.estado === 'archivado' ? 'secondary' : 'info'}>
               {data.estadoLabel}
             </Badge>
+            <Badge variant="outline">{numero}</Badge>
           </div>
         </div>
 

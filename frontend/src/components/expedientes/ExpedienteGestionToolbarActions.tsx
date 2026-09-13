@@ -21,8 +21,8 @@ export function ExpedienteGestionToolbarActions({
   if (faseNegocio === 'contratacion') {
     return <ContratacionToolbarActions expedienteId={expedienteId} />;
   }
-  if (faseNegocio === 'requerimientos') {
-    return <RequerimientosToolbarActions expedienteId={expedienteId} />;
+  if (faseNegocio === 'documentacion') {
+    return <DocumentacionToolbarActions expedienteId={expedienteId} />;
   }
   if (faseNegocio === 'tramitacion') {
     return <TramitacionToolbarActions expedienteId={expedienteId} />;
@@ -110,21 +110,21 @@ function ContratacionToolbarActions({ expedienteId }: { expedienteId: string }) 
   );
 }
 
-function RequerimientosToolbarActions({ expedienteId }: { expedienteId: string }) {
+function DocumentacionToolbarActions({ expedienteId }: { expedienteId: string }) {
   const queryClient = useQueryClient();
   const [mostrarAddDoc, setMostrarAddDoc] = useState(false);
 
   const { data } = useQuery({
-    queryKey: ['requerimientos', expedienteId],
-    queryFn: () => api.getRequerimientos(expedienteId),
+    queryKey: ['documentacion-fase', expedienteId],
+    queryFn: () => api.getDocumentacion(expedienteId),
     refetchInterval: 8000,
   });
 
   const agregarMutation = useMutation({
     mutationFn: (values: DocumentoRequeridoFormValues) =>
-      api.agregarDocumentoRequerimientos(expedienteId, values),
+      api.agregarDocumentoDocumentacion(expedienteId, values),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['requerimientos', expedienteId] });
+      void queryClient.invalidateQueries({ queryKey: ['documentacion-fase', expedienteId] });
       setMostrarAddDoc(false);
     },
   });
@@ -132,7 +132,7 @@ function RequerimientosToolbarActions({ expedienteId }: { expedienteId: string }
   const avanzarMutation = useMutation({
     mutationFn: () => api.avanzarTramitacion(expedienteId),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['requerimientos', expedienteId] });
+      void queryClient.invalidateQueries({ queryKey: ['documentacion-fase', expedienteId] });
       void queryClient.invalidateQueries({ queryKey: ['expediente', expedienteId] });
       void queryClient.invalidateQueries({ queryKey: ['expedientes'] });
     },

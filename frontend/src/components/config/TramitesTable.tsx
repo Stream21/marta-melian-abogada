@@ -34,8 +34,6 @@ import {
 
   ChevronsUpDown,
 
-  Pencil,
-
   Settings2,
 
   Power,
@@ -170,6 +168,22 @@ export function TramitesTable({
 
       {
 
+        id: 'nombre',
+
+        accessorKey: 'nombre',
+
+        header: 'Nombre',
+
+        cell: ({ row }) => (
+
+          <span className="font-semibold text-foreground">{row.original.nombre}</span>
+
+        ),
+
+      },
+
+      {
+
         id: 'servicioNombre',
 
         accessorKey: 'servicioNombre',
@@ -181,22 +195,6 @@ export function TramitesTable({
         cell: ({ row }) => (
 
           <span className="text-sm text-foreground">{row.original.servicioNombre ?? '—'}</span>
-
-        ),
-
-      },
-
-      {
-
-        id: 'nombre',
-
-        accessorKey: 'nombre',
-
-        header: 'Nombre',
-
-        cell: ({ row }) => (
-
-          <span className="font-semibold text-foreground">{row.original.nombre}</span>
 
         ),
 
@@ -332,26 +330,6 @@ export function TramitesTable({
 
                 type="button"
 
-                className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-40"
-
-                aria-label="Editar ficha"
-
-                title="Editar ficha"
-
-                onClick={() => onEdit(row.original.id)}
-
-                disabled={busy}
-
-              >
-
-                <Pencil className="h-4 w-4" />
-
-              </button>
-
-              <button
-
-                type="button"
-
                 className={cn(
 
                   'rounded-lg p-2 text-muted-foreground transition-colors hover:bg-muted disabled:opacity-40',
@@ -382,7 +360,7 @@ export function TramitesTable({
 
     ],
 
-    [onConfigure, onEdit, togglingId],
+    [onConfigure, togglingId],
 
   );
 
@@ -603,7 +581,12 @@ export function TramitesTable({
 
                 table.getRowModel().rows.map((row) => (
 
-                  <TableRow key={row.id} className="group border-b transition-colors hover:bg-primary/5">
+                  <TableRow
+                    key={row.id}
+                    className="group cursor-pointer border-b transition-colors hover:bg-primary/5"
+                    title="Doble clic para editar ficha"
+                    onDoubleClick={() => onEdit(row.original.id)}
+                  >
 
                     {row.getVisibleCells().map((cell) => (
 
@@ -612,6 +595,10 @@ export function TramitesTable({
                         key={cell.id}
 
                         className={cn('px-6 py-4', cell.column.id === 'acciones' && 'text-right')}
+
+                        onClick={cell.column.id === 'acciones' ? (e) => e.stopPropagation() : undefined}
+
+                        onDoubleClick={cell.column.id === 'acciones' ? (e) => e.stopPropagation() : undefined}
 
                       >
 

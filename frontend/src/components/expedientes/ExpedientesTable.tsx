@@ -24,12 +24,15 @@ import {
 } from '@/components/ui/table';
 import { labelFaseNegocio } from '@/lib/portal-fases';
 import { capitalizeDisplay } from '@/lib/capitalize-display';
+import { ExpedienteCobrosBadge } from '@/components/expedientes/ExpedienteCobrosBadge';
 import { ExpedienteSubfaseBadge } from '@/components/expedientes/ExpedienteSubfaseBadge';
+import { ExpedienteVencimientoBadge } from '@/components/expedientes/ExpedienteVencimientoBadge';
 import {
   labelEstadoExpediente,
   normalizarEstadoFiltro,
   variantEstadoExpediente,
 } from '@/lib/expediente-estado';
+import { proximoVencimiento, tienePlazoUrgente, tienePlazoVencido } from '@/lib/vencimiento-proximo';
 import { cn } from '@/lib/utils';
 
 interface ExpedientesTableProps {
@@ -39,13 +42,70 @@ interface ExpedientesTableProps {
   onRefresh?: () => void;
 }
 
+function formatFechaAlta(iso: string | null | undefined): string {
+  if (!iso) return '—';
+  try {
+    return new Date(iso).toLocaleDateString('es-ES', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    });
+  } catch {
+    return '—';
+  }
+}
+
+function matchesAtencionFilter(exp: ExpedienteResponse, atencionFilter: string[]): boolean {
+  if (atencionFilter.length === 0) return true;
+  return atencionFilter.some((value) => {
+    if (value === 'avisos') return (exp.avisosPendientes ?? 0) > 0;
+    if (value === 'vencidos') return (exp.resumenCobros?.vencidas ?? 0) > 0;
+    if (value === 'plazo_vencido') return tienePlazoVencido(exp);
+    if (value === 'plazo_urgente') return tienePlazoUrgente(exp);
+    if (value === 'cobro_pendiente') {
+      return exp.paymentStatus === 'pending' || exp.paymentStatus === 'partial';
+    }
+    return false;
+  });
+}
+
+function matchesSubfaseFilter(exp: ExpedienteResponse, subfaseFilter: string[]): boolean {
+  if (subfaseFilter.length === 0) return true;
+
+  return subfaseFilter.some((value) => {
+    if (value.startsWith('contratacion:')) {
+      const codigo = value.slice('contratacion:'.length);
+      return (
+        exp.faseNegocio === 'contratacion' && exp.subfaseContratacion?.codigo === codigo
+      );
+    }
+    if (value.startsWith('tramitacion:')) {
+      const codigo = value.slice('tramitacion:'.length);
+      return exp.faseNegocio === 'tramitacion' && exp.subfaseTramitacion === codigo;
+    }
+    if (value === 'documentacion:pendientes') {
+      return (
+        exp.faseNegocio === 'documentacion' && (exp.subfaseDocumentacion?.pendientes ?? 0) > 0
+      );
+    }
+    if (value === 'documentacion:revision') {
+      return (
+        exp.faseNegocio === 'documentacion' && (exp.subfaseDocumentacion?.enRevision ?? 0) > 0
+      );
+    }
+    return false;
+  });
+}
+
 export function ExpedientesTable({ data, isLoading, isFetching, onRefresh }: ExpedientesTableProps) {
   const navigate = useNavigate();
   const [globalFilter, setGlobalFilter] = useState('');
   const [estadoFilter, setEstadoFilter] = useState<string[]>(['abierto']);
   const [faseFilter, setFaseFilter] = useState<string[]>([]);
   const [cobroFilter, setCobroFilter] = useState<string[]>([]);
-  const [avisosFilter, setAvisosFilter] = useState<string[]>([]);
+  const [atencionFilter, setAtencionFilter] = useState<string[]>([]);
+  const [metodoPagoFilter, setMetodoPagoFilter] = useState<string[]>([]);
+  const [subfaseFilter, setSubfaseFilter] = useState<string[]>([]);
 
   const filteredData = useMemo(() => {
     return data.filter((exp) => {
@@ -55,12 +115,29 @@ export function ExpedientesTable({ data, isLoading, isFetching, onRefresh }: Exp
       ) {
         return false;
       }
-      if (faseFilter.length > 0 && (!exp.faseNegocio || !faseFilter.includes(exp.faseNegocio))) return false;
+      if (faseFilter.length > 0 && (!exp.faseNegocio || !faseFilter.includes(exp.faseNegocio))) {
+        return false;
+      }
       if (cobroFilter.length > 0 && !cobroFilter.includes(exp.paymentStatus)) return false;
-      if (avisosFilter.includes('pendientes') && (exp.avisosPendientes ?? 0) === 0) return false;
+      if (!matchesAtencionFilter(exp, atencionFilter)) return false;
+      if (
+        metodoPagoFilter.length > 0 &&
+        (!exp.metodoPago || !metodoPagoFilter.includes(exp.metodoPago))
+      ) {
+        return false;
+      }
+      if (!matchesSubfaseFilter(exp, subfaseFilter)) return false;
       return true;
     });
-  }, [data, estadoFilter, faseFilter, cobroFilter, avisosFilter]);
+  }, [
+    data,
+    estadoFilter,
+    faseFilter,
+    cobroFilter,
+    atencionFilter,
+    metodoPagoFilter,
+    subfaseFilter,
+  ]);
 
   const columns = useMemo<ColumnDef<ExpedienteResponse>[]>(
     () => [
@@ -95,27 +172,22 @@ export function ExpedientesTable({ data, isLoading, isFetching, onRefresh }: Exp
       {
         accessorKey: 'faseNegocio',
         header: 'Fase',
-        cell: ({ row }) => (
-          <div className="flex flex-wrap items-center gap-1.5">
-            {row.original.faseNegocio ? (
-              <Badge variant="info">{labelFaseNegocio(row.original.faseNegocio)}</Badge>
-            ) : (
-              <span className="text-muted-foreground">—</span>
-            )}
-            {row.original.faseNegocio === 'tramitacion' && row.original.actorBandejaTramitacion && (
-              <Badge
-                variant={row.original.actorBandejaTramitacion === 'despacho' ? 'warning' : 'secondary'}
-              >
-                {row.original.actorBandejaTramitacion === 'despacho' ? 'Despacho' : 'Mercurio'}
-              </Badge>
-            )}
-          </div>
-        ),
+        cell: ({ row }) =>
+          row.original.faseNegocio ? (
+            <Badge variant="info">{labelFaseNegocio(row.original.faseNegocio)}</Badge>
+          ) : (
+            <span className="text-muted-foreground">—</span>
+          ),
       },
       {
         id: 'subfase',
         header: 'Subfase',
         cell: ({ row }) => <ExpedienteSubfaseBadge expediente={row.original} />,
+      },
+      {
+        id: 'cobros',
+        header: 'Cobros',
+        cell: ({ row }) => <ExpedienteCobrosBadge expediente={row.original} />,
       },
       {
         accessorKey: 'avisosPendientes',
@@ -128,11 +200,14 @@ export function ExpedientesTable({ data, isLoading, isFetching, onRefresh }: Exp
 
           const detalle = row.original.avisosDetalle;
           const tooltipParts: string[] = [];
+          if (detalle?.notificaciones) {
+            tooltipParts.push(`Sin leer: ${detalle.notificaciones}`);
+          }
           if (detalle?.contratacion) {
             tooltipParts.push(`Contratación: ${detalle.contratacion}`);
           }
-          if (detalle?.requerimientos) {
-            tooltipParts.push(`Requerimientos: ${detalle.requerimientos}`);
+          if (detalle?.documentacion) {
+            tooltipParts.push(`Documentación: ${detalle.documentacion}`);
           }
 
           return (
@@ -140,7 +215,7 @@ export function ExpedientesTable({ data, isLoading, isFetching, onRefresh }: Exp
               variant="warning"
               title={tooltipParts.length > 0 ? tooltipParts.join(' · ') : undefined}
             >
-              {total} pendiente{total !== 1 ? 's' : ''}
+              {total} sin leer
             </Badge>
           );
         },
@@ -156,12 +231,25 @@ export function ExpedientesTable({ data, isLoading, isFetching, onRefresh }: Exp
       },
       {
         accessorKey: 'fechaApertura',
-        header: 'Fecha',
+        header: 'Alta',
+        sortingFn: (a, b) => {
+          const fa = a.original.fechaApertura ?? '';
+          const fb = b.original.fechaApertura ?? '';
+          return fa.localeCompare(fb);
+        },
         cell: ({ row }) => (
-          <span className="text-muted-foreground">
-            {new Date(row.original.fechaApertura).toLocaleDateString('es-ES')}
-          </span>
+          <span className="text-muted-foreground">{formatFechaAlta(row.original.fechaApertura)}</span>
         ),
+      },
+      {
+        id: 'proximoVencimiento',
+        header: 'Vencimiento',
+        sortingFn: (a, b) => {
+          const fa = proximoVencimiento(a.original)?.fecha ?? '9999-99-99';
+          const fb = proximoVencimiento(b.original)?.fecha ?? '9999-99-99';
+          return fa.localeCompare(fb);
+        },
+        cell: ({ row }) => <ExpedienteVencimientoBadge expediente={row.original} />,
       },
     ],
     [],
@@ -190,7 +278,6 @@ export function ExpedientesTable({ data, isLoading, isFetching, onRefresh }: Exp
     initialState: { pagination: { pageSize: 15 } },
   });
 
-
   return (
     <div className="panel overflow-hidden">
       <ConfigListToolbar
@@ -218,7 +305,7 @@ export function ExpedientesTable({ data, isLoading, isFetching, onRefresh }: Exp
             onChange: setFaseFilter,
             options: [
               { value: 'contratacion', label: 'Contratación' },
-              { value: 'requerimientos', label: 'Requerimientos' },
+              { value: 'documentacion', label: 'Documentación' },
               { value: 'tramitacion', label: 'Tramitación' },
               { value: 'resolucion', label: 'Resolución' },
             ],
@@ -231,17 +318,57 @@ export function ExpedientesTable({ data, isLoading, isFetching, onRefresh }: Exp
             onChange: setCobroFilter,
             options: [
               { value: 'pending', label: 'Pendiente' },
+              { value: 'partial', label: 'Parcial' },
               { value: 'paid', label: 'Cobrado' },
               { value: 'failed', label: 'Fallido' },
             ],
           },
+        ]}
+        moreFilters={[
           {
-            id: 'avisos',
-            label: 'Avisos',
-            emptyLabel: 'Todos',
-            values: avisosFilter,
-            onChange: setAvisosFilter,
-            options: [{ value: 'pendientes', label: 'Con avisos pendientes' }],
+            id: 'atencion',
+            label: 'Atención rápida',
+            values: atencionFilter,
+            onChange: setAtencionFilter,
+            options: [
+              { value: 'avisos', label: 'Con avisos sin leer' },
+              { value: 'plazo_vencido', label: 'Plazo vencido' },
+              { value: 'plazo_urgente', label: 'Vence en 7 días o menos' },
+              { value: 'vencidos', label: 'Cuotas vencidas' },
+              { value: 'cobro_pendiente', label: 'Cobro pendiente o parcial' },
+            ],
+          },
+          {
+            id: 'metodoPago',
+            label: 'Método de pago',
+            values: metodoPagoFilter,
+            onChange: setMetodoPagoFilter,
+            options: [
+              { value: 'manual', label: 'Manual' },
+              { value: 'digital', label: 'Digital (Stripe)' },
+            ],
+          },
+          {
+            id: 'subfase',
+            label: 'Subfase',
+            values: subfaseFilter,
+            onChange: setSubfaseFilter,
+            options: [
+              { value: 'contratacion:datos_cliente', label: 'Contratación · Identificación' },
+              { value: 'contratacion:firmas', label: 'Contratación · Firmas' },
+              { value: 'contratacion:pago', label: 'Contratación · Pago inicial' },
+              { value: 'documentacion:pendientes', label: 'Documentación · Pendientes' },
+              { value: 'documentacion:revision', label: 'Documentación · En revisión' },
+              {
+                value: 'tramitacion:pendiente_tramitacion',
+                label: 'Tramitación · Pendiente de tramitación',
+              },
+              { value: 'tramitacion:tramitado', label: 'Tramitación · Tramitado' },
+              {
+                value: 'tramitacion:pendiente_requerimiento',
+                label: 'Tramitación · Pendiente de requerimiento',
+              },
+            ],
           },
         ]}
         trailing={
@@ -281,7 +408,10 @@ export function ExpedientesTable({ data, isLoading, isFetching, onRefresh }: Exp
             <TableBody>
               {table.getRowModel().rows.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={columns.length} className="py-12 text-center text-muted-foreground">
+                  <TableCell
+                    colSpan={columns.length}
+                    className="py-12 text-center text-muted-foreground"
+                  >
                     No hay expedientes que coincidan con los filtros.
                   </TableCell>
                 </TableRow>

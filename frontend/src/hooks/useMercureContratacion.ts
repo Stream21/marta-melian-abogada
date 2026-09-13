@@ -23,7 +23,7 @@ export function useMercureContratacion(expedienteId: string, enabled = true) {
 
     const keys: QueryKey[] = [
       ['contratacion', expedienteId],
-      ['requerimientos', expedienteId],
+      ['documentacion-fase', expedienteId],
       ['facturacion', expedienteId],
       ['payments', expedienteId],
       ['escritos', expedienteId],

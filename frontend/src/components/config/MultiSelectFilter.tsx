@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -10,6 +11,15 @@ export interface MultiSelectFilterProps {
   onChange: (values: string[]) => void;
 }
 
+interface DropdownCoords {
+  top: number;
+  left: number;
+  minWidth: number;
+}
+
+/**
+ * Multi-select en portal fixed para no quedar recortado por paneles con overflow-hidden.
+ */
 export function MultiSelectFilter({
   label,
   emptyLabel,
@@ -18,14 +28,47 @@ export function MultiSelectFilter({
   onChange,
 }: MultiSelectFilterProps) {
   const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+  const [coords, setCoords] = useState<DropdownCoords | null>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    if (!open || !triggerRef.current) {
+      setCoords(null);
+      return;
+    }
+
+    const update = () => {
+      const rect = triggerRef.current!.getBoundingClientRect();
+      const menuWidth = Math.max(220, rect.width);
+      let left = rect.left;
+      if (left + menuWidth > window.innerWidth - 8) {
+        left = Math.max(8, window.innerWidth - menuWidth - 8);
+      }
+      setCoords({
+        top: rect.bottom + 4,
+        left,
+        minWidth: menuWidth,
+      });
+    };
+
+    update();
+    window.addEventListener('resize', update);
+    window.addEventListener('scroll', update, true);
+    return () => {
+      window.removeEventListener('resize', update);
+      window.removeEventListener('scroll', update, true);
+    };
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
     const handler = (event: MouseEvent) => {
-      if (ref.current && !ref.current.contains(event.target as Node)) {
-        setOpen(false);
+      const target = event.target as Node;
+      if (triggerRef.current?.contains(target) || menuRef.current?.contains(target)) {
+        return;
       }
+      setOpen(false);
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
@@ -49,8 +92,9 @@ export function MultiSelectFilter({
           : `${label}: ${selectedLabels.length} seleccionados`;
 
   return (
-    <div ref={ref} className="relative">
+    <>
       <button
+        ref={triggerRef}
         type="button"
         onClick={() => setOpen((prev) => !prev)}
         aria-label={label}
@@ -72,27 +116,41 @@ export function MultiSelectFilter({
         />
       </button>
 
-      {open && (
-        <div className="absolute left-0 top-full z-30 mt-1 min-w-[220px] rounded-lg border bg-card p-2 shadow-lg">
-          <p className="px-2 pb-1.5 pt-0.5 text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
-            {label}
-          </p>
-          {options.map((opt) => (
-            <label
-              key={opt.value}
-              className="flex cursor-pointer items-center gap-2.5 rounded-md px-2 py-1.5 text-sm hover:bg-muted/50"
-            >
-              <input
-                type="checkbox"
-                checked={values.includes(opt.value)}
-                onChange={() => toggle(opt.value)}
-                className="h-4 w-4 shrink-0 rounded border-border text-primary focus:ring-ring"
-              />
-              <span className="leading-none">{opt.label}</span>
-            </label>
-          ))}
-        </div>
-      )}
-    </div>
+      {open &&
+        coords &&
+        createPortal(
+          <div
+            ref={menuRef}
+            role="listbox"
+            aria-label={label}
+            className="z-[80] max-h-[min(70vh,360px)] overflow-y-auto rounded-lg border bg-card p-2 shadow-lg"
+            style={{
+              position: 'fixed',
+              top: coords.top,
+              left: coords.left,
+              minWidth: coords.minWidth,
+            }}
+          >
+            <p className="px-2 pb-1.5 pt-0.5 text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
+              {label}
+            </p>
+            {options.map((opt) => (
+              <label
+                key={opt.value}
+                className="flex cursor-pointer items-center gap-2.5 rounded-md px-2 py-1.5 text-sm hover:bg-muted/50"
+              >
+                <input
+                  type="checkbox"
+                  checked={values.includes(opt.value)}
+                  onChange={() => toggle(opt.value)}
+                  className="h-4 w-4 shrink-0 rounded border-border text-primary focus:ring-ring"
+                />
+                <span className="leading-none">{opt.label}</span>
+              </label>
+            ))}
+          </div>,
+          document.body,
+        )}
+    </>
   );
 }

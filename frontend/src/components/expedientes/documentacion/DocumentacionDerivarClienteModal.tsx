@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Loader2, UserRound } from 'lucide-react';
-import type { RequerimientosDocumentoResponse } from '@/api/client';
+import type { DocumentacionDocumentoResponse } from '@/api/client';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -12,8 +12,8 @@ import {
 } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 
-interface RequerimientosDerivarClienteModalProps {
-  doc: RequerimientosDocumentoResponse | null;
+interface DocumentacionDerivarClienteModalProps {
+  doc: DocumentacionDocumentoResponse | null;
   open: boolean;
   onClose: () => void;
   onConfirm: (docId: string, nota: string) => void;
@@ -21,14 +21,14 @@ interface RequerimientosDerivarClienteModalProps {
   error?: string | null;
 }
 
-export function RequerimientosDerivarClienteModal({
+export function DocumentacionDerivarClienteModal({
   doc,
   open,
   onClose,
   onConfirm,
   pending = false,
   error = null,
-}: RequerimientosDerivarClienteModalProps) {
+}: DocumentacionDerivarClienteModalProps) {
   const [nota, setNota] = useState('');
 
   const handleOpenChange = (next: boolean) => {

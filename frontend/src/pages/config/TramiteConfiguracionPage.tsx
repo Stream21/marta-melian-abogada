@@ -2,6 +2,7 @@ import { useNavigate } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
 import { FileText, FolderOpen, Shield, UserCheck } from 'lucide-react';
 import { api, FASE_DOCUMENTOS_CLIENTE } from '@/api/client';
+import { CamposFormularioEditor } from '@/components/config/CamposFormularioEditor';
 import { DocumentosRequeridosPanel } from '@/components/config/tramite/DocumentosRequeridosPanel';
 import { DocumentosServicioHeredadosPanel } from '@/components/config/tramite/DocumentosServicioHeredadosPanel';
 import { TramiteContratacionOtpPanel } from '@/components/config/tramite/TramiteContratacionOtpPanel';
@@ -100,7 +101,7 @@ export function TramiteConfiguracionPage({ tramiteId, tab }: TramiteConfiguracio
               <div className="h-full overflow-y-auto overscroll-contain space-y-6">
                 <div className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-foreground">
                   <p className="font-semibold">
-                    {nTotal} documento{nTotal === 1 ? '' : 's'} pedirá el cliente en requerimientos
+                    {nTotal} documento{nTotal === 1 ? '' : 's'} pedirá el cliente en documentación
                   </p>
                   <p className="mt-0.5 text-muted-foreground">
                     {nServicio} heredado{nServicio === 1 ? '' : 's'} del servicio
@@ -113,6 +114,7 @@ export function TramiteConfiguracionPage({ tramiteId, tab }: TramiteConfiguracio
                   <DocumentosServicioHeredadosPanel servicioId={tramite.servicioId} />
                 )}
                 <DocumentosRequeridosPanel tramiteId={tramiteId} />
+                <CamposFormularioEditor scope="tramite" entityId={tramiteId} />
               </div>
             )}
           </div>

@@ -87,9 +87,34 @@ export function DocumentoPdfGaleria({
         {/* Escritorio: lista vertical desplazable */}
         {multiples && (
           <aside className="hidden lg:block lg:w-52 xl:w-60 shrink-0">
-            <p className="mb-2 text-xs font-medium text-muted-foreground">
-              {total} archivo{total === 1 ? '' : 's'}
-            </p>
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <p className="text-xs font-medium text-muted-foreground">
+                {total} archivo{total === 1 ? '' : 's'}
+              </p>
+              <div className="flex items-center gap-0.5">
+                <button
+                  type="button"
+                  className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-30"
+                  disabled={indice === 0}
+                  onClick={irAnterior}
+                  aria-label="Archivo anterior"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
+                <span className="min-w-[2.25rem] text-center text-[11px] tabular-nums text-muted-foreground">
+                  {indice + 1}/{total}
+                </span>
+                <button
+                  type="button"
+                  className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-30"
+                  disabled={indice >= total - 1}
+                  onClick={irSiguiente}
+                  aria-label="Archivo siguiente"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
             <ul className="max-h-[min(420px,50vh)] space-y-1 overflow-y-auto rounded-lg border border-border bg-muted/20 p-1.5">
               {archivos.map((archivo, index) => {
                 const activo = index === indice;
@@ -121,31 +146,6 @@ export function DocumentoPdfGaleria({
                 );
               })}
             </ul>
-            <div className="mt-2 flex items-center justify-between gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={indice === 0}
-                onClick={irAnterior}
-              >
-                <ChevronLeft className="mr-1 h-4 w-4" />
-                Anterior
-              </Button>
-              <span className="text-xs text-muted-foreground">
-                {indice + 1}/{total}
-              </span>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={indice >= total - 1}
-                onClick={irSiguiente}
-              >
-                Siguiente
-                <ChevronRight className="ml-1 h-4 w-4" />
-              </Button>
-            </div>
           </aside>
         )}
 

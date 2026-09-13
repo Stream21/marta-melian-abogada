@@ -3,7 +3,6 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { CheckCircle2 } from 'lucide-react';
 import { api, type DocumentoRequerido } from '@/api/client';
 import { DocumentoArchivoUploadControl } from '@/components/cliente-portal/DocumentoArchivoUploadControl';
-import { DocumentoLimiteBadge } from '@/components/cliente-portal/DocumentoLimiteBadge';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 
@@ -59,9 +58,14 @@ export function DocumentoUploadPanel({ token, documentos }: DocumentoUploadPanel
             <div className="flex items-start justify-between gap-3">
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="font-medium">{doc.nombre}</span>
-                  {doc.obligatorio && <Badge variant="secondary">Obligatorio</Badge>}
-                  <DocumentoLimiteBadge tipo={doc.tipo} maxImagenes={doc.maxImagenes} />
+                  <span className="font-medium">
+                    {doc.nombre}
+                    {doc.obligatorio && (
+                <span className="ml-1 text-amber-700" title="Obligatorio" aria-label="Obligatorio">
+                  *
+                </span>
+                    )}
+                  </span>
                   {entregado && (
                     <Badge variant="success" className="gap-1">
                       <CheckCircle2 className="h-3 w-3" />

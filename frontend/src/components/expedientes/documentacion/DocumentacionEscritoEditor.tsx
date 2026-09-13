@@ -15,15 +15,15 @@ import {
   ListOrdered,
 } from 'lucide-react';
 import { useReducer, useState, type ReactNode } from 'react';
-import { api, type RequerimientosEscritoResponse } from '@/api/client';
+import { api, type DocumentacionEscritoResponse } from '@/api/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 
-interface RequerimientosEscritoEditorProps {
+interface DocumentacionEscritoEditorProps {
   expedienteId: string;
-  escritos: RequerimientosEscritoResponse[];
+  escritos: DocumentacionEscritoResponse[];
 }
 
 const VARIABLES = [
@@ -60,10 +60,10 @@ function ToolbarButton({
   );
 }
 
-export function RequerimientosEscritoEditor({
+export function DocumentacionEscritoEditor({
   expedienteId,
   escritos,
-}: RequerimientosEscritoEditorProps) {
+}: DocumentacionEscritoEditorProps) {
   const queryClient = useQueryClient();
   const [titulo, setTitulo] = useState('');
   const [, rerenderToolbar] = useReducer((n: number) => n + 1, 0);
@@ -92,13 +92,13 @@ export function RequerimientosEscritoEditor({
   const guardarMutation = useMutation({
     mutationFn: () => {
       const contenidoHtml = editor?.getHTML() ?? '';
-      return api.guardarEscritoRequerimientos(expedienteId, {
+      return api.guardarEscritoDocumentacion(expedienteId, {
         titulo: titulo.trim(),
         contenidoHtml,
       });
     },
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['requerimientos', expedienteId] });
+      void queryClient.invalidateQueries({ queryKey: ['documentacion-fase', expedienteId] });
       setTitulo('');
       editor?.commands.clearContent();
     },
@@ -239,7 +239,7 @@ export function RequerimientosEscritoEditor({
                 <span>{e.titulo}</span>
                 <Button variant="outline" size="sm" asChild>
                   <a
-                    href={api.requerimientosEscritoPdfUrl(expedienteId, e.id)}
+                    href={api.documentacionEscritoPdfUrl(expedienteId, e.id)}
                     target="_blank"
                     rel="noreferrer"
                   >

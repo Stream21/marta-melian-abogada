@@ -3,8 +3,6 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { CheckCircle2 } from 'lucide-react';
 import { api, type DocumentoRequerido } from '@/api/client';
 import { DocumentoArchivoUploadControl } from '@/components/cliente-portal/DocumentoArchivoUploadControl';
-import { DocumentoLimiteBadge } from '@/components/cliente-portal/DocumentoLimiteBadge';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 
 interface DocumentoEntregaFocusProps {
@@ -58,9 +56,14 @@ export function DocumentoEntregaFocus({
     <div className="space-y-4">
       <div className="rounded-xl border border-border bg-muted/20 p-4">
         <div className="flex flex-wrap items-center gap-2">
-          <p className="font-medium text-foreground">{documento.nombre}</p>
-          {documento.obligatorio && <Badge variant="secondary">Obligatorio</Badge>}
-          <DocumentoLimiteBadge tipo={documento.tipo} maxImagenes={documento.maxImagenes} />
+          <p className="font-medium text-foreground">
+            {documento.nombre}
+            {documento.obligatorio && (
+              <span className="ml-1 text-amber-700" title="Obligatorio" aria-label="Obligatorio">
+                *
+              </span>
+            )}
+          </p>
         </div>
         {documento.descripcion && (
           <p className="mt-2 text-sm text-muted-foreground">{documento.descripcion}</p>

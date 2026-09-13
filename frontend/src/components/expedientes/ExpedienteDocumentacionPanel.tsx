@@ -1,14 +1,31 @@
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Download, FileArchive, FileText, Filter, ImageIcon, Loader2, PenLine } from 'lucide-react';
+import {
+  ClipboardList,
+  Download,
+  FileArchive,
+  FileText,
+  Filter,
+  ImageIcon,
+  Loader2,
+  PenLine,
+} from 'lucide-react';
 import { api, openAuthenticatedDocument, type DocumentacionExpedienteItemResponse } from '@/api/client';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 
 const FASE_NEGOCIO_LABELS: Record<string, string> = {
   contratacion: 'Contratación',
-  requerimientos: 'Requerimientos',
+  documentacion: 'Documentación',
   tramitacion: 'Tramitación',
   resolucion: 'Resolución',
   todos: 'Todas las fases',
@@ -35,7 +52,7 @@ export function ExpedienteDocumentacionPanel({ expedienteId }: ExpedienteDocumen
   const [zipError, setZipError] = useState<string | null>(null);
 
   const { data: items = [], isLoading } = useQuery({
-    queryKey: ['documentacion', expedienteId],
+    queryKey: ['archivo', expedienteId],
     queryFn: () => api.getDocumentacionExpediente(expedienteId),
   });
 
@@ -53,7 +70,11 @@ export function ExpedienteDocumentacionPanel({ expedienteId }: ExpedienteDocumen
   }, [items, filtroFase, filtroTipo]);
 
   const descargables = useMemo(
-    () => filtrados.filter((item) => resolveDescargaPath(expedienteId, item) !== null),
+    () =>
+      filtrados.filter(
+        (item) =>
+          item.tipo === 'formulario' || resolveDescargaPath(expedienteId, item) !== null,
+      ),
     [filtrados, expedienteId],
   );
 
@@ -111,9 +132,10 @@ export function ExpedienteDocumentacionPanel({ expedienteId }: ExpedienteDocumen
     <div className="panel p-6 space-y-6">
       <div>
         <p className="section-label">Expediente</p>
-        <h2 className="panel-title">Documentación y escritos</h2>
+        <h2 className="panel-title">Archivo del expediente</h2>
         <p className="text-sm text-muted-foreground mt-1">
-          Seleccione los documentos que necesite y descárguelos juntos en un ZIP.
+          Documentos, escritos y formularios del expediente. Seleccione lo que necesite y
+          descárguelo en un ZIP.
         </p>
       </div>
 
@@ -138,9 +160,10 @@ export function ExpedienteDocumentacionPanel({ expedienteId }: ExpedienteDocumen
           onChange={(e) => setFiltroTipo(e.target.value)}
           className="h-9 rounded-lg border border-input bg-muted/50 px-3 text-sm"
         >
-          <option value="todos">Documentos y escritos</option>
+          <option value="todos">Todos los tipos</option>
           <option value="documento">Solo documentos</option>
           <option value="escrito">Solo escritos generados</option>
+          <option value="formulario">Solo formularios</option>
         </select>
         <Badge variant="secondary">{filtrados.length} elemento(s)</Badge>
       </div>
@@ -200,6 +223,8 @@ function resolveDescargaPath(
   expedienteId: string,
   item: DocumentacionExpedienteItemResponse,
 ): string | null {
+  if (item.tipo === 'formulario') return null;
+
   if (item.descargaUrl) {
     return item.descargaUrl;
   }
@@ -209,7 +234,7 @@ function resolveDescargaPath(
 
   if (item.origen === 'identidad_cliente') {
     const lado = item.id === 'identidad-anverso' ? 'anverso' : 'reverso';
-    return `/api/expedientes/${encodeURIComponent(expedienteId)}/documentacion/identidad/${lado}`;
+    return `/api/expedientes/${encodeURIComponent(expedienteId)}/archivo/identidad/${lado}`;
   }
 
   if (esFirmaElectronica) {
@@ -218,7 +243,7 @@ function resolveDescargaPath(
   }
 
   if (item.estado === 'entregado' || item.estado === 'validado' || item.estado === 'firmado') {
-    return `/api/expedientes/${encodeURIComponent(expedienteId)}/documentacion/${encodeURIComponent(item.id)}/archivo`;
+    return `/api/expedientes/${encodeURIComponent(expedienteId)}/archivo/${encodeURIComponent(item.id)}/archivo`;
   }
 
   return null;
@@ -237,15 +262,28 @@ function DocumentacionItem({
 }) {
   const [abriendo, setAbriendo] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [formularioOpen, setFormularioOpen] = useState(false);
 
+  const esFormulario = item.tipo === 'formulario' || item.mediaTipo === 'formulario';
   const esImagen = item.mediaTipo === 'imagen';
   const esFirmaElectronica =
     item.origen === 'documento_firmado' || item.origen === 'escrito_firmado';
-  const Icon = esImagen ? ImageIcon : esFirmaElectronica ? PenLine : FileText;
+  const Icon = esFormulario
+    ? ClipboardList
+    : esImagen
+      ? ImageIcon
+      : esFirmaElectronica
+        ? PenLine
+        : FileText;
 
   const descargaPath = resolveDescargaPath(expedienteId, item);
+  const puedeSeleccionar = esFormulario || descargaPath !== null;
 
   const handleAbrir = async () => {
+    if (esFormulario) {
+      setFormularioOpen(true);
+      return;
+    }
     if (!descargaPath) return;
     setAbriendo(true);
     setError(null);
@@ -263,11 +301,12 @@ function DocumentacionItem({
       className={cn(
         'rounded-lg border bg-card px-4 py-3 text-sm transition-colors',
         seleccionado ? 'border-primary/40 bg-primary/5' : 'border-border',
+        esFormulario && item.estado === 'completado' && 'border-emerald-200 bg-emerald-50/30',
       )}
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex gap-3 min-w-0">
-          {descargaPath ? (
+          {puedeSeleccionar ? (
             <label className="mt-2 flex shrink-0 cursor-pointer">
               <input
                 type="checkbox"
@@ -280,8 +319,13 @@ function DocumentacionItem({
           ) : (
             <span className="mt-2 w-4 shrink-0" aria-hidden />
           )}
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted">
-            <Icon className="h-4 w-4 text-muted-foreground" />
+          <div
+            className={cn(
+              'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg',
+              esFormulario ? 'bg-primary/10 text-primary' : 'bg-muted',
+            )}
+          >
+            <Icon className={cn('h-4 w-4', !esFormulario && 'text-muted-foreground')} />
           </div>
           <div className="min-w-0">
             <p className="font-medium">{item.nombre}</p>
@@ -290,11 +334,27 @@ function DocumentacionItem({
             )}
             <div className="mt-2 flex flex-wrap gap-1.5">
               <Badge variant="info">{item.faseNegocioLabel}</Badge>
-              <Badge variant={item.origen === 'requisito_tramite' ? 'secondary' : 'outline'}>
-                {item.origenLabel}
-              </Badge>
-              {item.obligatorio && <Badge variant="warning">Obligatorio</Badge>}
-              <EstadoBadge estado={item.estado} />
+              <Badge variant="outline">{item.origenLabel}</Badge>
+              {esFormulario && (
+                <Badge
+                  variant={
+                    item.estado === 'completado'
+                      ? 'success'
+                      : item.estado === 'parcial'
+                        ? 'warning'
+                        : 'secondary'
+                  }
+                >
+                  {item.estado === 'completado'
+                    ? 'Completado'
+                    : item.estado === 'parcial'
+                      ? 'Parcial'
+                      : 'Pendiente'}
+                </Badge>
+              )}
+              {item.requerimientoNombre && (
+                <Badge variant="secondary">Req. {item.requerimientoNombre}</Badge>
+              )}
             </div>
           </div>
         </div>
@@ -304,30 +364,63 @@ function DocumentacionItem({
               {new Date(item.entregadoAt).toLocaleString('es-ES')}
             </span>
           )}
-          {descargaPath && (
+          {(descargaPath || esFormulario) && (
             <div className="flex flex-col items-end gap-1">
               <Button size="sm" variant="outline" onClick={() => void handleAbrir()} disabled={abriendo}>
                 {abriendo ? (
                   <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                ) : esFormulario ? (
+                  <ClipboardList className="mr-1.5 h-3.5 w-3.5" />
                 ) : (
                   <Download className="mr-1.5 h-3.5 w-3.5" />
                 )}
-                {esImagen ? 'Ver imagen' : 'Ver PDF'}
+                {esFormulario ? 'Ver formulario' : esImagen ? 'Ver imagen' : 'Ver PDF'}
               </Button>
               {error && <span className="text-xs text-destructive max-w-[12rem] text-right">{error}</span>}
             </div>
           )}
         </div>
       </div>
-    </li>
-  );
-}
 
-function EstadoBadge({ estado }: { estado: string }) {
-  const variant = estado === 'firmado' || estado === 'validado' ? 'success' : estado === 'entregado' ? 'info' : 'secondary';
-  return (
-    <Badge variant={variant} className={cn('capitalize')}>
-      {estado.replace(/_/g, ' ')}
-    </Badge>
+      {esFormulario && (
+        <Dialog open={formularioOpen} onOpenChange={setFormularioOpen}>
+          <DialogContent className="max-h-[85vh] max-w-lg overflow-hidden p-0">
+            <DialogHeader className="border-b border-border bg-muted/30 px-6 py-4 pr-12 text-left">
+              <DialogTitle>{item.nombre}</DialogTitle>
+              <DialogDescription>
+                {item.descripcion || 'Respuestas del formulario de requerimiento.'}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="max-h-[55vh] space-y-3 overflow-y-auto px-6 py-4">
+              {(item.campos ?? []).length === 0 ? (
+                <p className="text-sm text-muted-foreground">Sin campos registrados.</p>
+              ) : (
+                (item.campos ?? []).map((campo) => (
+                  <div
+                    key={campo.id}
+                    className={cn(
+                      'rounded-lg border px-3 py-2.5',
+                      campo.valor?.trim()
+                        ? 'border-emerald-200 bg-emerald-50/40'
+                        : 'border-border bg-card',
+                    )}
+                  >
+                    <p className="text-xs font-medium text-muted-foreground">{campo.etiqueta}</p>
+                    <p className="mt-1 text-sm text-foreground whitespace-pre-wrap">
+                      {campo.valor?.trim() || '—'}
+                    </p>
+                  </div>
+                ))
+              )}
+            </div>
+            <DialogFooter className="border-t border-border bg-muted/20 px-6 py-4">
+              <Button variant="outline" onClick={() => setFormularioOpen(false)}>
+                Cerrar
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+    </li>
   );
 }

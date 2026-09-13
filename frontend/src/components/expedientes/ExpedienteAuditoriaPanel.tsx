@@ -20,6 +20,7 @@ function auditoriaRowDomId(hitoId: string): string {
 
 const CATEGORIA_VARIANT: Record<string, 'info' | 'success' | 'warning' | 'secondary' | 'destructive'> = {
   contratacion: 'info',
+  documentacion: 'info',
   requerimientos: 'info',
   comunicacion: 'warning',
   pago: 'success',

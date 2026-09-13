@@ -2,7 +2,7 @@ import type { FaseNegocio } from '@/api/client';
 
 export const PORTAL_FASES: Array<{ fase: FaseNegocio; label: string; orden: number }> = [
   { fase: 'contratacion', label: 'Contratación', orden: 1 },
-  { fase: 'requerimientos', label: 'Requerimientos', orden: 2 },
+  { fase: 'documentacion', label: 'Documentación', orden: 2 },
   { fase: 'tramitacion', label: 'Tramitación', orden: 3 },
   { fase: 'resolucion', label: 'Resolución', orden: 4 },
 ];
@@ -11,19 +11,19 @@ export const PORTAL_FASES: Array<{ fase: FaseNegocio; label: string; orden: numb
 export const SUBFASES_CONTRATACION = [
   {
     codigo: 'datos_cliente',
-    label: 'Identidad y datos',
+    label: 'Identificación del cliente',
     orden: 1,
     descripcion: 'Documento de identidad y datos personales',
   },
   {
     codigo: 'firmas',
-    label: 'Firmas legales',
+    label: 'Firma de documentos',
     orden: 2,
     descripcion: 'Hoja de encargo, designación y RGPD',
   },
   {
     codigo: 'pago',
-    label: 'Pago inicial',
+    label: 'Pago de la primera cuota',
     orden: 3,
     descripcion: 'Pago según el método acordado con el despacho',
   },

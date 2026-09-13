@@ -4,7 +4,6 @@ import type { TipoDocumentoRequerido } from '@/api/client';
 import { Button } from '@/components/ui/button';
 import { FileUploadProgressPanel } from '@/components/cliente-portal/FileUploadProgressPanel';
 import {
-  documentoUploadLimiteDetalle,
   documentoUploadLimiteLabel,
   DOCUMENTO_UPLOAD_ACCEPT,
   esDocumentoConjunto,
@@ -124,14 +123,9 @@ export function DocumentoArchivoUploadControl({
       )}
 
       {showLimiteHeader && (
-        <div className="rounded-md border border-dashed border-border/80 bg-muted/20 px-3 py-2">
-          <p className="text-xs font-medium text-foreground">
-            {documentoUploadLimiteLabel(tipo, maxImagenes)}
-          </p>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            {documentoUploadLimiteDetalle(tipo, maxImagenes)}
-          </p>
-        </div>
+        <p className="text-xs text-muted-foreground">
+          {documentoUploadLimiteLabel(tipo, maxImagenes)}
+        </p>
       )}
 
       <input

@@ -10,7 +10,8 @@ import {
 function formatFechaCorta(iso: string | null | undefined): string {
   if (!iso) return '—';
   try {
-    return new Date(iso).toLocaleDateString('es-ES', {
+    const date = iso.includes('T') ? new Date(iso) : new Date(`${iso}T12:00:00`);
+    return date.toLocaleDateString('es-ES', {
       day: '2-digit',
       month: 'short',
       year: 'numeric',
@@ -34,9 +35,11 @@ function SubfaseTooltipList({
         {rows.length === 0 ? (
           <li className="text-xs text-muted-foreground">Sin detalle</li>
         ) : (
-          rows.map((row) => (
-            <li key={row.name} className="border-b border-border/60 pb-1.5 last:border-0 last:pb-0">
-              <div className="flex items-start justify-between gap-3">
+          rows.map((row, index) => (
+            <li
+              key={`${row.name}-${row.date ?? 'sin-fecha'}-${index}`}
+              className="border-b border-border/60 pb-1.5 last:border-0 last:pb-0"
+            >              <div className="flex items-start justify-between gap-3">
                 <span className="min-w-0 text-xs font-medium leading-snug text-foreground">
                   {row.name}
                   {row.hint ? (
@@ -89,8 +92,8 @@ export function ExpedienteSubfaseBadge({ expediente }: { expediente: ExpedienteR
     );
   }
 
-  if (expediente.faseNegocio === 'requerimientos' && expediente.subfaseRequerimientos) {
-    const sub = expediente.subfaseRequerimientos;
+  if (expediente.faseNegocio === 'documentacion' && expediente.subfaseDocumentacion) {
+    const sub = expediente.subfaseDocumentacion;
     const rows = sub.items.map((item) => ({
       name: item.nombre,
       status: item.estadoLabel,
@@ -112,7 +115,7 @@ export function ExpedienteSubfaseBadge({ expediente }: { expediente: ExpedienteR
             </button>
           </TooltipTrigger>
           <TooltipContent side="top" align="start" className="p-3">
-            <SubfaseTooltipList title="Documentos requeridos" rows={rows} />
+            <SubfaseTooltipList title="Documentación" rows={rows} />
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>
@@ -120,7 +123,40 @@ export function ExpedienteSubfaseBadge({ expediente }: { expediente: ExpedienteR
   }
 
   if (expediente.faseNegocio === 'tramitacion' && expediente.subfaseTramitacionLabel) {
-    return <Badge variant="secondary">{expediente.subfaseTramitacionLabel}</Badge>;
+    const recopilacion = expediente.subfaseTramitacion === 'pendiente_requerimiento';
+    const detalle = expediente.subfaseTramitacionDetalle;
+    const rows = (detalle?.items ?? []).map((item) => ({
+      name: item.nombre,
+      status: item.estadoLabel,
+      date: item.fecha,
+    }));
+    const badge = (
+      <Badge
+        variant={recopilacion ? 'warning' : 'secondary'}
+        className={`max-w-full truncate${rows.length > 0 ? ' cursor-help' : ''}`}
+      >
+        {expediente.subfaseTramitacionLabel}
+      </Badge>
+    );
+
+    if (rows.length === 0) {
+      return badge;
+    }
+
+    return (
+      <TooltipProvider delayDuration={200}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button type="button" className="inline-flex max-w-full">
+              {badge}
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="top" align="start" className="p-3">
+            <SubfaseTooltipList title="Tramitación · presentaciones" rows={rows} />
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    );
   }
 
   return <span className="text-muted-foreground">—</span>;

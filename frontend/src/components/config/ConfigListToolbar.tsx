@@ -1,6 +1,16 @@
-import { useMemo, type KeyboardEvent, type ReactNode } from 'react';
-import { X } from 'lucide-react';
+import {
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type ReactNode,
+} from 'react';
+import { createPortal } from 'react-dom';
+import { SlidersHorizontal, X } from 'lucide-react';
 import { MultiSelectFilter } from '@/components/config/MultiSelectFilter';
+import { cn } from '@/lib/utils';
 
 export interface SelectFilterConfig {
   id: string;
@@ -18,7 +28,10 @@ export interface ConfigListToolbarProps {
   searchPlaceholder?: string;
   incluirInactivos?: boolean;
   onIncluirInactivosChange?: (value: boolean) => void;
+  /** Filtros siempre visibles en la barra. */
   selectFilters?: SelectFilterConfig[];
+  /** Filtros secundarios dentro de «Más filtros» (evita saturar la barra). */
+  moreFilters?: SelectFilterConfig[];
   trailing?: ReactNode;
 }
 
@@ -26,6 +39,12 @@ interface ActiveFilterChip {
   id: string;
   label: string;
   onRemove: () => void;
+}
+
+interface DropdownCoords {
+  top: number;
+  right: number;
+  width: number;
 }
 
 export function ConfigListToolbar({
@@ -36,8 +55,19 @@ export function ConfigListToolbar({
   incluirInactivos,
   onIncluirInactivosChange,
   selectFilters = [],
+  moreFilters = [],
   trailing,
 }: ConfigListToolbarProps) {
+  const [moreOpen, setMoreOpen] = useState(false);
+  const [moreCoords, setMoreCoords] = useState<DropdownCoords | null>(null);
+  const moreTriggerRef = useRef<HTMLButtonElement>(null);
+  const moreMenuRef = useRef<HTMLDivElement>(null);
+
+  const allFilters = useMemo(
+    () => [...selectFilters, ...moreFilters],
+    [selectFilters, moreFilters],
+  );
+
   const activeChips = useMemo<ActiveFilterChip[]>(() => {
     const chips: ActiveFilterChip[] = [];
     const trimmed = search.trim();
@@ -51,7 +81,7 @@ export function ConfigListToolbar({
       });
     }
 
-    for (const filter of selectFilters) {
+    for (const filter of allFilters) {
       for (const value of filter.values) {
         const option = filter.options.find((opt) => opt.value === value);
         chips.push({
@@ -63,11 +93,54 @@ export function ConfigListToolbar({
     }
 
     return chips;
-  }, [search, selectFilters, onSearchChange]);
+  }, [search, allFilters, onSearchChange]);
+
+  const moreActiveCount = useMemo(
+    () => moreFilters.reduce((acc, f) => acc + f.values.length, 0),
+    [moreFilters],
+  );
+
+  useLayoutEffect(() => {
+    if (!moreOpen || !moreTriggerRef.current) {
+      setMoreCoords(null);
+      return;
+    }
+
+    const update = () => {
+      const rect = moreTriggerRef.current!.getBoundingClientRect();
+      const width = Math.min(window.innerWidth - 16, 320);
+      setMoreCoords({
+        top: rect.bottom + 4,
+        right: Math.max(8, window.innerWidth - rect.right),
+        width,
+      });
+    };
+
+    update();
+    window.addEventListener('resize', update);
+    window.addEventListener('scroll', update, true);
+    return () => {
+      window.removeEventListener('resize', update);
+      window.removeEventListener('scroll', update, true);
+    };
+  }, [moreOpen]);
+
+  useEffect(() => {
+    if (!moreOpen) return;
+    const handler = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (moreTriggerRef.current?.contains(target) || moreMenuRef.current?.contains(target)) {
+        return;
+      }
+      setMoreOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [moreOpen]);
 
   const clearAll = () => {
     onSearchChange('');
-    for (const filter of selectFilters) {
+    for (const filter of allFilters) {
       filter.onChange([]);
     }
     if (incluirInactivos !== undefined && onIncluirInactivosChange) {
@@ -98,6 +171,84 @@ export function ConfigListToolbar({
             onChange={filter.onChange}
           />
         ))}
+
+        {moreFilters.length > 0 && (
+          <>
+            <button
+              ref={moreTriggerRef}
+              type="button"
+              onClick={() => setMoreOpen((prev) => !prev)}
+              aria-expanded={moreOpen}
+              aria-label="Más filtros"
+              className={cn(
+                'flex h-9 items-center gap-2 rounded-lg border px-3 text-sm transition-all focus:outline-none focus:ring-1 focus:ring-ring',
+                moreActiveCount > 0
+                  ? 'border-primary bg-primary/5 font-medium text-primary'
+                  : 'border-border bg-muted/50 text-muted-foreground',
+              )}
+            >
+              <SlidersHorizontal className="h-3.5 w-3.5 shrink-0" />
+              Más filtros
+              {moreActiveCount > 0 && (
+                <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground">
+                  {moreActiveCount}
+                </span>
+              )}
+            </button>
+
+            {moreOpen &&
+              moreCoords &&
+              createPortal(
+                <div
+                  ref={moreMenuRef}
+                  className="z-[80] max-h-[min(70vh,480px)] overflow-y-auto rounded-lg border bg-card p-3 shadow-lg"
+                  style={{
+                    position: 'fixed',
+                    top: moreCoords.top,
+                    right: moreCoords.right,
+                    width: moreCoords.width,
+                  }}
+                >
+                  <p className="px-1 pb-2 text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
+                    Filtros adicionales
+                  </p>
+                  <div className="flex flex-col gap-3">
+                    {moreFilters.map((filter) => (
+                      <div key={filter.id} className="space-y-1.5">
+                        <p className="px-1 text-xs font-medium text-foreground">{filter.label}</p>
+                        <div className="flex flex-col gap-0.5">
+                          {filter.options.map((opt) => {
+                            const checked = filter.values.includes(opt.value);
+                            return (
+                              <label
+                                key={opt.value}
+                                className="flex cursor-pointer items-center gap-2.5 rounded-md px-2 py-1.5 text-sm hover:bg-muted/50"
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={checked}
+                                  onChange={() =>
+                                    filter.onChange(
+                                      checked
+                                        ? filter.values.filter((v) => v !== opt.value)
+                                        : [...filter.values, opt.value],
+                                    )
+                                  }
+                                  className="h-4 w-4 shrink-0 rounded border-border text-primary focus:ring-ring"
+                                />
+                                <span className="leading-none">{opt.label}</span>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>,
+                document.body,
+              )}
+          </>
+        )}
 
         {incluirInactivos !== undefined && onIncluirInactivosChange && (
           <div

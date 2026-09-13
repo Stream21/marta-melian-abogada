@@ -34,8 +34,6 @@ import {
 
   ChevronsUpDown,
 
-  Pencil,
-
   Power,
 
   RefreshCw,
@@ -160,6 +158,22 @@ export function ServiciosTable({
 
       {
 
+        id: 'nombre',
+
+        accessorKey: 'nombre',
+
+        header: 'Nombre',
+
+        cell: ({ row }) => (
+
+          <span className="font-semibold text-foreground">{row.original.nombre}</span>
+
+        ),
+
+      },
+
+      {
+
         id: 'tipo',
 
         accessorKey: 'tipo',
@@ -214,22 +228,6 @@ export function ServiciosTable({
 
       {
 
-        id: 'nombre',
-
-        accessorKey: 'nombre',
-
-        header: 'Nombre',
-
-        cell: ({ row }) => (
-
-          <span className="font-semibold text-foreground">{row.original.nombre}</span>
-
-        ),
-
-      },
-
-      {
-
         id: 'estado',
 
         accessorKey: 'activo',
@@ -272,24 +270,6 @@ export function ServiciosTable({
 
                 type="button"
 
-                className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-40"
-
-                aria-label="Editar"
-
-                onClick={() => onEdit(row.original.id)}
-
-                disabled={busy}
-
-              >
-
-                <Pencil className="h-4 w-4" />
-
-              </button>
-
-              <button
-
-                type="button"
-
                 className={cn(
 
                   'rounded-lg p-2 text-muted-foreground transition-colors hover:bg-muted disabled:opacity-40',
@@ -320,7 +300,7 @@ export function ServiciosTable({
 
     ],
 
-    [onEdit, togglingId],
+    [togglingId],
 
   );
 
@@ -515,7 +495,12 @@ export function ServiciosTable({
 
                 table.getRowModel().rows.map((row) => (
 
-                  <TableRow key={row.id} className="group border-b transition-colors hover:bg-primary/5">
+                  <TableRow
+                    key={row.id}
+                    className="group cursor-pointer border-b transition-colors hover:bg-primary/5"
+                    title="Doble clic para editar"
+                    onDoubleClick={() => onEdit(row.original.id)}
+                  >
 
                     {row.getVisibleCells().map((cell) => (
 
@@ -524,6 +509,10 @@ export function ServiciosTable({
                         key={cell.id}
 
                         className={cn('px-6 py-4', cell.column.id === 'acciones' && 'text-right')}
+
+                        onClick={cell.column.id === 'acciones' ? (e) => e.stopPropagation() : undefined}
+
+                        onDoubleClick={cell.column.id === 'acciones' ? (e) => e.stopPropagation() : undefined}
 
                       >
 

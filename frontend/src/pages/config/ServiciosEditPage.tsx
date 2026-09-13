@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { Pencil } from 'lucide-react';
 import { api } from '@/api/client';
+import { CamposFormularioEditor } from '@/components/config/CamposFormularioEditor';
 import { ServicioDocumentosRequeridosPanel } from '@/components/config/servicio/ServicioDocumentosRequeridosPanel';
 import { ServicioForm } from '@/components/config/ServicioForm';
 import type { TipoServicioValue } from '@/lib/servicio-tipos';
@@ -50,6 +51,7 @@ export function ServiciosEditPage({ servicioId }: ServiciosEditPageProps) {
                 initialTipo={data.tipo as TipoServicioValue}
               />
               <ServicioDocumentosRequeridosPanel servicioId={data.id} />
+              <CamposFormularioEditor scope="servicio" entityId={data.id} />
             </>
           )}
         </div>

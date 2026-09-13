@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import type { RequerimientosDocumentoResponse } from '@/api/client';
-import { DocumentoPdfGaleria } from '@/components/expedientes/requerimientos/DocumentoPdfGaleria';
+import type { DocumentacionDocumentoResponse } from '@/api/client';
+import { DocumentoPdfGaleria } from '@/components/expedientes/documentacion/DocumentoPdfGaleria';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -12,8 +12,8 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 
-interface RequerimientosDocumentoRevisionModalProps {
-  doc: RequerimientosDocumentoResponse | null;
+interface DocumentacionDocumentoRevisionModalProps {
+  doc: DocumentacionDocumentoResponse | null;
   open: boolean;
   onClose: () => void;
   buildArchivoUrl: (archivoId: string) => string;
@@ -26,7 +26,7 @@ interface RequerimientosDocumentoRevisionModalProps {
   modo?: 'revision' | 'devolucion';
 }
 
-export function RequerimientosDocumentoRevisionModal({
+export function DocumentacionDocumentoRevisionModal({
   doc,
   open,
   onClose,
@@ -37,7 +37,7 @@ export function RequerimientosDocumentoRevisionModal({
   devolviendo,
   errorAccion,
   modo = 'revision',
-}: RequerimientosDocumentoRevisionModalProps) {
+}: DocumentacionDocumentoRevisionModalProps) {
   const [nota, setNota] = useState('');
   const [mostrarDevolucion, setMostrarDevolucion] = useState(false);
 
@@ -86,11 +86,11 @@ export function RequerimientosDocumentoRevisionModal({
 
           {mostrarDevolucion && (
             <div className="rounded-lg border border-amber-200 bg-amber-50/50 p-4 space-y-3">
-              <Label htmlFor="nota-requerimientos" className="text-sm font-medium">
+              <Label htmlFor="nota-documentacion" className="text-sm font-medium">
                 Nota para el cliente
               </Label>
               <textarea
-                id="nota-requerimientos"
+                id="nota-documentacion"
                 className="input-field min-h-[100px] w-full resize-y"
                 placeholder="Indique qué debe corregir o volver a subir el cliente…"
                 value={nota}

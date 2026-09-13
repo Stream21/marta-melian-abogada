@@ -785,14 +785,14 @@ export const api = {
 
   getDocumentacionExpediente: (expedienteId: string) =>
     request<DocumentacionExpedienteItemResponse[]>(
-      '/api/expedientes/' + encodeURIComponent(expedienteId) + '/documentacion',
+      '/api/expedientes/' + encodeURIComponent(expedienteId) + '/archivo',
     ),
 
   documentacionArchivoUrl: (expedienteId: string, docId: string) =>
-    `/api/expedientes/${encodeURIComponent(expedienteId)}/documentacion/${encodeURIComponent(docId)}/archivo`,
+    `/api/expedientes/${encodeURIComponent(expedienteId)}/archivo/${encodeURIComponent(docId)}/archivo`,
 
   documentacionIdentidadUrl: (expedienteId: string, lado: 'anverso' | 'reverso') =>
-    `/api/expedientes/${encodeURIComponent(expedienteId)}/documentacion/identidad/${lado}`,
+    `/api/expedientes/${encodeURIComponent(expedienteId)}/archivo/identidad/${lado}`,
 
   getTramitacion: (expedienteId: string) =>
     request<TramitacionResponse>(
@@ -829,15 +829,133 @@ export const api = {
   agregarRequerimientoMercurio: (
     expedienteId: string,
     body: {
-      tipo: 'documento' | 'escrito';
-      destino: 'cliente' | 'despacho';
+      tipo?: 'documento' | 'escrito';
+      destino?: 'cliente' | 'despacho';
       nombre: string;
       descripcion?: string;
+      documentos?: Array<{
+        nombre: string;
+        descripcion?: string;
+        responsable: 'cliente' | 'abogado';
+        obligatorio?: boolean;
+      }>;
+      campos?: Array<{
+        clave: string;
+        etiqueta: string;
+        tipo: TipoCampoFormularioValue;
+        opciones?: string[];
+        obligatorio?: boolean;
+      }>;
+      plantillaFrom?: 'servicio' | 'tramite';
     },
   ) =>
     request<TramitacionResponse & { id: string }>(
       '/api/expedientes/' + encodeURIComponent(expedienteId) + '/tramitacion/requerimientos',
       { method: 'POST', body: JSON.stringify(body) },
+    ),
+
+  agregarDocumentoRequerimientoMercurio: (
+    expedienteId: string,
+    reqId: string,
+    body: {
+      nombre: string;
+      responsable?: 'cliente' | 'abogado';
+      descripcion?: string;
+      obligatorio?: boolean;
+      numeroArchivos?: number;
+    },
+  ) =>
+    request<TramitacionResponse>(
+      '/api/expedientes/' +
+        encodeURIComponent(expedienteId) +
+        '/tramitacion/requerimientos/' +
+        encodeURIComponent(reqId) +
+        '/documentos',
+      { method: 'POST', body: JSON.stringify(body) },
+    ),
+
+  definirCamposRequerimientoMercurio: (
+    expedienteId: string,
+    reqId: string,
+    campos: Array<{
+      clave?: string;
+      etiqueta: string;
+      tipo: TipoCampoFormularioValue;
+      opciones?: string[];
+      obligatorio?: boolean;
+    }>,
+  ) =>
+    request<TramitacionResponse>(
+      '/api/expedientes/' +
+        encodeURIComponent(expedienteId) +
+        '/tramitacion/requerimientos/' +
+        encodeURIComponent(reqId) +
+        '/campos/definir',
+      { method: 'POST', body: JSON.stringify({ campos }) },
+    ),
+
+  gestionarCamposRequerimientoMercurio: (
+    expedienteId: string,
+    reqId: string,
+    campos: Array<{
+      id?: string;
+      clave?: string;
+      etiqueta: string;
+      tipo: TipoCampoFormularioValue;
+      opciones?: string[];
+      obligatorio?: boolean;
+    }>,
+    meta?: { formularioNombre?: string | null; formularioCometido?: string | null },
+  ) =>
+    request<TramitacionResponse>(
+      '/api/expedientes/' +
+        encodeURIComponent(expedienteId) +
+        '/tramitacion/requerimientos/' +
+        encodeURIComponent(reqId) +
+        '/campos',
+      {
+        method: 'PUT',
+        body: JSON.stringify({
+          campos,
+          ...(meta
+            ? {
+                formularioNombre: meta.formularioNombre ?? null,
+                formularioCometido: meta.formularioCometido ?? null,
+              }
+            : {}),
+        }),
+      },
+    ),
+
+  actualizarDocumentoRequerimientoMercurio: (
+    expedienteId: string,
+    reqId: string,
+    docId: string,
+    body: { nombre?: string; responsable?: 'cliente' | 'abogado' },
+  ) =>
+    request<TramitacionResponse>(
+      '/api/expedientes/' +
+        encodeURIComponent(expedienteId) +
+        '/tramitacion/requerimientos/' +
+        encodeURIComponent(reqId) +
+        '/documentos/' +
+        encodeURIComponent(docId),
+      { method: 'PATCH', body: JSON.stringify(body) },
+    ),
+
+  eliminarDocumentoRequerimientoMercurio: (
+    expedienteId: string,
+    reqId: string,
+    docId: string,
+  ) =>
+    request<TramitacionResponse>(
+      '/api/expedientes/' +
+        encodeURIComponent(expedienteId) +
+        '/tramitacion/requerimientos/' +
+        encodeURIComponent(reqId) +
+        '/documentos/' +
+        encodeURIComponent(docId),
+      { method: 'DELETE' },
     ),
 
   subirArchivoRequerimientoMercurio: (expedienteId: string, reqId: string, archivo: File) => {
@@ -853,15 +971,67 @@ export const api = {
     );
   },
 
+  subirArchivoDocumentoRequerimientoMercurio: (
+    expedienteId: string,
+    reqId: string,
+    docId: string,
+    archivo: File,
+  ) => {
+    const formData = new FormData();
+    formData.append('archivo', archivo);
+    return multipartRequest<TramitacionResponse>(
+      '/api/expedientes/' +
+        encodeURIComponent(expedienteId) +
+        '/tramitacion/requerimientos/' +
+        encodeURIComponent(reqId) +
+        '/documentos/' +
+        encodeURIComponent(docId) +
+        '/archivo',
+      formData,
+    );
+  },
+
+  validarDocumentoRequerimientoMercurio: (
+    expedienteId: string,
+    reqId: string,
+    docId: string,
+    body: { accion: 'validar' | 'rechazar'; notaRechazo?: string },
+  ) =>
+    request<TramitacionResponse>(
+      '/api/expedientes/' +
+        encodeURIComponent(expedienteId) +
+        '/tramitacion/requerimientos/' +
+        encodeURIComponent(reqId) +
+        '/documentos/' +
+        encodeURIComponent(docId) +
+        '/validar',
+      { method: 'POST', body: JSON.stringify(body) },
+    ),
+
+  guardarCamposRequerimientoMercurio: (
+    expedienteId: string,
+    reqId: string,
+    valores: Array<{ id: string; valor?: string | null }>,
+  ) =>
+    request<TramitacionResponse>(
+      '/api/expedientes/' +
+        encodeURIComponent(expedienteId) +
+        '/tramitacion/requerimientos/' +
+        encodeURIComponent(reqId) +
+        '/campos',
+      { method: 'PATCH', body: JSON.stringify({ valores }) },
+    ),
+
   presentarRequerimientoMercurio: (
     expedienteId: string,
     reqId: string,
     justificante: File,
-    archivo?: File | null,
+    options?: { presentacion?: File | null; archivo?: File | null },
   ) => {
     const formData = new FormData();
     formData.append('justificante', justificante);
-    if (archivo) formData.append('archivo', archivo);
+    if (options?.presentacion) formData.append('presentacion', options.presentacion);
+    if (options?.archivo) formData.append('archivo', options.archivo);
     return multipartRequest<TramitacionResponse>(
       '/api/expedientes/' +
         encodeURIComponent(expedienteId) +
@@ -937,6 +1107,68 @@ export const api = {
   tramitacionPresentacionArchivoUrl: (expedienteId: string, tipo: 'presentacion' | 'justificante') =>
     `/api/expedientes/${encodeURIComponent(expedienteId)}/tramitacion/presentacion/archivo/${tipo}`,
 
+  tramitacionRequerimientoArchivoUrl: (expedienteId: string, reqId: string) =>
+    `/api/expedientes/${encodeURIComponent(expedienteId)}/tramitacion/requerimientos/${encodeURIComponent(reqId)}/archivo-descarga`,
+
+  tramitacionRequerimientoJustificanteUrl: (expedienteId: string, reqId: string) =>
+    `/api/expedientes/${encodeURIComponent(expedienteId)}/tramitacion/requerimientos/${encodeURIComponent(reqId)}/justificante`,
+
+  subirArchivoDocumentoRequerimientoMercurioPortal: (
+    token: string,
+    reqId: string,
+    docId: string,
+    archivo: File,
+  ) => {
+    const formData = new FormData();
+    formData.append('archivo', archivo);
+    return publicMultipartRequest<AccesoExpedienteResponse>(
+      '/api/acceso/' +
+        encodeURIComponent(token) +
+        '/tramitacion/requerimientos/' +
+        encodeURIComponent(reqId) +
+        '/documentos/' +
+        encodeURIComponent(docId) +
+        '/archivo',
+      formData,
+    );
+  },
+
+  guardarCamposRequerimientoMercurioPortal: (
+    token: string,
+    reqId: string,
+    valores: Array<{ id: string; valor?: string | null }>,
+  ) =>
+    publicRequest<AccesoExpedienteResponse>(
+      '/api/acceso/' +
+        encodeURIComponent(token) +
+        '/tramitacion/requerimientos/' +
+        encodeURIComponent(reqId) +
+        '/campos',
+      { method: 'PATCH', body: JSON.stringify({ valores }) },
+    ),
+
+  getCamposFormularioServicio: (servicioId: string) =>
+    request<{ campos: CampoFormularioConfig[] }>(
+      '/api/servicios/' + encodeURIComponent(servicioId) + '/campos-formulario',
+    ),
+
+  putCamposFormularioServicio: (servicioId: string, campos: CampoFormularioConfig[]) =>
+    request<{ campos: CampoFormularioConfig[] }>(
+      '/api/servicios/' + encodeURIComponent(servicioId) + '/campos-formulario',
+      { method: 'PUT', body: JSON.stringify({ campos }) },
+    ),
+
+  getCamposFormularioTramite: (tramiteId: string) =>
+    request<{ campos: CampoFormularioConfig[] }>(
+      '/api/tramites/' + encodeURIComponent(tramiteId) + '/campos-formulario',
+    ),
+
+  putCamposFormularioTramite: (tramiteId: string, campos: CampoFormularioConfig[]) =>
+    request<{ campos: CampoFormularioConfig[] }>(
+      '/api/tramites/' + encodeURIComponent(tramiteId) + '/campos-formulario',
+      { method: 'PUT', body: JSON.stringify({ campos }) },
+    ),
+
   subirArchivoRequerimientoMercurioPortal: (token: string, reqId: string, archivo: File) => {
     const formData = new FormData();
     formData.append('archivo', archivo);
@@ -958,7 +1190,7 @@ export const api = {
       API_BASE +
         '/api/expedientes/' +
         encodeURIComponent(expedienteId) +
-        '/documentacion/zip',
+        '/archivo/zip',
       {
         method: 'POST',
         headers: mergeFetchHeaders({
@@ -1120,12 +1352,12 @@ export const api = {
       { method: 'POST', body: JSON.stringify({ nota, motivos: motivos ?? [] }) },
     ),
 
-  getRequerimientos: (expedienteId: string) =>
-    request<RequerimientosResponse>(
-      '/api/expedientes/' + encodeURIComponent(expedienteId) + '/requerimientos',
+  getDocumentacion: (expedienteId: string) =>
+    request<DocumentacionResponse>(
+      '/api/expedientes/' + encodeURIComponent(expedienteId) + '/documentacion',
     ),
 
-  agregarDocumentoRequerimientos: (
+  agregarDocumentoDocumentacion: (
     expedienteId: string,
     body: {
       nombre: string;
@@ -1136,70 +1368,70 @@ export const api = {
     },
   ) =>
     request<{ id: string }>(
-      '/api/expedientes/' + encodeURIComponent(expedienteId) + '/requerimientos/documentos',
+      '/api/expedientes/' + encodeURIComponent(expedienteId) + '/documentacion/documentos',
       { method: 'POST', body: JSON.stringify(body) },
     ),
 
-  validarDocumentoRequerimientos: (expedienteId: string, docId: string) =>
-    request<RequerimientosResponse>(
+  validarDocumentoDocumentacion: (expedienteId: string, docId: string) =>
+    request<DocumentacionResponse>(
       '/api/expedientes/' +
         encodeURIComponent(expedienteId) +
-        '/requerimientos/documentos/' +
+        '/documentacion/documentos/' +
         encodeURIComponent(docId) +
         '/validar',
       { method: 'POST' },
     ),
 
-  devolverDocumentoRequerimientos: (expedienteId: string, docId: string, nota: string) =>
-    request<RequerimientosResponse>(
+  devolverDocumentoDocumentacion: (expedienteId: string, docId: string, nota: string) =>
+    request<DocumentacionResponse>(
       '/api/expedientes/' +
         encodeURIComponent(expedienteId) +
-        '/requerimientos/documentos/' +
+        '/documentacion/documentos/' +
         encodeURIComponent(docId) +
         '/devolver',
       { method: 'POST', body: JSON.stringify({ nota }) },
     ),
 
-  asignarDocumentoRequerimientoAbogado: (expedienteId: string, docId: string) =>
-    request<RequerimientosResponse>(
+  asignarDocumentoDocumentacionAbogado: (expedienteId: string, docId: string) =>
+    request<DocumentacionResponse>(
       '/api/expedientes/' +
         encodeURIComponent(expedienteId) +
-        '/requerimientos/documentos/' +
+        '/documentacion/documentos/' +
         encodeURIComponent(docId) +
         '/asignar-abogado',
       { method: 'POST' },
     ),
 
-  derivarDocumentoRequerimientoCliente: (
+  derivarDocumentoDocumentacionCliente: (
     expedienteId: string,
     docId: string,
     nota?: string,
   ) =>
-    request<RequerimientosResponse>(
+    request<DocumentacionResponse>(
       '/api/expedientes/' +
         encodeURIComponent(expedienteId) +
-        '/requerimientos/documentos/' +
+        '/documentacion/documentos/' +
         encodeURIComponent(docId) +
         '/derivar-cliente',
       { method: 'POST', body: JSON.stringify({ nota: nota ?? '' }) },
     ),
 
-  requerimientosDocumentoArchivoUrl: (expedienteId: string, docId: string, archivoId?: string) => {
-    const base = `/api/expedientes/${encodeURIComponent(expedienteId)}/requerimientos/documentos/${encodeURIComponent(docId)}/archivo`;
+  documentacionFaseDocumentoArchivoUrl: (expedienteId: string, docId: string, archivoId?: string) => {
+    const base = `/api/expedientes/${encodeURIComponent(expedienteId)}/documentacion/documentos/${encodeURIComponent(docId)}/archivo`;
     return archivoId ? `${base}?archivoId=${encodeURIComponent(archivoId)}` : base;
   },
 
-  guardarEscritoRequerimientos: (
+  guardarEscritoDocumentacion: (
     expedienteId: string,
     body: { titulo: string; contenidoHtml: string },
   ) =>
     request<{ id: string; titulo: string; pdfPath: string }>(
-      '/api/expedientes/' + encodeURIComponent(expedienteId) + '/requerimientos/escritos',
+      '/api/expedientes/' + encodeURIComponent(expedienteId) + '/documentacion/escritos',
       { method: 'POST', body: JSON.stringify(body) },
     ),
 
-  requerimientosEscritoPdfUrl: (expedienteId: string, escritoId: string) =>
-    `/api/expedientes/${encodeURIComponent(expedienteId)}/requerimientos/escritos/${encodeURIComponent(escritoId)}/pdf`,
+  documentacionEscritoPdfUrl: (expedienteId: string, escritoId: string) =>
+    `/api/expedientes/${encodeURIComponent(expedienteId)}/documentacion/escritos/${encodeURIComponent(escritoId)}/pdf`,
 
   getEscritosExpediente: (expedienteId: string) =>
     request<ExpedienteEscritoListItem[]>(
@@ -1243,23 +1475,23 @@ export const api = {
 
   avanzarTramitacion: (expedienteId: string) =>
     request<{ message: string }>(
-      '/api/expedientes/' + encodeURIComponent(expedienteId) + '/requerimientos/avanzar-tramitacion',
+      '/api/expedientes/' + encodeURIComponent(expedienteId) + '/documentacion/avanzar-tramitacion',
       { method: 'POST' },
     ),
 
-  subirDocumentoRequerimientos: (token: string, docId: string, files: File[]) => {
+  subirDocumentoDocumentacion: (token: string, docId: string, files: File[]) => {
     const formData = new FormData();
     appendArchivosToFormData(formData, files);
     return publicMultipartRequest<AccesoExpedienteResponse>(
       '/api/acceso/' +
         encodeURIComponent(token) +
-        '/requerimientos/documentos/' +
+        '/documentacion/documentos/' +
         encodeURIComponent(docId),
       formData,
     );
   },
 
-  subirDocumentoRequerimientosAbogado: (
+  subirDocumentoDocumentacionAbogado: (
     expedienteId: string,
     docId: string,
     files: File[],
@@ -1268,10 +1500,10 @@ export const api = {
     const formData = new FormData();
     appendArchivosToFormData(formData, files);
     const query = modo === 'aportar' ? '?modo=aportar' : '';
-    return multipartRequest<RequerimientosResponse>(
+    return multipartRequest<DocumentacionResponse>(
       '/api/expedientes/' +
         encodeURIComponent(expedienteId) +
-        '/requerimientos/documentos/' +
+        '/documentacion/documentos/' +
         encodeURIComponent(docId) +
         '/subir' +
         query,
@@ -1467,7 +1699,7 @@ export interface TramiteResponse {
   activo: boolean;
 }
 
-export type FaseNegocio = 'contratacion' | 'requerimientos' | 'tramitacion' | 'resolucion';
+export type FaseNegocio = 'contratacion' | 'documentacion' | 'tramitacion' | 'resolucion';
 export type MetodoPago = 'manual' | 'digital';
 export type PlanPago = 'unico' | 'fraccionado';
 
@@ -1508,8 +1740,8 @@ export interface ExpedienteResponse {
       fecha: string | null;
     }>;
   } | null;
-  /** Progreso documental en fase requerimientos. */
-  subfaseRequerimientos?: {
+  /** Progreso documental en fase documentación. */
+  subfaseDocumentacion?: {
     validados: number;
     total: number;
     pendientes: number;
@@ -1523,15 +1755,45 @@ export interface ExpedienteResponse {
       fecha: string | null;
     }>;
   } | null;
+  /** Presentación/justificante para tooltip en fase tramitación. */
+  subfaseTramitacionDetalle?: {
+    fechaPresentacion: string | null;
+    items: Array<{
+      nombre: string;
+      estado: string;
+      estadoLabel: string;
+      fecha: string | null;
+    }>;
+  } | null;
+  /** Progreso de cuotas/cobros para listado. */
+  resumenCobros?: {
+    pagadas: number;
+    total: number;
+    vencidas: number;
+    label: string;
+    cobrado: number;
+    importeTotal: number;
+    pendiente: number;
+    items: Array<{
+      nombre: string;
+      importe: number;
+      estado: string;
+      estadoLabel: string;
+      fecha: string | null;
+    }>;
+  } | null;
   honorariosAcordados?: number;
   metodoPago?: MetodoPago;
   planPago?: PlanPago;
   numCuotas?: number;
   accessUrl?: string | null;
+  /** Plazo de fase del expediente (YYYY-MM-DD). En listado, la columna Vencimiento usa el más próximo entre este y cuotas activas. */
+  fechaVencimientoFase?: string | null;
   avisosPendientes?: number;
   avisosDetalle?: {
     contratacion: number;
-    requerimientos: number;
+    documentacion: number;
+    notificaciones?: number;
   };
 }
 
@@ -1657,6 +1919,7 @@ export interface AccesoClienteDatosResponse {
 export interface AccesoExpedienteResponse {
   expedienteNumero: string;
   tramiteNombre: string;
+  servicioNombre?: string | null;
   tipoServicio?: string | null;
   faseNegocio: FaseNegocio;
   faseNegocioLabel: string;
@@ -1682,9 +1945,55 @@ export interface AccesoExpedienteResponse {
   despachoNombreFirma?: string | null;
   despachoSubtitulo?: string | null;
   firmas?: AccesoFirmasConfigResponse;
-  requerimientos?: AccesoRequerimientosResponse | null;
+  documentacion?: AccesoDocumentacionResponse | null;
   tramitacion?: AccesoTramitacionResponse | null;
   resolucion?: AccesoResolucionResponse | null;
+}
+
+export type TipoCampoFormularioValue =
+  | 'text'
+  | 'textarea'
+  | 'number'
+  | 'date'
+  | 'select'
+  | 'checkbox';
+
+export interface CampoFormularioConfig {
+  id?: string;
+  clave: string;
+  etiqueta: string;
+  tipo: TipoCampoFormularioValue;
+  tipoLabel?: string;
+  opciones?: string[] | null;
+  obligatorio: boolean;
+  orden?: number;
+}
+
+export interface RequerimientoMercurioDocumentoResponse {
+  id: string;
+  nombre: string;
+  descripcion: string;
+  responsable: 'cliente' | 'abogado';
+  responsableLabel: string;
+  obligatorio: boolean;
+  estado: string;
+  estadoLabel: string;
+  tieneArchivo: boolean;
+  notaRechazo?: string | null;
+  orden: number;
+  maxArchivos?: number;
+}
+
+export interface RequerimientoMercurioCampoResponse {
+  id: string;
+  clave: string;
+  etiqueta: string;
+  tipo: TipoCampoFormularioValue;
+  tipoLabel: string;
+  opciones?: string[] | null;
+  obligatorio: boolean;
+  orden: number;
+  valor?: string | null;
 }
 
 export interface AccesoTramitacionRequerimientoResponse {
@@ -1693,10 +2002,15 @@ export interface AccesoTramitacionRequerimientoResponse {
   tipoLabel: string;
   nombre: string;
   descripcion: string;
+  formularioNombre?: string | null;
+  formularioCometido?: string | null;
   estado: string;
   estadoLabel: string;
   tieneArchivo: boolean;
   puedeSubir: boolean;
+  documentos: RequerimientoMercurioDocumentoResponse[];
+  campos: RequerimientoMercurioCampoResponse[];
+  listoParaPresentar?: boolean;
 }
 
 export interface AccesoTramitacionResponse {
@@ -1725,11 +2039,18 @@ export interface TramitacionRequerimientoResponse {
   destinoLabel: string;
   nombre: string;
   descripcion: string;
+  formularioNombre?: string | null;
+  formularioCometido?: string | null;
   estado: string;
   estadoLabel: string;
   tieneArchivo: boolean;
   archivoNombre?: string | null;
   tieneJustificante: boolean;
+  /** YYYY-MM-DD cuando el requerimiento está presentado. */
+  fechaPresentacion?: string | null;
+  documentos: RequerimientoMercurioDocumentoResponse[];
+  campos: RequerimientoMercurioCampoResponse[];
+  listoParaPresentar: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -1818,7 +2139,7 @@ export interface RequerimientoDocumentoArchivoResponse {
   orden: number;
 }
 
-export interface AccesoRequerimientosDocumentoResponse {
+export interface AccesoDocumentacionDocumentoResponse {
   id: string;
   nombre: string;
   descripcion: string;
@@ -1838,8 +2159,8 @@ export interface AccesoRequerimientosDocumentoResponse {
   parcialConArchivos?: boolean;
 }
 
-export interface AccesoRequerimientosResponse {
-  documentos: AccesoRequerimientosDocumentoResponse[];
+export interface AccesoDocumentacionResponse {
+  documentos: AccesoDocumentacionDocumentoResponse[];
   pendientesSubida: number;
   enRevision: number;
   esperandoAbogado: boolean;
@@ -1934,7 +2255,7 @@ export interface ContratacionResponse {
   hitos?: ContratacionHitoResponse[];
 }
 
-export interface RequerimientosDocumentoResponse {
+export interface DocumentacionDocumentoResponse {
   id: string;
   nombre: string;
   descripcion: string;
@@ -1962,7 +2283,7 @@ export interface RequerimientosDocumentoResponse {
   puedeDerivarCliente?: boolean;
 }
 
-export interface RequerimientosEscritoResponse {
+export interface DocumentacionEscritoResponse {
   id: string;
   titulo: string;
   createdAt: string;
@@ -2009,11 +2330,14 @@ export interface FacturacionExpedienteResponse {
     pendientes: number;
     errores: number;
     requiereAccion: boolean;
+    invoiceId?: string | null;
+    invoicePdfUrl?: string | null;
   };
+  paymentStatus?: string;
   historialPagos: PaymentResponse[];
 }
 
-export interface RequerimientosProgresoResponse {
+export interface DocumentacionProgresoResponse {
   total: number;
   obligatorios: number;
   validados: number;
@@ -2022,19 +2346,19 @@ export interface RequerimientosProgresoResponse {
   rechazados: number;
   todosObligatoriosValidados: boolean;
   ningunoEnRevision: boolean;
-  requerimientosListo: boolean;
+  documentacionListo: boolean;
 }
 
-export interface RequerimientosResponse {
+export interface DocumentacionResponse {
   expedienteId: string;
   numero: string;
   faseNegocio: FaseNegocio;
   estadoFase: string;
   estadoFaseLabel: string;
   accessUrl: string | null;
-  documentos: RequerimientosDocumentoResponse[];
-  escritos: RequerimientosEscritoResponse[];
-  progreso: RequerimientosProgresoResponse;
+  documentos: DocumentacionDocumentoResponse[];
+  escritos: DocumentacionEscritoResponse[];
+  progreso: DocumentacionProgresoResponse;
   puedeAvanzarFase3: boolean;
   esperandoAbogado?: boolean;
   agenteResponsableExpediente?: 'cliente' | 'abogado' | null;
@@ -2044,18 +2368,35 @@ export interface DocumentacionExpedienteItemResponse {
   id: string;
   nombre: string;
   descripcion: string;
-  tipo: 'documento' | 'escrito';
+  tipo: 'documento' | 'escrito' | 'formulario';
   fase: number;
   faseLabel: string;
   faseNegocio: string;
   faseNegocioLabel: string;
-  origen: 'requisito_tramite' | 'documento_firmado' | 'identidad_cliente' | 'escrito_firmado';
+  origen:
+    | 'requisito_tramite'
+    | 'documento_firmado'
+    | 'identidad_cliente'
+    | 'escrito_firmado'
+    | 'requerimiento_formulario'
+    | 'requerimiento_documento'
+    | string;
   origenLabel: string;
   obligatorio: boolean;
   estado: string;
   entregadoAt: string | null;
   descargaUrl: string | null;
-  mediaTipo?: 'pdf' | 'imagen';
+  mediaTipo?: 'pdf' | 'imagen' | 'formulario';
+  requerimientoId?: string | null;
+  requerimientoNombre?: string | null;
+  campos?: Array<{
+    id: string;
+    etiqueta: string;
+    tipo: string;
+    tipoLabel: string;
+    obligatorio: boolean;
+    valor?: string | null;
+  }>;
 }
 
 export interface EmailEstadoResponse {

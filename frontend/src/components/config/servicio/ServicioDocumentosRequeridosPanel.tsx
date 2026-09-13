@@ -10,7 +10,7 @@ export function ServicioDocumentosRequeridosPanel({ servicioId }: ServicioDocume
       scope="servicio"
       entityId={servicioId}
       title="Documentación común del servicio"
-      subtitle="Estos documentos se aplican a todos los trámites de este servicio en la fase de requerimientos."
+      subtitle="Estos documentos se aplican a todos los trámites de este servicio en la fase de documentación."
     />
   );
 }

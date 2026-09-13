@@ -4,7 +4,7 @@ import { api } from '@/api/client';
 import { ContratacionJourney } from '@/components/cliente-portal/contratacion/ContratacionJourney';
 import { PortalClienteShell } from '@/components/cliente-portal/PortalClienteShell';
 import { PortalClienteBrandingHero } from '@/components/cliente-portal/PortalClienteBrandingHero';
-import { RequerimientosClientePortal } from '@/components/cliente-portal/RequerimientosClientePortal';
+import { DocumentacionClientePortal } from '@/components/cliente-portal/DocumentacionClientePortal';
 import { TramitacionClientePortal } from '@/components/cliente-portal/TramitacionClientePortal';
 import { ResolucionClientePortal } from '@/components/cliente-portal/ResolucionClientePortal';
 import { useMercureAcceso } from '@/hooks/useMercureAcceso';
@@ -25,7 +25,7 @@ export function ClienteContratacionPortalPage({ token }: ClienteContratacionPort
     refetchInterval: (query) => {
       const fase = query.state.data?.faseNegocio;
       return fase === 'contratacion' ||
-        fase === 'requerimientos' ||
+        fase === 'documentacion' ||
         fase === 'tramitacion' ||
         fase === 'resolucion'
         ? 8000
@@ -86,10 +86,12 @@ export function ClienteContratacionPortalPage({ token }: ClienteContratacionPort
     );
   }
 
-  if (data.faseNegocio === 'requerimientos') {
+  const fasePortal = (data.faseNegocio as string) === 'requerimientos' ? 'documentacion' : data.faseNegocio;
+
+  if (fasePortal === 'documentacion') {
     return (
       <PortalClienteShell data={data}>
-        <RequerimientosClientePortal token={token} data={data} />
+        <DocumentacionClientePortal token={token} data={data} />
       </PortalClienteShell>
     );
   }

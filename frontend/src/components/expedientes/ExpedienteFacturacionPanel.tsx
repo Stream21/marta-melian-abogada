@@ -460,6 +460,22 @@ export function ExpedienteFacturacionPanel({ expedienteId }: ExpedienteFacturaci
         pendiente={resumen.pendiente}
       />
 
+      {holdedResumen.invoicePdfUrl && (
+        <div className="flex items-center gap-3 rounded-lg border border-border bg-card px-4 py-3 text-sm">
+          <span className="text-muted-foreground">
+            Factura única Holded{holdedResumen.invoiceId ? ` (${holdedResumen.invoiceId.slice(0, 8)}…)` : ''}
+          </span>
+          <a
+            href={holdedResumen.invoicePdfUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="text-primary font-medium hover:underline"
+          >
+            Descargar PDF
+          </a>
+        </div>
+      )}
+
       {resumen.vencido > 0 && (
         <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 flex items-center gap-2">
           <Clock className="h-4 w-4 shrink-0" />
@@ -489,47 +505,6 @@ export function ExpedienteFacturacionPanel({ expedienteId }: ExpedienteFacturaci
           </div>
         )}
       </div>
-
-      {data.historialPagos.length > 0 && (
-        <>
-          <Separator />
-          <div className="space-y-3">
-            <h3 className="text-base font-semibold">Historial de pagos</h3>
-            <div className="panel divide-y">
-              {data.historialPagos.map((pago) => (
-                <div key={pago.id} className="flex flex-wrap items-center justify-between gap-3 px-5 py-3 text-sm">
-                  <div>
-                    <span className="font-medium">{fmt(parseFloat(pago.amount))}</span>
-                    {pago.cuotaNumero != null && (
-                      <span className="text-muted-foreground ml-2">· Cuota {pago.cuotaNumero}</span>
-                    )}
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {pago.type === 'manual' ? 'Cobro manual' : 'Stripe'} ·{' '}
-                      {new Date(pago.createdAt).toLocaleString('es-ES')}
-                    </p>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Badge variant={pago.status === 'paid' ? 'success' : 'secondary'}>
-                      {pago.status === 'paid' ? 'Cobrado' : 'Pendiente'}
-                    </Badge>
-                    {pago.holdedEstado && pago.holdedEstado !== 'no_aplica' && (
-                      <HoldedFacturaActions
-                        holdedEstado={pago.holdedEstado as PaymentHoldedEstado}
-                        holdedEstadoLabel={pago.holdedEstadoLabel}
-                        holdedSyncError={pago.holdedSyncError}
-                        paymentId={pago.id}
-                        pdfUrl={pago.pdfUrl}
-                        onAction={refrescar}
-                        compact
-                      />
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </>
-      )}
     </div>
   );
 }

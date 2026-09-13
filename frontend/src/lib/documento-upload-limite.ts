@@ -18,6 +18,6 @@ export function documentoUploadLimiteDetalle(tipo: TipoDocumentoRequerido | stri
   return 'Adjunte una imagen, PDF, Word u otro documento compatible. Se guardará como PDF.';
 }
 
-/** Tipos MIME y extensiones aceptados en la subida de requerimientos. */
+/** Tipos MIME y extensiones aceptados en la subida de documentación (fase 2). */
 export const DOCUMENTO_UPLOAD_ACCEPT =
   'image/jpeg,image/png,image/webp,image/gif,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.oasis.opendocument.text,application/rtf,.doc,.docx,.odt,.rtf';

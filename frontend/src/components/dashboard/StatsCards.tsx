@@ -29,7 +29,7 @@ const cards: StatCard[] = [
     ),
   },
   {
-    label: 'Requerimientos Pendientes',
+    label: 'Documentación Pendiente',
     value: '8',
     badge: 'Urgente',
     badgeColor: 'text-red-600 bg-red-50 border-red-100',
@@ -56,7 +56,7 @@ const cards: StatCard[] = [
 
 function BadgeIcon({ card }: { card: StatCard }) {
   if (card.label === 'Expedientes Activos') return <TrendingUp className="h-3.5 w-3.5" />;
-  if (card.label === 'Requerimientos Pendientes') return <AlertCircle className="h-3.5 w-3.5" />;
+  if (card.label === 'Documentación Pendiente') return <AlertCircle className="h-3.5 w-3.5" />;
   return <ArrowUp className="h-3.5 w-3.5" />;
 }
 

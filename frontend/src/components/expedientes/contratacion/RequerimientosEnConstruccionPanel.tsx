@@ -27,9 +27,9 @@ export function RequerimientosEnConstruccionPanel({
           <Construction className="h-8 w-8 text-primary" />
         </div>
         <p className="section-label">Fase 2</p>
-        <h2 className="mt-1 text-xl font-bold text-foreground">Requerimientos</h2>
+        <h2 className="mt-1 text-xl font-bold text-foreground">Documentación</h2>
         <p className="mx-auto mt-4 max-w-md text-sm leading-relaxed text-muted-foreground">
-          Nos encontramos en la fase 2, requerimientos, que se encuentra en desarrollo.
+          Nos encontramos en la fase 2, documentación, que se encuentra en desarrollo.
         </p>
         {numero && (
           <p className="mt-2 text-xs text-muted-foreground">Expediente {numero}</p>

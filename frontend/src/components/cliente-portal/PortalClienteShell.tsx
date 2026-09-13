@@ -57,30 +57,36 @@ export function PortalClienteShell({
               focusMode ? 'py-1.5' : 'py-2',
             )}
           >
-            <div className="flex items-start justify-between gap-2">
-              <p className="font-mono text-xs font-semibold tracking-tight text-foreground">
-                {data.expedienteNumero}
+            <div className="space-y-1">
+              <p
+                className={cn(
+                  'text-sm font-semibold leading-snug text-foreground',
+                  focusMode && 'line-clamp-2',
+                )}
+                title={data.servicioNombre || data.tramiteNombre}
+              >
+                {data.servicioNombre || data.tramiteNombre}
               </p>
-              {textoVencimiento && (
-                <Badge
-                  variant={
-                    vencimiento.vencido ? 'destructive' : vencimiento.urgente ? 'warning' : 'secondary'
-                  }
-                  className="shrink-0 whitespace-nowrap text-[11px]"
-                >
-                  {textoVencimiento}
-                </Badge>
-              )}
+              <div className="flex items-center justify-between gap-2">
+                <p className="font-mono text-xs font-semibold tracking-tight text-muted-foreground">
+                  {data.expedienteNumero}
+                </p>
+                {textoVencimiento && (
+                  <Badge
+                    variant={
+                      vencimiento.vencido
+                        ? 'destructive'
+                        : vencimiento.urgente
+                          ? 'warning'
+                          : 'secondary'
+                    }
+                    className="shrink-0 whitespace-nowrap text-[11px]"
+                  >
+                    {textoVencimiento}
+                  </Badge>
+                )}
+              </div>
             </div>
-            <p
-              className={cn(
-                'mt-0.5 text-sm leading-snug text-muted-foreground',
-                focusMode && 'line-clamp-2 text-foreground/90',
-              )}
-              title={data.tramiteNombre}
-            >
-              {data.tramiteNombre}
-            </p>
 
             {showRoadmap && (
               <div className={cn(focusMode ? 'mt-1' : 'mt-1.5')}>
