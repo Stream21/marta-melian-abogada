@@ -170,8 +170,12 @@ final class ContratacionAccesoPresenter
                     && null !== $pasoDatos->notaDevolucion()
                     && $tieneDocumento;
 
-                if ($pasoDatosPendiente && $tieneDocumento) {
+                // Siempre en paso pendiente: precarga teléfono/email del alta (y resto si ya hay ficha).
+                if ($pasoDatosPendiente) {
                     $datosClienteEditables = ClienteInputMapper::toArray(ClienteInputMapper::fromCliente($cliente));
+                }
+
+                if ($pasoDatosPendiente && $tieneDocumento) {
                     $tipoDoc = $cliente->documentoIdentidadTipo();
                     $identidadEdicion = [
                         'modoCorreccion' => $esCorreccion,

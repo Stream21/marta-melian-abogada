@@ -82,6 +82,8 @@ export function datosExtraidosAClienteInput(
     provincia: extraidos.provincia ?? '',
     nombrePadre: extraidos.nombrePadre ?? '',
     nombreMadre: extraidos.nombreMadre ?? '',
+    telefono: '',
+    email: '',
   };
 }
 
