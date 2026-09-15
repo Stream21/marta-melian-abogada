@@ -12,17 +12,23 @@ import {
   User,
   AlertTriangle,
 } from 'lucide-react';
-import { api, type ContratacionPasoResponse, type ContratacionResponse } from '@/api/client';
-import type { ExpedienteResponse } from '@/api/client';
+import {
+  api,
+  type CalendarioCuotaResponse,
+  type ContratacionPasoResponse,
+  type ContratacionResponse,
+  type ContratacionFirmaDocumentoResponse,
+  type ExpedienteResponse,
+} from '@/api/client';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { calcularVencimientoFase, textoVencimientoFase } from '@/lib/vencimiento-fase';
 import { CondicionesPagoPanel } from './CondicionesPagoPanel';
 import {
   contarFirmasCompletadas,
   FirmasProgresoResumen,
 } from './FirmasRevisionPanel';
-import type { ContratacionFirmaDocumentoResponse } from '@/api/client';
 
 const PASO_ICONS: Record<string, typeof User> = {
   datos_cliente: User,
@@ -40,34 +46,44 @@ interface ContratacionGestionPanelProps {
   onFocusConsumed?: () => void;
 }
 
-function vencimientoBadge(fecha: string | null | undefined) {
-  if (!fecha) return null;
-  const venc = new Date(fecha + 'T23:59:59');
-  const hoy = new Date();
-  hoy.setHours(0, 0, 0, 0);
-  const dias = Math.ceil((venc.getTime() - hoy.getTime()) / 86400000);
-  if (dias < 0) {
+function vencimientoBadge(fecha: string | null | undefined, prefijo?: string) {
+  const texto = textoVencimientoFase(fecha);
+  const info = calcularVencimientoFase(fecha);
+  if (!texto || !info.fechaFormateada) return null;
+
+  const label = prefijo ? `${prefijo} · ${texto}` : texto;
+
+  if (info.vencido) {
     return (
       <Badge variant="destructive" className="gap-1">
         <AlertTriangle className="h-3 w-3" />
-        Vencido hace {Math.abs(dias)} día(s)
+        {label}
       </Badge>
     );
   }
-  if (dias <= 7) {
+  if (info.urgente) {
     return (
       <Badge variant="warning" className="gap-1">
         <AlertTriangle className="h-3 w-3" />
-        Vence en {dias} día(s)
+        {label}
       </Badge>
     );
   }
   return (
     <Badge variant="secondary" className="gap-1">
       <Clock className="h-3 w-3" />
-      Vence {venc.toLocaleDateString('es-ES')}
+      {prefijo ? `${prefijo} · ${info.fechaFormateada}` : `Vence ${info.fechaFormateada}`}
     </Badge>
   );
+}
+
+function proximaCuotaPendiente(
+  calendario: CalendarioCuotaResponse[] | null | undefined,
+): CalendarioCuotaResponse | null {
+  const pendientes = (calendario ?? [])
+    .filter((c) => c.estado !== 'pagado')
+    .sort((a, b) => a.fechaVencimiento.localeCompare(b.fechaVencimiento));
+  return pendientes[0] ?? null;
 }
 
 function estadoBadge(estado: string, esPagoManualPendiente = false) {
@@ -90,6 +106,8 @@ function PasoCard({
   metodoPago,
   metodoPagoLabel,
   firmasDocumento,
+  fechaVencimientoFase,
+  cuotaPendiente,
   onRevisar,
   validando,
 }: {
@@ -97,6 +115,8 @@ function PasoCard({
   metodoPago: string;
   metodoPagoLabel: string;
   firmasDocumento?: ContratacionFirmaDocumentoResponse[];
+  fechaVencimientoFase?: string | null;
+  cuotaPendiente?: CalendarioCuotaResponse | null;
   onRevisar: (paso: ContratacionPasoResponse) => void;
   validando: boolean;
 }) {
@@ -107,6 +127,15 @@ function PasoCard({
   const firmasEnCurso =
     esFirmas && (paso.estado === 'pendiente' || paso.estado === 'realizado_cliente');
   const firmasCompletadas = contarFirmasCompletadas(firmasDocumento);
+  const pasoAbierto = paso.estado !== 'validado_abogado';
+  const badgeVencimientoPaso = !pasoAbierto
+    ? null
+    : esPago
+      ? vencimientoBadge(
+          cuotaPendiente?.fechaVencimiento ?? fechaVencimientoFase,
+          cuotaPendiente ? `Cuota ${cuotaPendiente.numero}` : 'Plazo fase',
+        )
+      : vencimientoBadge(fechaVencimientoFase, 'Plazo fase');
 
   return (
     <div
@@ -139,6 +168,7 @@ function PasoCard({
                   {firmasCompletadas}/3 firmados
                 </Badge>
               )}
+              {badgeVencimientoPaso}
               {estadoBadge(paso.estado, esPagoManualPendiente)}
             </div>
           </div>
@@ -416,7 +446,7 @@ function ContratacionContent({
                 {pendientesRevision} pendiente{pendientesRevision === 1 ? '' : 's'} de revisión
               </Badge>
             )}
-            {vencimientoBadge(data.fechaVencimientoFase)}
+            {vencimientoBadge(data.fechaVencimientoFase, 'Plazo fase')}
           </div>
         </div>
 
@@ -434,6 +464,8 @@ function ContratacionContent({
               metodoPago={data.metodoPago}
               metodoPagoLabel={data.metodoPagoLabel}
               firmasDocumento={data.firmasDocumento}
+              fechaVencimientoFase={data.fechaVencimientoFase}
+              cuotaPendiente={proximaCuotaPendiente(data.calendarioPago ?? data.calendarioProyectado)}
               onRevisar={setPasoRevision}
               validando={validando}
             />
