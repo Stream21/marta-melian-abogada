@@ -8,7 +8,7 @@ import {
   Clock,
   ExternalLink,
   FileText,
-  FileUp,
+  Info,
   Loader2,
   MessageSquare,
   Scale,
@@ -21,6 +21,7 @@ import {
   type AccesoTramitacionTimelineStep,
   type RequerimientoMercurioCampoResponse,
 } from '@/api/client';
+import { DocumentoArchivoUploadControl } from '@/components/cliente-portal/DocumentoArchivoUploadControl';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -158,7 +159,11 @@ export function TramitacionClientePortal({ token, data }: TramitacionClientePort
 
       {timeline.length > 0 && (
         <section className="rounded-xl border border-border bg-card p-5 shadow-sm">
-          <p className="section-label mb-4">Progreso de la tramitación</p>
+          <p className="section-label mb-1">Progreso de la tramitación</p>
+          <p className="mb-4 text-xs text-muted-foreground">
+            Incluye un paso de requerimientos: si la Administración pide más documentos o datos,
+            le avisaremos y podrá completarlos aquí.
+          </p>
           <ol className="space-y-0">
             {timeline.map((step, index) => (
               <TimelineStepRow
@@ -168,6 +173,20 @@ export function TramitacionClientePortal({ token, data }: TramitacionClientePort
               />
             ))}
           </ol>
+        </section>
+      )}
+
+      {pendientes.length === 0 && tramitacion.estadoCliente !== 'accion_requerida' && (
+        <section className="flex gap-3 rounded-xl border border-border bg-muted/30 p-4">
+          <Info className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden />
+          <div className="min-w-0 space-y-1">
+            <p className="text-sm font-medium text-foreground">Sobre los requerimientos</p>
+            <p className="text-sm text-muted-foreground">
+              En esta fase es habitual que la Administración solicite documentación o datos
+              adicionales. Si ocurre, recibirá un correo y verá aquí qué debe adjuntar o
+              completar —igual que en la fase de documentación—.
+            </p>
+          </div>
         </section>
       )}
 
@@ -371,7 +390,7 @@ function RequerimientoClienteCard({
           <div>
             <p className="section-label">Documentos</p>
             <p className="mt-0.5 text-xs text-muted-foreground">
-              Adjunte cada documento solicitado
+              En cada documento: elija el archivo y después pulse Enviar
             </p>
           </div>
           <ul className="space-y-3">
@@ -464,46 +483,62 @@ function DocumentoClienteRow({
   doc: AccesoTramitacionRequerimientoResponse['documentos'][number];
 }) {
   const queryClient = useQueryClient();
-  const [file, setFile] = useState<File | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [uploadVersion, setUploadVersion] = useState(0);
+  const maxArchivos = Math.max(1, doc.maxArchivos ?? 1);
+  const tipoUpload = maxArchivos > 1 ? 'conjunto' : 'otro';
 
   const mutation = useMutation({
-    mutationFn: () => {
-      if (!file) throw new Error('Seleccione un archivo');
-      return api.subirArchivoDocumentoRequerimientoMercurioPortal(token, reqId, doc.id, file);
+    mutationFn: async (files: File[]) => {
+      for (const file of files) {
+        await api.subirArchivoDocumentoRequerimientoMercurioPortal(token, reqId, doc.id, file);
+      }
     },
     onSuccess: () => {
-      setFile(null);
+      setErrorMessage(null);
+      setUploadVersion((v) => v + 1);
       void queryClient.invalidateQueries({ queryKey: ['acceso', token] });
+    },
+    onError: (error) => {
+      setErrorMessage(error instanceof Error ? error.message : 'No se pudo enviar el archivo.');
     },
   });
 
   return (
-    <div className="space-y-2 rounded-lg border border-border p-3">
+    <div className="space-y-3 rounded-lg border border-border p-3">
       <div className="flex items-start gap-2">
-        <FileText className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+        <FileText className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-medium">{doc.nombre}</p>
-          {doc.notaRechazo && <p className="mt-1 text-sm text-destructive">{doc.notaRechazo}</p>}
+          <p className="text-sm font-medium text-foreground">
+            {doc.nombre}
+            {doc.obligatorio ? (
+              <span className="ml-1 text-amber-700" title="Obligatorio" aria-label="Obligatorio">
+                *
+              </span>
+            ) : null}
+          </p>
+          {doc.descripcion?.trim() ? (
+            <p className="mt-0.5 text-xs text-muted-foreground">{doc.descripcion}</p>
+          ) : null}
+          {doc.notaRechazo && (
+            <p className="mt-1 text-sm text-destructive">{doc.notaRechazo}</p>
+          )}
         </div>
       </div>
-      <Input
-        type="file"
-        accept=".pdf,application/pdf,image/*"
-        onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+      <DocumentoArchivoUploadControl
+        tipo={tipoUpload}
+        maxImagenes={maxArchivos}
+        uploading={mutation.isPending}
+        uploadingTitle="Enviando documento…"
+        uploadingDescription="Subiendo el archivo del requerimiento. No cierre esta página."
+        uploadSuccessKey={`${uploadVersion}-${doc.id}-${doc.estado}`}
+        error={errorMessage}
+        readyLabel="Enviar a mi abogado"
+        onUpload={(files) => {
+          setErrorMessage(null);
+          mutation.mutate(files);
+        }}
       />
-      <Button
-        size="sm"
-        className="min-h-11 w-full"
-        disabled={!file || mutation.isPending}
-        onClick={() => mutation.mutate()}
-      >
-        {mutation.isPending ? (
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-        ) : (
-          <FileUp className="mr-2 h-4 w-4" />
-        )}
-        Enviar
-      </Button>
     </div>
   );
 }
@@ -606,23 +641,29 @@ function RequerimientoClienteUploadLegacy({
   req: AccesoTramitacionRequerimientoResponse;
   queryClient: ReturnType<typeof useQueryClient>;
 }) {
-  const [file, setFile] = useState<File | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [uploadVersion, setUploadVersion] = useState(0);
 
   const mutation = useMutation({
-    mutationFn: () => {
+    mutationFn: async (files: File[]) => {
+      const file = files[0];
       if (!file) throw new Error('Seleccione un archivo');
       return api.subirArchivoRequerimientoMercurioPortal(token, req.id, file);
     },
     onSuccess: () => {
-      setFile(null);
+      setErrorMessage(null);
+      setUploadVersion((v) => v + 1);
       void queryClient.invalidateQueries({ queryKey: ['acceso', token] });
+    },
+    onError: (error) => {
+      setErrorMessage(error instanceof Error ? error.message : 'No se pudo enviar el archivo.');
     },
   });
 
   return (
     <article className="space-y-3 rounded-xl border border-border bg-card p-4 shadow-sm">
       <div>
-        <p className="font-medium">{req.nombre}</p>
+        <p className="font-medium text-foreground">{req.nombre}</p>
         {req.descripcion && (
           <p className="mt-1 text-sm text-muted-foreground">{req.descripcion}</p>
         )}
@@ -630,32 +671,23 @@ function RequerimientoClienteUploadLegacy({
           {req.estadoLabel}
         </Badge>
       </div>
-      <div className="space-y-2">
-        <Label htmlFor={`req-${req.id}`}>Adjuntar documento</Label>
-        <Input
-          id={`req-${req.id}`}
-          type="file"
-          accept=".pdf,application/pdf,image/*"
-          onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-        />
-      </div>
-      {mutation.error && (
-        <p className="text-sm text-destructive">
-          {mutation.error instanceof Error ? mutation.error.message : 'Error al subir'}
-        </p>
-      )}
-      <Button
-        className="min-h-11 w-full"
-        disabled={!file || mutation.isPending}
-        onClick={() => mutation.mutate()}
-      >
-        {mutation.isPending ? (
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-        ) : (
-          <FileUp className="mr-2 h-4 w-4" />
-        )}
-        Enviar documento
-      </Button>
+      <p className="text-xs text-muted-foreground">
+        Primero elija el archivo; después pulse Enviar para entregarlo a su abogado.
+      </p>
+      <DocumentoArchivoUploadControl
+        tipo="otro"
+        maxImagenes={1}
+        uploading={mutation.isPending}
+        uploadingTitle="Enviando documento…"
+        uploadingDescription="Subiendo el archivo del requerimiento. No cierre esta página."
+        uploadSuccessKey={`${uploadVersion}-${req.id}-${req.estado}`}
+        error={errorMessage}
+        readyLabel="Enviar a mi abogado"
+        onUpload={(files) => {
+          setErrorMessage(null);
+          mutation.mutate(files);
+        }}
+      />
     </article>
   );
 }

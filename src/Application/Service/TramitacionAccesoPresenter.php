@@ -212,26 +212,28 @@ final class TramitacionAccesoPresenter
             ],
         ];
 
-        if ($tieneRequerimientos) {
-            if ($reqsClientePendientes > 0) {
-                $reqEstado = 'activo';
-                $reqDesc = 'Hay documentación o datos pendientes por su parte.';
-            } elseif ($reqsDespachoAbiertos > 0) {
-                $reqEstado = 'activo';
-                $reqDesc = 'Su abogado está gestionando un requerimiento de la Administración.';
-            } else {
-                $reqEstado = 'completado';
-                $reqDesc = 'Los requerimientos adicionales ya están presentados.';
-            }
-
-            $timeline[] = [
-                'id' => 'requerimiento',
-                'label' => 'Requerimiento',
-                'descripcion' => $reqDesc,
-                'estado' => $reqEstado,
-                'fecha' => null,
-            ];
+        // Siempre visible: el cliente debe saber que en esta fase pueden pedirse datos/documentos extra.
+        if ($reqsClientePendientes > 0) {
+            $reqEstado = 'activo';
+            $reqDesc = 'Hay documentación o datos pendientes por su parte. Complételos más abajo.';
+        } elseif ($reqsDespachoAbiertos > 0) {
+            $reqEstado = 'activo';
+            $reqDesc = 'Su abogado está gestionando un requerimiento de la Administración.';
+        } elseif ($reqsClientePresentados > 0) {
+            $reqEstado = 'completado';
+            $reqDesc = 'Los requerimientos adicionales ya están presentados.';
+        } else {
+            $reqEstado = 'pendiente';
+            $reqDesc = 'Si la Administración pide más documentación o datos, le avisaremos por correo y aparecerán aquí para completarlos.';
         }
+
+        $timeline[] = [
+            'id' => 'requerimiento',
+            'label' => 'Requerimientos',
+            'descripcion' => $reqDesc,
+            'estado' => $reqEstado,
+            'fecha' => null,
+        ];
 
         $timeline[] = [
             'id' => 'resolucion',
