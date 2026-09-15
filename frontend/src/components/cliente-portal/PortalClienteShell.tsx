@@ -31,7 +31,8 @@ export function PortalClienteShell({
   const branding = brandingFromAcceso(data);
   const vencimiento = calcularVencimientoFase(data.fechaVencimientoFase);
   const textoVencimiento = textoVencimientoFase(data.fechaVencimientoFase);
-  const showRoadmap = data.faseNegocio === 'contratacion';
+  const showRoadmap =
+    data.faseNegocio === 'contratacion' || data.faseNegocio === 'tramitacion';
 
   return (
     <div

@@ -205,6 +205,11 @@ function DocumentoRequisitoCard({
               {doc.descripcion}
             </p>
           )}
+          {!expanded && puedeSubir && (
+            <p className="mt-1.5 text-xs font-semibold text-primary">
+              Pulse para abrir · elegir archivo · enviar
+            </p>
+          )}
         </div>
 
         <ChevronDown
@@ -276,7 +281,7 @@ function DocumentoRequisitoCard({
           )}
 
           {puedeSubir && (
-            <div className="rounded-lg border border-dashed border-primary/25 bg-muted/30 p-3">
+            <div className="rounded-lg bg-muted/20 p-1">
               <DocumentoArchivoUploadControl
                 tipo={doc.tipo}
                 maxImagenes={doc.maxImagenes}
@@ -288,7 +293,7 @@ function DocumentoRequisitoCard({
                 uploadSuccessKey={`${uploadVersion}-${doc.id}-${doc.estado}`}
                 error={errorMessage}
                 variant="default"
-                readyLabel="Listo — enviar a mi abogado"
+                readyLabel="Enviar a mi abogado"
                 onUpload={onUpload}
               />
             </div>

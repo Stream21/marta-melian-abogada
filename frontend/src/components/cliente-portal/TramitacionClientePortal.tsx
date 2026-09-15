@@ -2,17 +2,23 @@ import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   ArrowLeft,
+  CheckCircle2,
   ChevronRight,
   ClipboardList,
+  Clock,
   ExternalLink,
   FileText,
   FileUp,
   Loader2,
+  MessageSquare,
+  Scale,
+  Send,
 } from 'lucide-react';
 import {
   api,
   type AccesoExpedienteResponse,
   type AccesoTramitacionRequerimientoResponse,
+  type AccesoTramitacionTimelineStep,
   type RequerimientoMercurioCampoResponse,
 } from '@/api/client';
 import { Badge } from '@/components/ui/badge';
@@ -24,6 +30,35 @@ import { cn } from '@/lib/utils';
 interface TramitacionClientePortalProps {
   token: string;
   data: AccesoExpedienteResponse;
+}
+
+function formatFechaCorta(iso: string | null | undefined): string | null {
+  if (!iso) return null;
+  try {
+    const date = iso.includes('T') ? new Date(iso) : new Date(`${iso}T12:00:00`);
+    return date.toLocaleDateString('es-ES', {
+      day: '2-digit',
+      month: 'long',
+      year: 'numeric',
+    });
+  } catch {
+    return null;
+  }
+}
+
+function estadoBadgeVariant(estadoCliente: string): 'warning' | 'info' | 'secondary' | 'success' {
+  switch (estadoCliente) {
+    case 'accion_requerida':
+      return 'warning';
+    case 'presentada':
+    case 'en_seguimiento':
+      return 'info';
+    case 'preparacion':
+    case 'en_tramite_despacho':
+      return 'secondary';
+    default:
+      return 'secondary';
+  }
 }
 
 export function TramitacionClientePortal({ token, data }: TramitacionClientePortalProps) {
@@ -42,26 +77,16 @@ export function TramitacionClientePortal({ token, data }: TramitacionClientePort
     (r) =>
       r.puedeSubir || (r.campos?.some((c) => !c.valor?.trim()) ?? false),
   );
+  const presentados = tramitacion.requerimientosCliente.filter(
+    (r) => r.estado === 'presentado' || r.estado === 'cerrado',
+  );
   const seguimiento = tramitacion.instruccionesSeguimiento;
   const numeroExpediente =
     seguimiento?.numeroExpedienteExtranjeria ??
     tramitacion.numeroExpedienteExtranjeria ??
     null;
-  const estadoBadge = (() => {
-    switch (tramitacion.estadoCliente) {
-      case 'accion_requerida':
-        return { variant: 'warning' as const, label: 'Requiere su acción' };
-      case 'en_tramite_despacho':
-      case 'preparacion':
-        return { variant: 'secondary' as const, label: 'Pendiente del despacho' };
-      case 'pendiente_tramitacion':
-        return { variant: 'secondary' as const, label: 'Pendiente de la Administración' };
-      case 'en_seguimiento':
-        return { variant: 'info' as const, label: 'En seguimiento' };
-      default:
-        return { variant: 'secondary' as const, label: tramitacion.estadoClienteLabel };
-    }
-  })();
+  const fechaPresentacion = formatFechaCorta(tramitacion.fechaPresentacion);
+  const timeline = tramitacion.timeline ?? [];
 
   const reqFormularioAbierto =
     formularioAbiertoId != null
@@ -80,41 +105,130 @@ export function TramitacionClientePortal({ token, data }: TramitacionClientePort
 
   return (
     <div className="space-y-6">
-      <section className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card px-5 py-4 shadow-sm">
-        <p className="section-label">Estado de su solicitud</p>
-        <Badge variant={estadoBadge.variant} className="shrink-0 text-sm font-semibold">
-          {estadoBadge.label}
-        </Badge>
-      </section>
-
-      {seguimiento && (
-        <section className="space-y-4 rounded-xl border border-primary/20 bg-primary/5 p-5 shadow-sm">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-            <div className="min-w-0 space-y-1">
-              <p className="section-label">Nº expediente de extranjería</p>
-              {numeroExpediente ? (
-                <p className="font-mono text-lg font-semibold tracking-wide text-foreground">
-                  {numeroExpediente}
-                </p>
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  Pendiente de asignación por la Administración
+      <section
+        className={cn(
+          'overflow-hidden rounded-xl border shadow-sm',
+          tramitacion.estadoCliente === 'accion_requerida'
+            ? 'border-amber-200 bg-amber-50/60'
+            : 'border-border bg-card',
+        )}
+      >
+        <div className="space-y-4 p-5">
+          <div className="flex items-start gap-3">
+            <div
+              className={cn(
+                'flex h-12 w-12 shrink-0 items-center justify-center rounded-xl',
+                tramitacion.estadoCliente === 'accion_requerida'
+                  ? 'bg-amber-100 text-amber-800'
+                  : 'bg-primary/10 text-primary',
+              )}
+            >
+              <Scale className="h-6 w-6" />
+            </div>
+            <div className="min-w-0 flex-1 space-y-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="section-label">Fase 3 · Tramitación</p>
+                <Badge variant={estadoBadgeVariant(tramitacion.estadoCliente)}>
+                  {tramitacion.estadoClienteLabel}
+                </Badge>
+              </div>
+              <h2 className="text-lg font-semibold text-foreground sm:text-xl">
+                {tramitacion.estadoCliente === 'preparacion' && 'Estamos preparando su solicitud'}
+                {tramitacion.estadoCliente === 'presentada' && 'Solicitud presentada'}
+                {tramitacion.estadoCliente === 'en_seguimiento' && 'Solicitud en seguimiento'}
+                {tramitacion.estadoCliente === 'accion_requerida' && 'Necesitamos su colaboración'}
+                {tramitacion.estadoCliente === 'en_tramite_despacho' &&
+                  'Su abogado gestiona un requerimiento'}
+                {!['preparacion', 'presentada', 'en_seguimiento', 'accion_requerida', 'en_tramite_despacho'].includes(
+                  tramitacion.estadoCliente,
+                ) && tramitacion.estadoClienteLabel}
+              </h2>
+              {tramitacion.mensajeEstado && (
+                <p className="text-sm text-muted-foreground">{tramitacion.mensajeEstado}</p>
+              )}
+              {fechaPresentacion && (
+                <p className="text-xs text-muted-foreground">
+                  Presentada el <span className="font-medium text-foreground">{fechaPresentacion}</span>
                 </p>
               )}
             </div>
-            <Button asChild size="sm" className="min-h-11 w-full shrink-0 sm:w-auto">
-              <a href={seguimiento.webUrl} target="_blank" rel="noreferrer">
-                <ExternalLink className="mr-1.5 h-4 w-4" />
-                Abrir consulta en la sede
-              </a>
-            </Button>
           </div>
+        </div>
+      </section>
+
+      {timeline.length > 0 && (
+        <section className="rounded-xl border border-border bg-card p-5 shadow-sm">
+          <p className="section-label mb-4">Progreso de la tramitación</p>
+          <ol className="space-y-0">
+            {timeline.map((step, index) => (
+              <TimelineStepRow
+                key={step.id}
+                step={step}
+                isLast={index === timeline.length - 1}
+              />
+            ))}
+          </ol>
+        </section>
+      )}
+
+      {(tramitacion.presentacionRegistrada || numeroExpediente) && (
+        <section className="space-y-4 rounded-xl border border-primary/20 bg-primary/5 p-5 shadow-sm">
+          <div className="flex items-start gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <Send className="h-5 w-5" />
+            </div>
+            <div className="min-w-0 flex-1 space-y-1">
+              <p className="section-label">Seguimiento ante la Administración</p>
+              {numeroExpediente ? (
+                <>
+                  <p className="font-mono text-lg font-semibold tracking-wide text-foreground">
+                    {numeroExpediente}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Nº de expediente de extranjería. Consulte el estado en la sede o por SMS.
+                  </p>
+                </>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  La solicitud ya está presentada. El número de seguimiento aparecerá aquí cuando la
+                  Administración lo asigne; también le avisaremos por correo.
+                </p>
+              )}
+            </div>
+          </div>
+
+          {seguimiento && numeroExpediente && (
+            <div className="space-y-3 border-t border-primary/15 pt-4">
+              <Button asChild size="sm" className="min-h-11 w-full sm:w-auto">
+                <a href={seguimiento.webUrl} target="_blank" rel="noreferrer">
+                  <ExternalLink className="mr-1.5 h-4 w-4" />
+                  Abrir consulta en la sede
+                </a>
+              </Button>
+              {seguimiento.sms && seguimiento.smsTelefono && (
+                <div className="flex items-start gap-2 rounded-lg border border-border bg-card px-3 py-3 text-sm">
+                  <MessageSquare className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                  <p className="text-muted-foreground">
+                    SMS gratuito: envíe{' '}
+                    <span className="font-mono font-semibold text-foreground">{seguimiento.sms}</span>{' '}
+                    al{' '}
+                    <span className="font-semibold text-foreground">{seguimiento.smsTelefono}</span>
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
         </section>
       )}
 
       {pendientes.length > 0 && (
         <section className="space-y-4">
-          <h3 className="font-semibold">Pendiente por su parte</h3>
+          <div>
+            <h3 className="font-semibold">Pendiente por su parte</h3>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Complete estos puntos para que su abogado pueda presentar el requerimiento.
+            </p>
+          </div>
           {pendientes.map((req) => (
             <RequerimientoClienteCard
               key={req.id}
@@ -126,12 +240,91 @@ export function TramitacionClientePortal({ token, data }: TramitacionClientePort
         </section>
       )}
 
-      {tramitacion.requerimientosCliente.length > 0 && pendientes.length === 0 && (
-        <p className="text-sm text-muted-foreground">
-          No tiene documentos pendientes de envío en este momento.
-        </p>
+      {presentados.length > 0 && pendientes.length === 0 && (
+        <section className="space-y-3 rounded-xl border border-border bg-card p-4 shadow-sm">
+          <p className="section-label">Requerimientos presentados</p>
+          <ul className="space-y-2">
+            {presentados.map((req) => (
+              <li
+                key={req.id}
+                className="flex items-start justify-between gap-3 border-b border-border/60 pb-2 last:border-0 last:pb-0"
+              >
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-foreground">{req.nombre}</p>
+                  {req.fechaPresentacion && (
+                    <p className="text-xs text-muted-foreground">
+                      Presentado el {formatFechaCorta(req.fechaPresentacion)}
+                    </p>
+                  )}
+                </div>
+                <Badge variant="success">Presentado</Badge>
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
     </div>
+  );
+}
+
+function TimelineStepRow({
+  step,
+  isLast,
+}: {
+  step: AccesoTramitacionTimelineStep;
+  isLast: boolean;
+}) {
+  const completado = step.estado === 'completado';
+  const activo = step.estado === 'activo';
+  const fecha = formatFechaCorta(step.fecha);
+
+  return (
+    <li className="flex gap-3">
+      <div className="flex w-6 flex-col items-center">
+        <div
+          className={cn(
+            'flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2',
+            completado && 'border-emerald-500 bg-emerald-500 text-white',
+            activo && 'border-primary bg-primary/10 text-primary',
+            !completado && !activo && 'border-border bg-card text-muted-foreground',
+          )}
+        >
+          {completado ? (
+            <CheckCircle2 className="h-3.5 w-3.5" />
+          ) : activo ? (
+            <Clock className="h-3.5 w-3.5" />
+          ) : (
+            <span className="h-1.5 w-1.5 rounded-full bg-current" />
+          )}
+        </div>
+        {!isLast && (
+          <div
+            className={cn(
+              'mt-1 w-0.5 flex-1 min-h-[1.25rem]',
+              completado ? 'bg-emerald-400' : 'bg-border',
+            )}
+          />
+        )}
+      </div>
+      <div className={cn('min-w-0 pb-4', isLast && 'pb-0')}>
+        <div className="flex flex-wrap items-center gap-2">
+          <p
+            className={cn(
+              'text-sm font-semibold',
+              activo ? 'text-foreground' : 'text-foreground/90',
+              !completado && !activo && 'text-muted-foreground',
+            )}
+          >
+            {step.label}
+          </p>
+          {activo && <Badge variant="info">Actual</Badge>}
+          {fecha && (
+            <span className="text-[11px] text-muted-foreground">{fecha}</span>
+          )}
+        </div>
+        <p className="mt-0.5 text-xs text-muted-foreground">{step.descripcion}</p>
+      </div>
+    </li>
   );
 }
 

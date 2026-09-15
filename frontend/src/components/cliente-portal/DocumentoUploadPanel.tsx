@@ -86,7 +86,7 @@ export function DocumentoUploadPanel({ token, documentos }: DocumentoUploadPanel
                 uploadingDescription="Convirtiendo el archivo a PDF para su expediente."
                 uploadSuccessKey={`${uploadVersion}-${doc.id}`}
                 error={errorDocId === doc.id ? errorMessage : null}
-                readyLabel="Listo — enviar documento"
+                readyLabel="Enviar documento"
                 onUpload={(files) => {
                   setUploadingId(doc.id);
                   setErrorDocId(null);

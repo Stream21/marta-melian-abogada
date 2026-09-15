@@ -192,57 +192,74 @@ export function ImagenDocumentoCaptura({
     return (
       <div className={cn(adaptarAltura && 'flex min-h-0 flex-1 flex-col')}>
         {!preview ? (
-          <button
-            type="button"
-            onClick={abrirCamara}
-            disabled={procesando}
-            aria-label="Pulse aquí para sacar la foto"
+          <div
             className={cn(
-              'group relative overflow-hidden rounded-2xl bg-transparent shadow-none',
-              'transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-              'disabled:pointer-events-none disabled:opacity-60',
-              adaptarAltura
-                ? 'flex min-h-0 flex-1 w-full flex-col'
-                : 'block w-full',
+              'flex w-full flex-col gap-3',
+              adaptarAltura && 'min-h-0 flex-1',
             )}
           >
-            <div
+            <button
+              type="button"
+              onClick={abrirCamara}
+              disabled={procesando}
+              aria-label="Pulse para abrir la cámara y fotografiar el documento"
               className={cn(
-                'flex min-h-0 flex-1 items-center justify-center',
-                adaptarAltura && 'min-h-0',
+                'group relative overflow-hidden rounded-2xl',
+                'border-2 border-dashed border-primary/50 bg-primary/5',
+                'shadow-sm transition-colors',
+                'hover:border-primary hover:bg-primary/10',
+                'active:scale-[0.99] active:bg-primary/15',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                'disabled:pointer-events-none disabled:opacity-60',
+                adaptarAltura
+                  ? 'flex min-h-0 flex-1 w-full flex-col'
+                  : 'block w-full',
               )}
             >
-              <div className="doc-scan-frame relative shrink-0" style={marcoStyle}>
-              <span aria-hidden className="pointer-events-none absolute left-2 top-2 h-5 w-5 border-l-2 border-t-2 border-primary" />
-              <span aria-hidden className="pointer-events-none absolute right-2 top-2 h-5 w-5 border-r-2 border-t-2 border-primary" />
-              <span aria-hidden className="pointer-events-none absolute bottom-2 left-2 h-5 w-5 border-b-2 border-l-2 border-primary" />
-              <span aria-hidden className="pointer-events-none absolute bottom-2 right-2 h-5 w-5 border-b-2 border-r-2 border-primary" />
-              <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 px-4">
-                <span
-                  className={cn(
-                    'flex h-[4.75rem] w-[4.75rem] items-center justify-center rounded-full',
-                    'bg-primary text-primary-foreground shadow-md',
-                    'transition-transform group-active:scale-95',
-                    'motion-safe:animate-captura-shutter-pulse-brand',
-                  )}
-                >
-                  <Camera className="h-9 w-9" aria-hidden />
-                </span>
-                <span
-                  className={cn(
-                    'max-w-[14rem] text-center text-base font-bold leading-snug text-primary',
-                    'motion-safe:animate-captura-cta-blink',
-                  )}
-                >
-                  Pulse aquí para sacar la foto
-                </span>
-                <span className="max-w-[16rem] text-center text-xs text-muted-foreground">
-                  Se abrirá la cámara. Encaje el documento en el marco.
-                </span>
+              <div
+                className={cn(
+                  'flex min-h-0 flex-1 items-center justify-center p-3',
+                  adaptarAltura && 'min-h-0',
+                )}
+              >
+                <div className="doc-scan-frame relative shrink-0" style={marcoStyle}>
+                  <span aria-hidden className="pointer-events-none absolute left-2 top-2 h-5 w-5 border-l-2 border-t-2 border-primary" />
+                  <span aria-hidden className="pointer-events-none absolute right-2 top-2 h-5 w-5 border-r-2 border-t-2 border-primary" />
+                  <span aria-hidden className="pointer-events-none absolute bottom-2 left-2 h-5 w-5 border-b-2 border-l-2 border-primary" />
+                  <span aria-hidden className="pointer-events-none absolute bottom-2 right-2 h-5 w-5 border-b-2 border-r-2 border-primary" />
+                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-4">
+                    <span
+                      className={cn(
+                        'relative flex h-[4.75rem] w-[4.75rem] items-center justify-center rounded-full',
+                        'bg-primary text-primary-foreground shadow-md',
+                        'ring-4 ring-primary/20',
+                        'transition-transform group-active:scale-95',
+                        'motion-safe:animate-captura-shutter-pulse-brand',
+                      )}
+                    >
+                      <Camera className="h-9 w-9" aria-hidden />
+                    </span>
+                    <span className="max-w-[15rem] text-center text-base font-bold leading-snug text-primary">
+                      Pulse aquí para abrir la cámara
+                    </span>
+                    <span className="max-w-[16rem] text-center text-xs leading-relaxed text-muted-foreground">
+                      Es un botón: al pulsar se abre la cámara para encajar el documento.
+                    </span>
+                  </div>
+                </div>
               </div>
-              </div>
-            </div>
-          </button>
+            </button>
+            <Button
+              type="button"
+              size="lg"
+              className="min-h-[48px] w-full shrink-0 text-base"
+              onClick={abrirCamara}
+              disabled={procesando}
+            >
+              <Camera className="mr-2 h-5 w-5" aria-hidden />
+              Abrir cámara
+            </Button>
+          </div>
         ) : (
           <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
             <div className="bg-muted/20 px-3 py-4">

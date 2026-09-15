@@ -2013,13 +2013,23 @@ export interface AccesoTramitacionRequerimientoResponse {
   listoParaPresentar?: boolean;
 }
 
+export interface AccesoTramitacionTimelineStep {
+  id: string;
+  label: string;
+  descripcion: string;
+  estado: 'completado' | 'activo' | 'pendiente' | string;
+  fecha?: string | null;
+}
+
 export interface AccesoTramitacionResponse {
   subfase?: string | null;
   subfaseLabel?: string | null;
   actorBandeja?: string | null;
   estadoCliente: string;
   estadoClienteLabel: string;
+  mensajeEstado?: string | null;
   fechaPresentacion?: string | null;
+  presentacionRegistrada?: boolean;
   numeroExpedienteExtranjeria?: string | null;
   instruccionesSeguimiento?: {
     webUrl: string;
@@ -2028,6 +2038,7 @@ export interface AccesoTramitacionResponse {
     texto: string;
     numeroExpedienteExtranjeria?: string | null;
   } | null;
+  timeline?: AccesoTramitacionTimelineStep[];
   requerimientosCliente: AccesoTramitacionRequerimientoResponse[];
 }
 

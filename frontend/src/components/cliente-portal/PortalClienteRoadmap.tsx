@@ -149,6 +149,32 @@ export function PortalClienteRoadmap({
 }
 
 export function roadmapFromAcceso(data: AccesoExpedienteResponse): PortalClienteRoadmapProps {
+  if (data.faseNegocio === 'tramitacion' && data.tramitacion?.timeline?.length) {
+    const pasos: AccesoPasoResponse[] = data.tramitacion.timeline.map((step) => ({
+      paso: step.id,
+      label: step.label,
+      estado:
+        step.estado === 'completado'
+          ? 'validado_abogado'
+          : step.estado === 'activo'
+            ? 'pendiente'
+            : 'pendiente',
+      estadoLabel: step.estado,
+      esActivo: step.estado === 'activo',
+    }));
+    const pasoActivo =
+      data.tramitacion.timeline.find((s) => s.estado === 'activo')?.id ??
+      pasos[pasos.length - 1]?.paso ??
+      null;
+
+    return {
+      faseNegocio: data.faseNegocio,
+      fechaVencimientoFase: data.fechaVencimientoFase,
+      pasos,
+      pasoActivo,
+    };
+  }
+
   return {
     faseNegocio: data.faseNegocio,
     fechaVencimientoFase: data.fechaVencimientoFase,

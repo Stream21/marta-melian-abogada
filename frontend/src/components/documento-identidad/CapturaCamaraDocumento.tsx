@@ -434,13 +434,8 @@ export function CapturaCamaraDocumento({
               <p className="max-w-sm text-center text-sm text-white/80">{pista}</p>
             ) : null}
             {listo ? (
-              <p
-                className={cn(
-                  'text-center text-lg font-bold tracking-wide text-white',
-                  'motion-safe:animate-captura-cta-blink',
-                )}
-              >
-                Pulse aquí para sacar la foto
+              <p className="text-center text-lg font-bold tracking-wide text-white">
+                Pulse el botón blanco para sacar la foto
               </p>
             ) : null}
           </>

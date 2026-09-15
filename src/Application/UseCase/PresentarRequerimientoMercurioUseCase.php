@@ -139,14 +139,18 @@ final class PresentarRequerimientoMercurioUseCase
 
         $actualizado = $this->subfaseSync->sync($expediente);
 
-        if (
-            null !== $expediente->clienteId()
-            && '' !== $expediente->clienteId()
-            && 0 === $this->requerimientoRepository->countAbiertosByExpediente($id)
-        ) {
+        if (null !== $expediente->clienteId() && '' !== $expediente->clienteId()) {
             $cliente = $this->clienteRepository->findById(new ClienteId($expediente->clienteId()));
             if (null !== $cliente) {
-                $this->notificar->notificarVueltaSeguimiento($actualizado, $cliente);
+                if (0 === $this->requerimientoRepository->countAbiertosByExpediente($id)) {
+                    $this->notificar->notificarVueltaSeguimiento($actualizado, $cliente);
+                } else {
+                    $this->notificar->notificarRequerimientoPresentado(
+                        $actualizado,
+                        $cliente,
+                        $req->nombre(),
+                    );
+                }
             }
         }
     }

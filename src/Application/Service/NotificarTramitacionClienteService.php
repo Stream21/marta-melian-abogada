@@ -27,8 +27,10 @@ final class NotificarTramitacionClienteService
             sprintf('Solicitud presentada — Expediente %s', $expediente->numero()),
             sprintf(
                 "Su solicitud del expediente %s ha sido presentada ante la Administración.\n\n"
-                . "Estado actual: pendiente de tramitación por parte de la oficina de extranjería.\n\n"
-                . "Cuando exista el número de expediente de extranjería, podrá consultar el estado en la sede electrónica y por SMS desde su portal:\n%s",
+                . "Estado actual: pendiente de tramitación por parte de la oficina de extranjería.\n"
+                . "Le avisaremos también cuando se asigne el número de expediente de extranjería "
+                . "para que pueda consultar el estado en la sede electrónica y por SMS.\n\n"
+                . "Consulte el detalle en su portal:\n%s",
                 $expediente->numero(),
                 $this->accessUrl($expediente),
             ),
@@ -114,6 +116,45 @@ final class NotificarTramitacionClienteService
             ),
             $expediente->numero(),
             'vuelta_seguimiento',
+        );
+    }
+
+    public function notificarRequerimientoPresentado(
+        Expediente $expediente,
+        Cliente $cliente,
+        string $requerimientoNombre,
+    ): bool {
+        return $this->enviar(
+            $cliente,
+            sprintf('Requerimiento presentado — Expediente %s', $expediente->numero()),
+            sprintf(
+                "Su abogado ha presentado ante la Administración el requerimiento «%s» "
+                . "del expediente %s.\n\n"
+                . "Puede consultar el detalle en su portal:\n%s",
+                $requerimientoNombre,
+                $expediente->numero(),
+                $this->accessUrl($expediente),
+            ),
+            $expediente->numero(),
+            'requerimiento_presentado',
+        );
+    }
+
+    public function notificarAvanceResolucion(Expediente $expediente, Cliente $cliente): bool
+    {
+        return $this->enviar(
+            $cliente,
+            sprintf('Tramitación completada — Expediente %s', $expediente->numero()),
+            sprintf(
+                "La tramitación del expediente %s ha finalizado.\n"
+                . "Su expediente pasa ahora a la fase de resolución: su abogado aguardará "
+                . "la decisión de la Administración y le avisará cuando haya novedades.\n\n"
+                . "Portal:\n%s",
+                $expediente->numero(),
+                $this->accessUrl($expediente),
+            ),
+            $expediente->numero(),
+            'avance_resolucion',
         );
     }
 

@@ -69,9 +69,16 @@ export function DocumentoEntregaFocus({
           <p className="mt-2 text-sm text-muted-foreground">{documento.descripcion}</p>
         )}
         <ul className="mt-3 space-y-1.5 text-sm text-muted-foreground">
+          <li>
+            · <strong className="font-semibold text-foreground">1.</strong> Elija la foto o el
+            PDF.
+          </li>
+          <li>
+            · <strong className="font-semibold text-foreground">2.</strong> Pulse{' '}
+            <strong className="font-semibold text-foreground">Enviar documento</strong> para
+            entregarlo.
+          </li>
           <li>· Use buena luz y evite recortes o sombras fuertes.</li>
-          <li>· Si son varias fotos, súbalas juntas en un solo envío.</li>
-          <li>· Convertiremos el archivo a PDF para su expediente.</li>
         </ul>
       </div>
 
@@ -83,7 +90,7 @@ export function DocumentoEntregaFocus({
         uploadingDescription="Convirtiendo el archivo a PDF para su expediente."
         uploadSuccessKey={`${uploadVersion}-${documento.id}`}
         error={errorMessage}
-        readyLabel="Listo — enviar documento"
+        readyLabel="Enviar documento"
         onUpload={(files) => {
           setErrorMessage(null);
           uploadMutation.mutate(files);

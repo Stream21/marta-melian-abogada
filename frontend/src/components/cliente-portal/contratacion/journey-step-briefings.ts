@@ -62,7 +62,7 @@ export function briefingForView(
         title: doc.nombre,
         description:
           doc.descripcion?.trim() ||
-          'En el siguiente paso subirás o completarás este documento para seguir con la contratación.',
+          'En el siguiente paso: 1) elija la foto o el PDF, 2) pulse Enviar para entregarlo a su abogado.',
         ctaLabel: 'Continuar',
       };
     }
