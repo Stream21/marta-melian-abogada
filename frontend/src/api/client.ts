@@ -2008,6 +2008,8 @@ export interface AccesoTramitacionRequerimientoResponse {
   estadoLabel: string;
   tieneArchivo: boolean;
   puedeSubir: boolean;
+  /** YYYY-MM-DD cuando el requerimiento está presentado. */
+  fechaPresentacion?: string | null;
   documentos: RequerimientoMercurioDocumentoResponse[];
   campos: RequerimientoMercurioCampoResponse[];
   listoParaPresentar?: boolean;
