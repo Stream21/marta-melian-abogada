@@ -18,11 +18,11 @@ export type BreadcrumbNavState = {
   };
 };
 
-/** Inicio apunta al listado: /dashboard solo redirige a /expedientes. */
+/** Inicio = dashboard de KPIs. */
 const ROOT: AppBreadcrumbCrumb = {
   key: '/dashboard',
   label: 'Inicio',
-  to: '/expedientes',
+  to: '/dashboard',
 };
 
 function normalizePath(pathname: string): string {
@@ -101,6 +101,24 @@ export function buildAppBreadcrumbs(
   if (path.startsWith('/facturacion')) {
     crumbs.push({ key: '/facturacion', label: 'Facturación' });
     return crumbs;
+  }
+
+  if (path.startsWith('/gastos')) {
+    crumbs.push({ key: '/gastos', label: 'Gastos', to: '/gastos' });
+    if (path === '/gastos/nuevo') {
+      crumbs.push({ key: path, label: 'Nuevo' });
+    } else {
+      const gastoId = params.gastoId ?? idFromPath(path, /^\/gastos\/([^/]+)$/);
+      if (gastoId) {
+        crumbs.push({
+          key: `/gastos/${gastoId}`,
+          label: 'Editar',
+          to: '/gastos/$gastoId',
+          params: { gastoId },
+        });
+      }
+    }
+    return finalizeCurrent(crumbs);
   }
 
   if (path.startsWith('/config')) {
@@ -243,14 +261,12 @@ export function navTargetFromKey(
     return { to: '/config/tramites/$tramiteId', params: { tramiteId: tramite[1]! } };
   }
 
-  if (key === '/dashboard') {
-    return { to: '/expedientes' };
-  }
-
   if (
+    key === '/dashboard' ||
     key === '/expedientes' ||
     key === '/clientes' ||
     key === '/facturacion' ||
+    key === '/gastos' ||
     key === '/agenda' ||
     key === '/config/servicios' ||
     key === '/config/tramites' ||

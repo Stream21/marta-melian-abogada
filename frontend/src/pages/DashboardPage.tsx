@@ -1,32 +1,66 @@
-import { ChevronRight } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { Loader2 } from 'lucide-react';
+import { api } from '@/api/client';
+import { AlertasOperativas } from '@/components/dashboard/AlertasOperativas';
+import { ActividadReciente } from '@/components/dashboard/ActividadReciente';
+import { FaseDistribution } from '@/components/dashboard/FaseDistribution';
 import { StatsCards } from '@/components/dashboard/StatsCards';
 import { VencimientosTable } from '@/components/dashboard/VencimientosTable';
-import { ActividadReciente } from '@/components/dashboard/ActividadReciente';
+import { PageHeader } from '@/components/layout/PageHeader';
+import { PageShell } from '@/components/layout/PageShell';
 
 export function DashboardPage() {
-  return (
-    <div className="flex flex-col min-h-full bg-muted/30">
-      <div className="bg-card border-b px-6 md:px-8 py-2 shrink-0">
-        <nav className="flex items-center gap-2 text-[12px]">
-          <span className="text-muted-foreground">Dashboard</span>
-          <ChevronRight className="h-3.5 w-3.5 text-border" />
-          <span className="text-foreground font-medium">Inicio</span>
-        </nav>
-      </div>
+  const { data, isLoading, error, isFetching } = useQuery({
+    queryKey: ['dashboard-kpis'],
+    queryFn: () => api.getDashboardKpis(),
+    refetchInterval: 60_000,
+  });
 
-      <main className="flex-1 p-6 md:p-8">
-        <div className="max-w-[1400px] mx-auto flex flex-col gap-8">
-          <StatsCards />
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-stretch">
-            <div className="lg:col-span-2 flex flex-col h-full">
-              <VencimientosTable />
+  return (
+    <PageShell>
+      <PageHeader
+        title="Dashboard"
+        subtitle="Visión financiera y operativa del despacho: cobros, gastos, beneficio y plazos a revisar."
+      />
+
+      {isLoading && !data ? (
+        <div className="flex items-center justify-center py-20 text-muted-foreground">
+          <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+          Cargando indicadores…
+        </div>
+      ) : error ? (
+        <div className="panel p-6 text-center text-destructive text-sm">
+          No se pudo cargar el dashboard. Inténtelo de nuevo.
+        </div>
+      ) : data ? (
+        <div className={`space-y-8 transition-opacity ${isFetching ? 'opacity-70' : ''}`}>
+          <StatsCards
+            financiero={data.financiero}
+            operativo={data.operativo}
+            periodoLabel={data.periodo.label}
+          />
+
+          <AlertasOperativas operativo={data.operativo} />
+
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 items-stretch">
+            <div className="xl:col-span-2 flex flex-col min-h-[28rem]">
+              <VencimientosTable items={data.vencimientosProximos} />
             </div>
-            <div className="lg:col-span-1 flex flex-col h-full">
-              <ActividadReciente />
+            <div className="flex flex-col gap-6">
+              <FaseDistribution
+                porFase={data.porFase}
+                totalActivos={data.operativo.expedientesActivos}
+              />
+              <div className="flex-1 min-h-[18rem]">
+                <ActividadReciente
+                  items={data.actividadReciente}
+                  totalSinLeer={data.operativo.notificacionesSinLeer}
+                />
+              </div>
             </div>
           </div>
         </div>
-      </main>
-    </div>
+      ) : null}
+    </PageShell>
   );
 }

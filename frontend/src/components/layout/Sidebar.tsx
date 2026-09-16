@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { Link, useRouter } from '@tanstack/react-router';
 import {
+  LayoutDashboard,
   FolderOpen,
   Users,
   Receipt,
+  Wallet,
   Settings,
   LogOut,
   PanelLeftClose,
@@ -22,9 +24,11 @@ export interface SidebarProps {
 }
 
 const navItems = [
+  { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { label: 'Expedientes', href: '/expedientes', icon: FolderOpen },
   { label: 'Clientes', href: '/clientes', icon: Users },
   { label: 'Facturación', href: '/facturacion', icon: Receipt },
+  { label: 'Gastos', href: '/gastos', icon: Wallet },
 ];
 
 const configSubItems = [

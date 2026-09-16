@@ -1,97 +1,136 @@
-import { TrendingUp, AlertCircle, ArrowUp, Folders, ReceiptText, Banknote } from 'lucide-react';
+import {
+  Banknote,
+  Wallet,
+  TrendingUp,
+  TrendingDown,
+  Folders,
+  CalendarClock,
+  FileWarning,
+  AlertTriangle,
+} from 'lucide-react';
+import type { DashboardKpisResponse } from '@/api/client';
+import { cn } from '@/lib/utils';
 
-interface StatCard {
-  label: string;
-  value: string;
-  badge: string;
-  badgeColor: string;
-  subtext: string;
-  icon: React.ElementType;
-  iconColor: string;
-  extra?: React.ReactNode;
+const fmtEur = (n: number) =>
+  new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(n);
+
+interface StatsCardsProps {
+  financiero: DashboardKpisResponse['financiero'];
+  operativo: DashboardKpisResponse['operativo'];
+  periodoLabel: string;
 }
 
-const cards: StatCard[] = [
-  {
-    label: 'Expedientes Activos',
-    value: '142',
-    badge: '+5%',
-    badgeColor: 'text-emerald-600 bg-emerald-50 border-emerald-100',
-    icon: Folders,
-    iconColor: 'text-primary',
-    subtext: '70% de capacidad operativa',
-    extra: (
-      <div className="mt-2">
-        <div className="w-full bg-muted rounded-full h-1.5">
-          <div className="bg-primary h-1.5 rounded-full" style={{ width: '70%' }} />
+export function StatsCards({ financiero, operativo, periodoLabel }: StatsCardsProps) {
+  const beneficioPositivo = financiero.beneficioMes >= 0;
+  const plazosAtencion = operativo.plazosUrgentes + operativo.plazosVencidos;
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <p className="section-label mb-3">Financiero · {periodoLabel}</p>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <KpiCard
+            label="Total cobros"
+            value={fmtEur(financiero.cobrosMes)}
+            hint="Pagos confirmados este mes"
+            icon={Banknote}
+            accent="text-emerald-600"
+          />
+          <KpiCard
+            label="Total gastos"
+            value={fmtEur(financiero.gastosMes)}
+            hint="Gastos del despacho este mes"
+            icon={Wallet}
+            accent="text-amber-700"
+          />
+          <KpiCard
+            label="Beneficio"
+            value={fmtEur(financiero.beneficioMes)}
+            hint="Cobros − gastos del mes"
+            icon={beneficioPositivo ? TrendingUp : TrendingDown}
+            accent={beneficioPositivo ? 'text-emerald-600' : 'text-destructive'}
+            valueClassName={beneficioPositivo ? 'text-emerald-700' : 'text-destructive'}
+          />
         </div>
       </div>
-    ),
-  },
-  {
-    label: 'Documentación Pendiente',
-    value: '8',
-    badge: 'Urgente',
-    badgeColor: 'text-red-600 bg-red-50 border-red-100',
-    icon: ReceiptText,
-    iconColor: 'text-destructive',
-    subtext: '',
-    extra: (
-      <p className="text-[11px] text-red-600 font-bold flex items-center gap-1.5 mt-2">
-        <span className="h-1.5 w-1.5 rounded-full bg-destructive inline-block" />
-        2 vencen en menos de 24h
-      </p>
-    ),
-  },
-  {
-    label: 'Facturación Mensual',
-    value: '$12.4k',
-    badge: '+15%',
-    badgeColor: 'text-emerald-600 bg-emerald-50 border-emerald-100',
-    icon: Banknote,
-    iconColor: 'text-emerald-500',
-    subtext: 'Comparado con el mes anterior',
-  },
-];
 
-function BadgeIcon({ card }: { card: StatCard }) {
-  if (card.label === 'Expedientes Activos') return <TrendingUp className="h-3.5 w-3.5" />;
-  if (card.label === 'Documentación Pendiente') return <AlertCircle className="h-3.5 w-3.5" />;
-  return <ArrowUp className="h-3.5 w-3.5" />;
+      <div>
+        <p className="section-label mb-3">Operativo</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+          <KpiCard
+            label="Expedientes activos"
+            value={String(operativo.expedientesActivos)}
+            hint="Abiertos en el despacho"
+            icon={Folders}
+            accent="text-primary"
+            compact
+          />
+          <KpiCard
+            label="A revisar (≤7 días)"
+            value={String(plazosAtencion)}
+            hint={
+              operativo.plazosVencidos > 0
+                ? `${operativo.plazosVencidos} vencido${operativo.plazosVencidos === 1 ? '' : 's'} · ${operativo.plazosUrgentes} próximos`
+                : 'Plazos de fase y cuotas'
+            }
+            icon={CalendarClock}
+            accent={operativo.plazosVencidos > 0 ? 'text-destructive' : 'text-amber-700'}
+            compact
+          />
+          <KpiCard
+            label="Docs. pendientes"
+            value={String(operativo.documentacionPendienteRevision)}
+            hint="Pendientes de revisión"
+            icon={FileWarning}
+            accent="text-violet-700"
+            compact
+          />
+          <KpiCard
+            label="Cobros vencidos"
+            value={fmtEur(financiero.cobrosVencidosImporte)}
+            hint={`${financiero.cobrosVencidosCount} cuota${financiero.cobrosVencidosCount === 1 ? '' : 's'} · pendiente ${fmtEur(financiero.cobrosPendientesImporte)}`}
+            icon={AlertTriangle}
+            accent={financiero.cobrosVencidosCount > 0 ? 'text-destructive' : 'text-muted-foreground'}
+            compact
+          />
+        </div>
+      </div>
+    </div>
+  );
 }
 
-export function StatsCards() {
+interface KpiCardProps {
+  label: string;
+  value: string;
+  hint: string;
+  icon: React.ElementType;
+  accent: string;
+  valueClassName?: string;
+  compact?: boolean;
+}
+
+function KpiCard({ label, value, hint, icon: Icon, accent, valueClassName, compact }: KpiCardProps) {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-      {cards.map((card) => (
-        <div
-          key={card.label}
-          className="panel p-6 hover:shadow-md transition-shadow flex flex-col justify-between h-36 relative group"
-        >
-          <div className="absolute -right-4 -top-4 p-4 opacity-5 group-hover:opacity-10 transition-opacity rotate-12">
-            <card.icon className={`h-24 w-24 ${card.iconColor}`} />
-          </div>
-          <div className="relative z-10">
-            <p className="section-label mb-2">
-              {card.label}
-            </p>
-            <div className="flex items-end gap-3">
-              <h3 className="text-foreground text-4xl font-bold tracking-tight">{card.value}</h3>
-              <span
-                className={`mb-1.5 text-[11px] font-bold px-2 py-0.5 rounded flex items-center gap-1 border ${card.badgeColor}`}
-              >
-                <BadgeIcon card={card} />
-                {card.badge}
-              </span>
-            </div>
-          </div>
-          <div className="relative z-10 mt-auto">
-            {card.extra ?? (
-              <p className="text-[11px] text-muted-foreground mt-2 font-medium">{card.subtext}</p>
-            )}
+    <div
+      className={cn(
+        'panel p-5 hover:shadow-md transition-shadow',
+        compact ? 'min-h-[7.5rem]' : 'min-h-[8.5rem]',
+      )}
+    >
+      <div className="flex flex-col h-full justify-between gap-3">
+        <div className="flex items-start justify-between gap-2">
+          <p className="section-label">{label}</p>
+          <div className={cn('rounded-lg bg-primary/10 p-2', accent)}>
+            <Icon className="h-4 w-4" />
           </div>
         </div>
-      ))}
+        <div>
+          <p className={cn('text-3xl font-bold tracking-tight text-foreground', valueClassName)}>
+            {value}
+          </p>
+          <p className="mt-1 text-[11px] font-medium text-muted-foreground">{hint}</p>
+        </div>
+      </div>
     </div>
   );
 }
