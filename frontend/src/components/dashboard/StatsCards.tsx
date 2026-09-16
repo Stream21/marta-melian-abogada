@@ -113,17 +113,15 @@ function KpiCard({ label, value, hint, icon: Icon, accent, valueClassName, compa
   return (
     <div
       className={cn(
-        'panel p-5 hover:shadow-md transition-shadow',
+        'panel p-5 relative overflow-hidden group hover:shadow-md transition-shadow',
         compact ? 'min-h-[7.5rem]' : 'min-h-[8.5rem]',
       )}
     >
-      <div className="flex flex-col h-full justify-between gap-3">
-        <div className="flex items-start justify-between gap-2">
-          <p className="section-label">{label}</p>
-          <div className={cn('rounded-lg bg-primary/10 p-2', accent)}>
-            <Icon className="h-4 w-4" />
-          </div>
-        </div>
+      <div className="absolute -right-3 -top-3 p-3 opacity-5 group-hover:opacity-10 transition-opacity rotate-12">
+        <Icon className={cn('h-20 w-20', accent)} />
+      </div>
+      <div className="relative z-10 flex flex-col h-full justify-between gap-3">
+        <p className="section-label">{label}</p>
         <div>
           <p className={cn('text-3xl font-bold tracking-tight text-foreground', valueClassName)}>
             {value}
