@@ -1,8 +1,8 @@
-import { useMemo, type KeyboardEvent } from 'react';
+import { useMemo, useState, type KeyboardEvent } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { AlertTriangle, Download, ExternalLink, Loader2, RefreshCw } from 'lucide-react';
-import { api, type CobroGlobalItem } from '@/api/client';
+import { api, openAuthenticatedDocument, type CobroGlobalItem } from '@/api/client';
 import { ConfigListToolbar } from '@/components/config/ConfigListToolbar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -62,12 +62,23 @@ export function CobrosGlobalesTable({
   onTipoChange,
 }: CobrosGlobalesTableProps) {
   const queryClient = useQueryClient();
+  const [abriendoPdfId, setAbriendoPdfId] = useState<string | null>(null);
 
   const syncMutation = useMutation({
     mutationFn: (paymentId: string) => api.sincronizarPagoHolded(paymentId),
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['cobros-globales'] }),
   });
 
+  const abrirPdf = async (paymentId: string, pdfUrl: string) => {
+    setAbriendoPdfId(paymentId);
+    try {
+      await openAuthenticatedDocument(pdfUrl);
+    } catch (e) {
+      window.alert(e instanceof Error ? e.message : 'No se pudo abrir el PDF.');
+    } finally {
+      setAbriendoPdfId(null);
+    }
+  };
   const selectFilters = useMemo(
     () => [
       {
@@ -198,10 +209,19 @@ export function CobrosGlobalesTable({
                         </Button>
                       )}
                       {item.holdedEstado === 'sincronizado' && item.pdfUrl && (
-                        <Button variant="ghost" size="icon" className="h-7 w-7" asChild>
-                          <a href={item.pdfUrl} target="_blank" rel="noreferrer" title="Descargar PDF">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          title="Descargar PDF"
+                          disabled={abriendoPdfId === item.id}
+                          onClick={() => void abrirPdf(item.id, item.pdfUrl!)}
+                        >
+                          {abriendoPdfId === item.id ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
                             <Download className="h-3.5 w-3.5" />
-                          </a>
+                          )}
                         </Button>
                       )}
                       {item.holdedInvoiceId && (

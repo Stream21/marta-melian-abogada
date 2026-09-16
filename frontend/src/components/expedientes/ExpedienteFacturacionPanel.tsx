@@ -13,7 +13,12 @@ import {
   MessageCircle,
   RefreshCw,
 } from 'lucide-react';
-import { api, type CobroExpedienteResponse, type PaymentHoldedEstado } from '@/api/client';
+import {
+  api,
+  openAuthenticatedDocument,
+  type CobroExpedienteResponse,
+  type PaymentHoldedEstado,
+} from '@/api/client';
 import { useMercureContratacion } from '@/hooks/useMercureContratacion';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -78,6 +83,8 @@ function HoldedFacturaActions({
   onAction: () => void;
   compact?: boolean;
 }) {
+  const [abriendoPdf, setAbriendoPdf] = useState(false);
+
   const syncMutation = useMutation({
     mutationFn: () => api.sincronizarPagoHolded(paymentId!),
     onSuccess: () => onAction(),
@@ -90,6 +97,18 @@ function HoldedFacturaActions({
   const canSync =
     !!paymentId && (holdedEstado === 'pendiente_sync' || holdedEstado === 'error');
   const canDownload = holdedEstado === 'sincronizado' && !!pdfUrl;
+
+  const abrirPdf = async () => {
+    if (!pdfUrl) return;
+    setAbriendoPdf(true);
+    try {
+      await openAuthenticatedDocument(pdfUrl);
+    } catch (e) {
+      window.alert(e instanceof Error ? e.message : 'No se pudo abrir la factura.');
+    } finally {
+      setAbriendoPdf(false);
+    }
+  };
 
   return (
     <div className={cn('flex flex-col gap-2', compact ? 'items-start' : 'items-end')}>
@@ -122,11 +141,18 @@ function HoldedFacturaActions({
           </Button>
         )}
         {canDownload && (
-          <Button variant="outline" size="sm" asChild>
-            <a href={pdfUrl} target="_blank" rel="noreferrer">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={abriendoPdf}
+            onClick={() => void abrirPdf()}
+          >
+            {abriendoPdf ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
               <FileText className="mr-2 h-4 w-4" />
-              Ver factura
-            </a>
+            )}
+            Ver factura
           </Button>
         )}
       </div>
