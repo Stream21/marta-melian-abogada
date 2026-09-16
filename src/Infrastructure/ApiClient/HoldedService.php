@@ -279,11 +279,13 @@ final class HoldedService implements HoldedPort
         $name = $this->prefixedDisplayName($clientData->name);
 
         if ($this->usesApiV2()) {
+            // Holded docs show type as string[]; the live API expects a string and
+            // returns opaque 500 when given ["client"].
             $payload = [
                 'name' => $name,
                 'email' => $clientData->email,
                 'code' => $documentNumber,
-                'type' => ['client'],
+                'type' => 'client',
                 'is_person' => true,
                 'bill_address' => [
                     'address' => $clientData->address,

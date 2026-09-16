@@ -77,7 +77,7 @@ final class HoldedServiceTest extends TestCase
 
         self::assertSame('POST', $requests[1]['method']);
         $contactBody = json_decode($requests[1]['options']['body'] ?? '{}', true);
-        self::assertSame(['client'], $contactBody['type'] ?? null);
+        self::assertSame('client', $contactBody['type'] ?? null);
         self::assertTrue($contactBody['is_person'] ?? false);
         self::assertSame('35001', $contactBody['bill_address']['postal_code'] ?? null);
 
