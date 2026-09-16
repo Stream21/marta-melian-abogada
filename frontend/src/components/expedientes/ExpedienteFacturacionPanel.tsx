@@ -66,12 +66,98 @@ const holdedVariant: Record<
   no_aplica: 'secondary',
 };
 
+function FacturaUnicaHoldedCard({
+  invoiceId,
+  invoicePdfUrl,
+  totalExpediente,
+  totalCobrado,
+  opening,
+  onDownload,
+}: {
+  invoiceId?: string | null;
+  invoicePdfUrl?: string | null;
+  totalExpediente: number;
+  totalCobrado: number;
+  opening: boolean;
+  onDownload: () => void;
+}) {
+  const emitida = !!invoicePdfUrl;
+  const pendiente = Math.max(0, totalExpediente - totalCobrado);
+
+  return (
+    <section className="panel overflow-hidden border-primary/20 bg-primary/[0.03]">
+      <div className="panel-header border-border/80 bg-card/80">
+        <div className="panel-header-icon bg-primary/10 text-primary">
+          <FileText className="h-5 w-5" aria-hidden />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="section-label text-primary/70">Documento fiscal</p>
+          <h3 className="panel-title text-base">Factura del servicio</h3>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Una sola factura por el total del expediente. Los cobros por cuota se registran en Holded
+            como pagos a cuenta sobre este mismo documento.
+          </p>
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
+        <div className="space-y-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant={emitida ? 'success' : 'secondary'}>
+              {emitida ? 'Emitida en Holded' : 'Pendiente de emitir'}
+            </Badge>
+            {emitida && invoiceId ? (
+              <span className="font-mono text-xs text-muted-foreground">
+                Ref. {invoiceId.slice(0, 10)}…
+              </span>
+            ) : null}
+          </div>
+          <dl className="grid grid-cols-2 gap-x-6 gap-y-1 text-sm sm:grid-cols-3">
+            <div>
+              <dt className="text-muted-foreground">Importe factura</dt>
+              <dd className="font-semibold text-foreground">{fmt(totalExpediente)}</dd>
+            </div>
+            <div>
+              <dt className="text-muted-foreground">Cobrado a cuenta</dt>
+              <dd className="font-semibold text-emerald-700">{fmt(totalCobrado)}</dd>
+            </div>
+            <div>
+              <dt className="text-muted-foreground">Pendiente</dt>
+              <dd className="font-semibold text-foreground">{fmt(pendiente)}</dd>
+            </div>
+          </dl>
+        </div>
+
+        {emitida ? (
+          <Button
+            type="button"
+            size="lg"
+            className="shrink-0"
+            disabled={opening}
+            onClick={onDownload}
+          >
+            {opening ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <FileText className="mr-2 h-4 w-4" />
+            )}
+            {opening ? 'Abriendo…' : 'Descargar factura PDF'}
+          </Button>
+        ) : (
+          <p className="max-w-xs text-sm text-muted-foreground sm:text-right">
+            Se generará automáticamente al sincronizar el primer cobro con Holded.
+          </p>
+        )}
+      </div>
+    </section>
+  );
+}
+
 function HoldedFacturaActions({
   holdedEstado,
   holdedEstadoLabel,
   holdedSyncError,
   paymentId,
-  pdfUrl,
   onAction,
   compact = false,
 }: {
@@ -79,12 +165,9 @@ function HoldedFacturaActions({
   holdedEstadoLabel?: string | null;
   holdedSyncError?: string | null;
   paymentId?: string | null;
-  pdfUrl?: string | null;
   onAction: () => void;
   compact?: boolean;
 }) {
-  const [abriendoPdf, setAbriendoPdf] = useState(false);
-
   const syncMutation = useMutation({
     mutationFn: () => api.sincronizarPagoHolded(paymentId!),
     onSuccess: () => onAction(),
@@ -96,19 +179,6 @@ function HoldedFacturaActions({
 
   const canSync =
     !!paymentId && (holdedEstado === 'pendiente_sync' || holdedEstado === 'error');
-  const canDownload = holdedEstado === 'sincronizado' && !!pdfUrl;
-
-  const abrirPdf = async () => {
-    if (!pdfUrl) return;
-    setAbriendoPdf(true);
-    try {
-      await openAuthenticatedDocument(pdfUrl);
-    } catch (e) {
-      window.alert(e instanceof Error ? e.message : 'No se pudo abrir la factura.');
-    } finally {
-      setAbriendoPdf(false);
-    }
-  };
 
   return (
     <div className={cn('flex flex-col gap-2', compact ? 'items-start' : 'items-end')}>
@@ -124,39 +194,22 @@ function HoldedFacturaActions({
           <span className="line-clamp-2">{holdedSyncError}</span>
         </p>
       )}
-      <div className="flex flex-wrap items-center gap-2">
-        {canSync && (
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={syncMutation.isPending}
-            onClick={() => syncMutation.mutate()}
-          >
-            {syncMutation.isPending ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <RefreshCw className="mr-2 h-4 w-4" />
-            )}
-            Reintentar Holded
-          </Button>
-        )}
-        {canDownload && (
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={abriendoPdf}
-            onClick={() => void abrirPdf()}
-          >
-            {abriendoPdf ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <FileText className="mr-2 h-4 w-4" />
-            )}
-            Ver factura
-          </Button>
-        )}
-      </div>
+      {canSync && (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={syncMutation.isPending}
+          onClick={() => syncMutation.mutate()}
+        >
+          {syncMutation.isPending ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+            <RefreshCw className="mr-2 h-4 w-4" />
+          )}
+          Reintentar Holded
+        </Button>
+      )}
     </div>
   );
 }
@@ -249,7 +302,6 @@ function CobroCard({
               holdedEstadoLabel={cobro.holdedEstadoLabel}
               holdedSyncError={cobro.holdedSyncError}
               paymentId={cobro.paymentId}
-              pdfUrl={cobro.pdfUrl}
               onAction={onAction}
             />
           )}
@@ -488,32 +540,22 @@ export function ExpedienteFacturacionPanel({ expedienteId }: ExpedienteFacturaci
         pendiente={resumen.pendiente}
       />
 
-      {holdedResumen.invoicePdfUrl && (
-        <div className="flex items-center gap-3 rounded-lg border border-border bg-card px-4 py-3 text-sm">
-          <span className="text-muted-foreground">
-            Factura única Holded{holdedResumen.invoiceId ? ` (${holdedResumen.invoiceId.slice(0, 8)}…)` : ''}
-          </span>
-          <Button
-            type="button"
-            variant="link"
-            className="h-auto p-0 text-primary font-medium"
-            disabled={abriendoFacturaHolded}
-            onClick={() => {
-              if (!holdedResumen.invoicePdfUrl) return;
-              setAbriendoFacturaHolded(true);
-              void openAuthenticatedDocument(holdedResumen.invoicePdfUrl)
-                .catch((e) => {
-                  window.alert(
-                    e instanceof Error ? e.message : 'No se pudo abrir la factura.',
-                  );
-                })
-                .finally(() => setAbriendoFacturaHolded(false));
-            }}
-          >
-            {abriendoFacturaHolded ? 'Abriendo…' : 'Descargar PDF'}
-          </Button>
-        </div>
-      )}
+      <FacturaUnicaHoldedCard
+        invoiceId={holdedResumen.invoiceId}
+        invoicePdfUrl={holdedResumen.invoicePdfUrl}
+        totalExpediente={resumen.total}
+        totalCobrado={resumen.cobrado}
+        opening={abriendoFacturaHolded}
+        onDownload={() => {
+          if (!holdedResumen.invoicePdfUrl) return;
+          setAbriendoFacturaHolded(true);
+          void openAuthenticatedDocument(holdedResumen.invoicePdfUrl)
+            .catch((e) => {
+              window.alert(e instanceof Error ? e.message : 'No se pudo abrir la factura.');
+            })
+            .finally(() => setAbriendoFacturaHolded(false));
+        }}
+      />
 
       {resumen.vencido > 0 && (
         <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 flex items-center gap-2">
