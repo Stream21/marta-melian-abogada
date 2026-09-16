@@ -12,6 +12,7 @@ import { ExpedienteEscritosPanel } from '@/components/expedientes/escritos/Exped
 import { ExpedienteFacturacionPanel } from '@/components/expedientes/ExpedienteFacturacionPanel';
 import { ExpedienteDocumentacionPanel } from '@/components/expedientes/ExpedienteDocumentacionPanel';
 import { ExpedienteAuditoriaPanel } from '@/components/expedientes/ExpedienteAuditoriaPanel';
+import { ExpedienteNotasPanel } from '@/components/expedientes/ExpedienteNotasPanel';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { ExpedienteSubfaseBadge } from '@/components/expedientes/ExpedienteSubfaseBadge';
@@ -141,6 +142,7 @@ export function ExpedienteDetailPage({ expedienteId, notificacionSearch }: Exped
               Escritos
             </TabsTrigger>
             <TabsTrigger value="archivo">Archivo</TabsTrigger>
+            <TabsTrigger value="notas">Notas</TabsTrigger>
             <TabsTrigger value="auditoria">Auditoría</TabsTrigger>
             <TabsTrigger value="facturacion">Facturación</TabsTrigger>
           </TabsList>
@@ -201,6 +203,12 @@ export function ExpedienteDetailPage({ expedienteId, notificacionSearch }: Exped
         </TabsContent>
         <TabsContent value="archivo">
           <ExpedienteDocumentacionPanel expedienteId={expedienteId} />
+        </TabsContent>
+        <TabsContent value="notas">
+          <ExpedienteNotasPanel
+            expedienteId={expedienteId}
+            enabled={activeTab === 'notas'}
+          />
         </TabsContent>
         <TabsContent value="auditoria">
           <ExpedienteAuditoriaPanel

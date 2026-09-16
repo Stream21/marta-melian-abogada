@@ -361,7 +361,95 @@ export interface CobrosGlobalesFilters {
   q?: string;
 }
 
+export interface GastoItem {
+  id: string;
+  concepto: string;
+  importe: string;
+  fecha: string;
+  categoria: string | null;
+  notas: string | null;
+  tieneFactura: boolean;
+  facturaUrl: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface GastosResponse {
+  items: GastoItem[];
+  kpis: {
+    totalPeriodo: number;
+    cantidad: number;
+    totalMesActual: number;
+  };
+}
+
+export interface GastosFilters {
+  fechaDesde?: string;
+  fechaHasta?: string;
+  q?: string;
+  categoria?: string;
+}
+
+export type GastoPayload = {
+  concepto: string;
+  importe: string;
+  fecha: string;
+  categoria?: string | null;
+  notas?: string | null;
+};
+
+export type DashboardUrgencia = 'vencido' | 'hoy' | 'manana' | 'proximos' | 'semana';
+
+export interface DashboardVencimientoItem {
+  expedienteId: string;
+  expedienteNumero: string;
+  clienteNombre: string;
+  tramiteNombre: string;
+  tipo: 'fase' | 'cuota' | string;
+  label: string;
+  fecha: string;
+  diasRestantes: number;
+  urgencia: DashboardUrgencia;
+  faseNegocio: string;
+  faseNegocioLabel: string;
+}
+
+export interface DashboardKpisResponse {
+  periodo: {
+    desde: string;
+    hasta: string;
+    label: string;
+  };
+  financiero: {
+    cobrosMes: number;
+    gastosMes: number;
+    beneficioMes: number;
+    cobrosPendientesImporte: number;
+    cobrosVencidosImporte: number;
+    cobrosVencidosCount: number;
+  };
+  operativo: {
+    expedientesActivos: number;
+    plazosUrgentes: number;
+    plazosVencidos: number;
+    documentacionPendienteRevision: number;
+    contratacionPendienteRevision: number;
+    stripePendientes: number;
+    holdedSyncPendientes: number;
+    notificacionesSinLeer: number;
+  };
+  porFase: Array<{
+    fase: string;
+    label: string;
+    count: number;
+  }>;
+  vencimientosProximos: DashboardVencimientoItem[];
+  actividadReciente: NotificacionResponse[];
+}
+
 export const api = {
+  getDashboardKpis: () => request<DashboardKpisResponse>('/api/dashboard'),
+
   getExpedientes: () => request<ExpedienteResponse[]>('/api/expedientes'),
 
   getExpediente: (id: string) => request<ExpedienteResponse>('/api/expedientes/' + encodeURIComponent(id)),
@@ -382,6 +470,37 @@ export const api = {
       '/api/expedientes/' + encodeURIComponent(expedienteId) + '/auditoria',
     ),
 
+  getExpedienteNotas: (expedienteId: string) =>
+    request<ExpedienteNotaResponse[]>(
+      '/api/expedientes/' + encodeURIComponent(expedienteId) + '/notas',
+    ),
+
+  crearExpedienteNota: (expedienteId: string, contenido: string) =>
+    request<ExpedienteNotaResponse>(
+      '/api/expedientes/' + encodeURIComponent(expedienteId) + '/notas',
+      { method: 'POST', body: JSON.stringify({ contenido }) },
+    ),
+
+  archivarExpedienteNota: (expedienteId: string, notaId: string) =>
+    request<ExpedienteNotaResponse>(
+      '/api/expedientes/' +
+        encodeURIComponent(expedienteId) +
+        '/notas/' +
+        encodeURIComponent(notaId) +
+        '/archivar',
+      { method: 'POST' },
+    ),
+
+  desarchivarExpedienteNota: (expedienteId: string, notaId: string) =>
+    request<ExpedienteNotaResponse>(
+      '/api/expedientes/' +
+        encodeURIComponent(expedienteId) +
+        '/notas/' +
+        encodeURIComponent(notaId) +
+        '/desarchivar',
+      { method: 'POST' },
+    ),
+
   getExpedientePayments: (expedienteId: string) =>
     request<PaymentResponse[]>('/api/expedientes/' + expedienteId + '/payments'),
 
@@ -396,6 +515,50 @@ export const api = {
     const qs = params.toString();
     return request<CobrosGlobalesResponse>('/api/cobros' + (qs ? '?' + qs : ''));
   },
+
+  getGastos: (filters: GastosFilters = {}) => {
+    const params = new URLSearchParams();
+    if (filters.fechaDesde) params.set('fechaDesde', filters.fechaDesde);
+    if (filters.fechaHasta) params.set('fechaHasta', filters.fechaHasta);
+    if (filters.q) params.set('q', filters.q);
+    if (filters.categoria) params.set('categoria', filters.categoria);
+    const qs = params.toString();
+    return request<GastosResponse>('/api/gastos' + (qs ? '?' + qs : ''));
+  },
+
+  getGasto: (id: string) =>
+    request<GastoItem>('/api/gastos/' + encodeURIComponent(id)),
+
+  postGasto: (body: GastoPayload) =>
+    request<GastoItem>('/api/gastos', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+
+  putGasto: (id: string, body: GastoPayload) =>
+    request<GastoItem>('/api/gastos/' + encodeURIComponent(id), {
+      method: 'PUT',
+      body: JSON.stringify(body),
+    }),
+
+  deleteGasto: (id: string) =>
+    request<void>('/api/gastos/' + encodeURIComponent(id), {
+      method: 'DELETE',
+    }),
+
+  subirFacturaGasto: (id: string, file: File) => {
+    const formData = new FormData();
+    formData.append('archivo', file);
+    return multipartRequest<GastoItem>(
+      '/api/gastos/' + encodeURIComponent(id) + '/factura',
+      formData,
+    );
+  },
+
+  eliminarFacturaGasto: (id: string) =>
+    request<GastoItem>('/api/gastos/' + encodeURIComponent(id) + '/factura', {
+      method: 'DELETE',
+    }),
 
   sincronizarPagoHolded: (paymentId: string) =>
     request<{ success: boolean; holdedInvoiceId?: string; error?: string }>(
@@ -1052,10 +1215,10 @@ export const api = {
       { method: 'POST', body: JSON.stringify({ escritoId }) },
     ),
 
-  avanzarResolucion: (expedienteId: string) =>
+  avanzarResolucion: (expedienteId: string, body: { fechaVencimientoFase: string }) =>
     request<{ message: string }>(
       '/api/expedientes/' + encodeURIComponent(expedienteId) + '/tramitacion/avanzar-resolucion',
-      { method: 'POST' },
+      { method: 'POST', body: JSON.stringify(body) },
     ),
 
   getResolucion: (expedienteId: string) =>
@@ -1473,10 +1636,16 @@ export const api = {
       '/api/expedientes/' + encodeURIComponent(expedienteId) + '/facturacion',
     ),
 
-  avanzarTramitacion: (expedienteId: string) =>
+  avanzarTramitacion: (expedienteId: string, body: { fechaVencimientoFase: string }) =>
     request<{ message: string }>(
       '/api/expedientes/' + encodeURIComponent(expedienteId) + '/documentacion/avanzar-tramitacion',
-      { method: 'POST' },
+      { method: 'POST', body: JSON.stringify(body) },
+    ),
+
+  avanzarDocumentacion: (expedienteId: string, body: { fechaVencimientoFase: string }) =>
+    request<{ message: string }>(
+      '/api/expedientes/' + encodeURIComponent(expedienteId) + '/contratacion/avanzar-documentacion',
+      { method: 'POST', body: JSON.stringify(body) },
     ),
 
   subirDocumentoDocumentacion: (token: string, docId: string, files: File[]) => {
@@ -1795,6 +1964,22 @@ export interface ExpedienteResponse {
     documentacion: number;
     notificaciones?: number;
   };
+  /** Notas activas (no archivadas) para badge en listado. */
+  notasActivas?: number;
+  /** Preview de la última nota activa al pasar el ratón (null si no hay activas). */
+  ultimaNota?: {
+    contenido: string;
+    createdAt: string;
+    archivada: boolean;
+  } | null;
+}
+
+export interface ExpedienteNotaResponse {
+  id: string;
+  contenido: string;
+  archivada: boolean;
+  archivadaAt: string | null;
+  createdAt: string;
 }
 
 export interface AltaExpedienteInput {
@@ -2259,6 +2444,7 @@ export interface ContratacionResponse {
   fechaVencimientoFase?: string | null;
   pasoActivo: string | null;
   contratacionCompletada: boolean;
+  puedeAvanzarFase2?: boolean;
   pasos: ContratacionPasoResponse[];
   firmasDocumento?: ContratacionFirmaDocumentoResponse[];
   fechaFirmaContrato?: string | null;

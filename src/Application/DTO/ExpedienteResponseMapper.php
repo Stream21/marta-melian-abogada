@@ -15,6 +15,7 @@ final class ExpedienteResponseMapper
      * @param array<string, mixed>|null $subfaseDocumentacion
      * @param array<string, mixed>|null $subfaseTramitacionDetalle
      * @param array<string, mixed>|null $resumenCobros
+     * @param array{contenido: string, createdAt: string, archivada: bool}|null $ultimaNota
      */
     public static function fromDomain(
         Expediente $expediente,
@@ -25,6 +26,8 @@ final class ExpedienteResponseMapper
         ?Cliente $cliente = null,
         ?array $resumenCobros = null,
         ?array $subfaseTramitacionDetalle = null,
+        int $notasActivas = 0,
+        ?array $ultimaNota = null,
     ): ExpedienteResponse {
         $accessUrl = null;
         if (null !== $expediente->accessToken() && null !== $frontendBaseUrl) {
@@ -88,6 +91,8 @@ final class ExpedienteResponseMapper
             subfaseDocumentacion: $subfaseDocumentacion,
             subfaseTramitacionDetalle: $subfaseTramitacionDetalle,
             resumenCobros: $resumenCobros,
+            notasActivas: $notasActivas,
+            ultimaNota: $ultimaNota,
         );
     }
 

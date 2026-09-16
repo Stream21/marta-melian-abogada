@@ -9,7 +9,7 @@ import {
   getSortedRowModel,
   useReactTable,
 } from '@tanstack/react-table';
-import { ChevronLeft, ChevronRight, ChevronsUpDown, RefreshCw } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronsUpDown, Info, RefreshCw } from 'lucide-react';
 import type { ExpedienteResponse } from '@/api/client';
 import { ConfigListToolbar } from '@/components/config/ConfigListToolbar';
 import { Badge } from '@/components/ui/badge';
@@ -22,9 +22,17 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { labelFaseNegocio } from '@/lib/portal-fases';
 import { capitalizeDisplay } from '@/lib/capitalize-display';
 import { ExpedienteCobrosBadge } from '@/components/expedientes/ExpedienteCobrosBadge';
+import { ExpedienteNotasCell } from '@/components/expedientes/ExpedienteNotasCell';
+import { ExpedienteNotasSheet } from '@/components/expedientes/ExpedienteNotasSheet';
 import { ExpedienteSubfaseBadge } from '@/components/expedientes/ExpedienteSubfaseBadge';
 import { ExpedienteVencimientoBadge } from '@/components/expedientes/ExpedienteVencimientoBadge';
 import {
@@ -32,8 +40,21 @@ import {
   normalizarEstadoFiltro,
   variantEstadoExpediente,
 } from '@/lib/expediente-estado';
+import { formatEuros } from '@/lib/pago-contratacion';
 import { proximoVencimiento, tienePlazoUrgente, tienePlazoVencido } from '@/lib/vencimiento-proximo';
 import { cn } from '@/lib/utils';
+
+function importesCobro(exp: ExpedienteResponse): { cobrado: number; total: number } | null {
+  const resumen = exp.resumenCobros;
+  if (resumen && resumen.importeTotal > 0) {
+    return { cobrado: resumen.cobrado, total: resumen.importeTotal };
+  }
+  const honorarios = exp.honorariosAcordados ?? 0;
+  if (honorarios > 0) {
+    return { cobrado: resumen?.cobrado ?? 0, total: honorarios };
+  }
+  return null;
+}
 
 interface ExpedientesTableProps {
   data: ExpedienteResponse[];
@@ -106,6 +127,7 @@ export function ExpedientesTable({ data, isLoading, isFetching, onRefresh }: Exp
   const [atencionFilter, setAtencionFilter] = useState<string[]>([]);
   const [metodoPagoFilter, setMetodoPagoFilter] = useState<string[]>([]);
   const [subfaseFilter, setSubfaseFilter] = useState<string[]>([]);
+  const [notasExpediente, setNotasExpediente] = useState<ExpedienteResponse | null>(null);
 
   const filteredData = useMemo(() => {
     return data.filter((exp) => {
@@ -190,33 +212,33 @@ export function ExpedientesTable({ data, isLoading, isFetching, onRefresh }: Exp
         cell: ({ row }) => <ExpedienteCobrosBadge expediente={row.original} />,
       },
       {
-        accessorKey: 'avisosPendientes',
-        header: 'Avisos',
+        id: 'pagadoTotal',
+        header: 'Pagado / Total',
+        sortingFn: (a, b) => {
+          const ia = importesCobro(a.original);
+          const ib = importesCobro(b.original);
+          const ratioA = ia ? ia.cobrado / ia.total : -1;
+          const ratioB = ib ? ib.cobrado / ib.total : -1;
+          if (ratioA !== ratioB) return ratioA - ratioB;
+          return (ia?.total ?? 0) - (ib?.total ?? 0);
+        },
         cell: ({ row }) => {
-          const total = row.original.avisosPendientes ?? 0;
-          if (total === 0) {
+          const importes = importesCobro(row.original);
+          if (!importes) {
             return <span className="text-muted-foreground">—</span>;
           }
-
-          const detalle = row.original.avisosDetalle;
-          const tooltipParts: string[] = [];
-          if (detalle?.notificaciones) {
-            tooltipParts.push(`Sin leer: ${detalle.notificaciones}`);
-          }
-          if (detalle?.contratacion) {
-            tooltipParts.push(`Contratación: ${detalle.contratacion}`);
-          }
-          if (detalle?.documentacion) {
-            tooltipParts.push(`Documentación: ${detalle.documentacion}`);
-          }
-
+          const completo = importes.cobrado >= importes.total;
           return (
-            <Badge
-              variant="warning"
-              title={tooltipParts.length > 0 ? tooltipParts.join(' · ') : undefined}
+            <span
+              className={cn(
+                'whitespace-nowrap tabular-nums text-sm',
+                completo ? 'text-emerald-700' : 'text-foreground',
+              )}
+              title={`Pendiente: ${formatEuros(Math.max(0, importes.total - importes.cobrado))}`}
             >
-              {total} sin leer
-            </Badge>
+              <span className="font-medium">{formatEuros(importes.cobrado)}</span>
+              <span className="text-muted-foreground"> / {formatEuros(importes.total)}</span>
+            </span>
           );
         },
       },
@@ -251,6 +273,70 @@ export function ExpedientesTable({ data, isLoading, isFetching, onRefresh }: Exp
         },
         cell: ({ row }) => <ExpedienteVencimientoBadge expediente={row.original} />,
       },
+      {
+        id: 'avisos',
+        accessorKey: 'avisosPendientes',
+        header: 'Avisos',
+        cell: ({ row }) => {
+          const total = row.original.avisosPendientes ?? 0;
+          if (total === 0) {
+            return <span className="text-muted-foreground">—</span>;
+          }
+
+          const detalle = row.original.avisosDetalle;
+          const tooltipParts: string[] = [];
+          if (detalle?.notificaciones) {
+            tooltipParts.push(`Sin leer: ${detalle.notificaciones}`);
+          }
+          if (detalle?.contratacion) {
+            tooltipParts.push(`Contratación: ${detalle.contratacion}`);
+          }
+          if (detalle?.documentacion) {
+            tooltipParts.push(`Documentación: ${detalle.documentacion}`);
+          }
+
+          return (
+            <Badge
+              variant="warning"
+              title={tooltipParts.length > 0 ? tooltipParts.join(' · ') : undefined}
+            >
+              {total} sin leer
+            </Badge>
+          );
+        },
+      },
+      {
+        id: 'notas',
+        header: () => (
+          <span className="inline-flex items-center gap-1">
+            Notas
+            <TooltipProvider delayDuration={200}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span
+                    className="inline-flex text-muted-foreground"
+                    onClick={(e) => e.stopPropagation()}
+                    onKeyDown={(e) => e.stopPropagation()}
+                  >
+                    <Info className="h-3.5 w-3.5" aria-hidden />
+                    <span className="sr-only">Información sobre notas</span>
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="max-w-xs p-2 text-xs">
+                  Pasa el ratón sobre el icono de una fila con notas activas para ver la última.
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </span>
+        ),
+        sortingFn: (a, b) => (a.original.notasActivas ?? 0) - (b.original.notasActivas ?? 0),
+        cell: ({ row }) => (
+          <ExpedienteNotasCell
+            expediente={row.original}
+            onOpen={() => setNotasExpediente(row.original)}
+          />
+        ),
+      },
     ],
     [],
   );
@@ -278,8 +364,20 @@ export function ExpedientesTable({ data, isLoading, isFetching, onRefresh }: Exp
     initialState: { pagination: { pageSize: 15 } },
   });
 
+  const notasLabel = notasExpediente
+    ? `${notasExpediente.numero} · ${capitalizeDisplay(notasExpediente.titulo)}`
+    : '';
+
   return (
     <div className="panel overflow-hidden">
+      <ExpedienteNotasSheet
+        expedienteId={notasExpediente?.id ?? ''}
+        expedienteLabel={notasLabel}
+        open={notasExpediente !== null}
+        onOpenChange={(open) => {
+          if (!open) setNotasExpediente(null);
+        }}
+      />
       <ConfigListToolbar
         search={globalFilter}
         onSearchChange={setGlobalFilter}

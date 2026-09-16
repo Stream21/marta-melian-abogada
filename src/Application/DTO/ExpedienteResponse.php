@@ -62,6 +62,7 @@ final readonly class ExpedienteResponse
      *         fecha: string|null
      *     }>
      * }|null $resumenCobros
+     * @param array{contenido: string, createdAt: string, archivada: bool}|null $ultimaNota
      */
     public function __construct(
         public string $id,
@@ -101,6 +102,10 @@ final readonly class ExpedienteResponse
         public ?array $subfaseTramitacionDetalle = null,
         /** Progreso de cuotas/cobros para listado. */
         public ?array $resumenCobros = null,
+        /** Notas activas (no archivadas) del expediente. */
+        public int $notasActivas = 0,
+        /** Última nota activa (más reciente) para preview en listado. */
+        public ?array $ultimaNota = null,
     ) {
     }
 }

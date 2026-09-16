@@ -41,6 +41,7 @@ services:
     App\Domain\Repository\TramiteCampoFormularioRepositoryInterface: '@App\Infrastructure\Persistence\Doctrine\Repository\TramiteCampoFormularioRepository'
     App\Domain\Repository\ExpedienteResolucionRepositoryInterface: '@App\Infrastructure\Persistence\Doctrine\Repository\ExpedienteResolucionRepository'
     App\Domain\Repository\ExpedienteRecordatorioFuturoRepositoryInterface: '@App\Infrastructure\Persistence\Doctrine\Repository\ExpedienteRecordatorioFuturoRepository'
+    App\Domain\Repository\ExpedienteNotaRepositoryInterface: '@App\Infrastructure\Persistence\Doctrine\Repository\ExpedienteNotaRepository'
     App\Application\Port\DespachoFileStoragePort: '@App\Infrastructure\Storage\DespachoFileStorage'
     App\Application\Port\HoldedPort: '@App\Infrastructure\ApiClient\HoldedService'
     App\Application\Port\StripePort: '@App\Infrastructure\ApiClient\StripeService'

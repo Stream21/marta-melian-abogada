@@ -24,6 +24,7 @@ use App\Application\UseCase\SincronizarCobrosExpedienteHoldedUseCase;
 use App\Application\UseCase\VincularExpedienteClienteUseCase;
 use App\Domain\Entity\FaseNegocioExpediente;
 use App\Domain\Exception\ClienteDuplicadoExceptionInterface;
+use App\Domain\Repository\ExpedienteNotaRepositoryInterface;
 use App\Domain\Repository\PaymentRepositoryInterface;
 use App\Infrastructure\Http\ClienteDuplicadoJsonResponse;
 use App\Domain\ValueObject\ExpedienteId;
@@ -54,6 +55,7 @@ final class ExpedienteController extends AbstractController
         private DocumentacionSubfaseListadoService $documentacionSubfaseListado,
         private CobrosResumenListadoService $cobrosResumenListado,
         private TramitacionSubfaseListadoService $tramitacionSubfaseListado,
+        private ExpedienteNotaRepositoryInterface $notaRepository,
     ) {
     }
 
@@ -66,7 +68,9 @@ final class ExpedienteController extends AbstractController
 
         $documentacionIds = [];
         $tramitacionIds = [];
+        $expedienteIds = [];
         foreach ($expedientes as $e) {
+            $expedienteIds[] = $e->id()->value();
             if (FaseNegocioExpediente::Documentacion === $e->faseNegocio()) {
                 $documentacionIds[] = $e->id()->value();
             }
@@ -76,9 +80,10 @@ final class ExpedienteController extends AbstractController
         }
         $subfasesDocumentacion = $this->documentacionSubfaseListado->aggregate($documentacionIds);
         $subfasesTramitacion = $this->tramitacionSubfaseListado->aggregate($tramitacionIds);
+        $resumenesNotas = $this->notaRepository->resumenPorExpedientes($expedienteIds);
 
         return new JsonResponse(array_map(
-            function ($e) use ($avisosPorExpediente, $subfasesDocumentacion, $subfasesTramitacion, $resumenesCobros) {
+            function ($e) use ($avisosPorExpediente, $subfasesDocumentacion, $subfasesTramitacion, $resumenesCobros, $resumenesNotas) {
                 $subfaseContratacion = null;
                 $subfaseDocumentacion = null;
                 $subfaseTramitacionDetalle = null;
@@ -92,6 +97,14 @@ final class ExpedienteController extends AbstractController
                     $subfaseTramitacionDetalle = $subfasesTramitacion[$e->id()->value()] ?? null;
                 }
 
+                $resumenNota = $resumenesNotas[$e->id()->value()] ?? ['activas' => 0, 'ultima' => null];
+                $ultima = $resumenNota['ultima'];
+                $ultimaNota = null !== $ultima ? [
+                    'contenido' => $ultima->contenido(),
+                    'createdAt' => $ultima->createdAt()->format(\DateTimeInterface::ATOM),
+                    'archivada' => $ultima->archivada(),
+                ] : null;
+
                 return ExpedienteResponseMapper::fromDomain(
                     $e,
                     $this->frontendBaseUrl,
@@ -101,6 +114,8 @@ final class ExpedienteController extends AbstractController
                     null,
                     $resumenesCobros[$e->id()->value()] ?? null,
                     $subfaseTramitacionDetalle,
+                    (int) $resumenNota['activas'],
+                    $ultimaNota,
                 );
             },
             $expedientes,
