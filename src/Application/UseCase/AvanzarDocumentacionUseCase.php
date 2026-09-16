@@ -6,26 +6,21 @@ namespace App\Application\UseCase;
 
 use App\Application\Port\ContratacionRealtimePort;
 use App\Application\Service\FechaVencimientoFaseParser;
-use App\Application\Service\RequerimientosProgresoCalculator;
 use App\Domain\Entity\ActorHitoExpediente;
 use App\Domain\Entity\EstadoFaseExpediente;
+use App\Domain\Entity\EstadoPasoContratacion;
 use App\Domain\Entity\ExpedienteHito;
 use App\Domain\Entity\FaseNegocioExpediente;
-use App\Domain\Entity\SubfaseTramitacion;
 use App\Domain\Repository\ContratacionRepositoryInterface;
-use App\Domain\Repository\ExpedienteDocumentoRepositoryInterface;
-use App\Domain\Repository\ExpedienteDocumentoRequeridoRepositoryInterface;
 use App\Domain\Repository\ExpedienteRepositoryInterface;
 use App\Domain\ValueObject\ExpedienteId;
 
-final class AvanzarTramitacionUseCase
+final class AvanzarDocumentacionUseCase
 {
     public function __construct(
         private ExpedienteRepositoryInterface $expedienteRepository,
-        private ExpedienteDocumentoRequeridoRepositoryInterface $documentoRequeridoRepository,
-        private ExpedienteDocumentoRepositoryInterface $documentoEntregadoRepository,
-        private RequerimientosProgresoCalculator $progresoCalculator,
         private ContratacionRepositoryInterface $contratacionRepository,
+        private InicializarDocumentacionUseCase $inicializarDocumentacion,
         private ContratacionRealtimePort $realtime,
         private FechaVencimientoFaseParser $fechaVencimientoParser,
     ) {
@@ -39,24 +34,22 @@ final class AvanzarTramitacionUseCase
             throw new \InvalidArgumentException('Expediente no encontrado.');
         }
 
-        if (FaseNegocioExpediente::Documentacion !== $expediente->faseNegocio()) {
-            throw new \InvalidArgumentException('El expediente no está en fase de requerimientos.');
+        if (FaseNegocioExpediente::Contratacion !== $expediente->faseNegocio()) {
+            throw new \InvalidArgumentException('El expediente no está en fase de contratación.');
         }
 
-        $entregasPorDocId = [];
-        foreach ($this->documentoEntregadoRepository->findByExpediente($id) as $entrega) {
-            $docId = $entrega->expedienteDocumentoRequeridoId();
-            if (null !== $docId) {
-                $entregasPorDocId[$docId->value()] = $entrega;
+        $pasos = $this->contratacionRepository->findPasosByExpediente($id);
+        foreach ($pasos as $paso) {
+            if (EstadoPasoContratacion::ValidadoAbogado !== $paso->estado()) {
+                throw new \InvalidArgumentException(
+                    'Debe validar todos los pasos de contratación antes de pasar a documentación.',
+                );
             }
         }
 
-        $documentos = $this->documentoRequeridoRepository->findByExpediente($id);
-        $progreso = $this->progresoCalculator->calcular($documentos, $entregasPorDocId);
-
-        if (!$progreso['documentacionListo']) {
+        if ([] === $pasos) {
             throw new \InvalidArgumentException(
-                'Debe validar todos los documentos obligatorios antes de pasar a tramitación.',
+                'Debe validar todos los pasos de contratación antes de pasar a documentación.',
             );
         }
 
@@ -64,8 +57,7 @@ final class AvanzarTramitacionUseCase
 
         $this->expedienteRepository->save(
             $expediente
-                ->withFaseNegocio(FaseNegocioExpediente::Tramitacion, EstadoFaseExpediente::Completada)
-                ->withSubfaseTramitacion(SubfaseTramitacion::PendienteTramitacion)
+                ->withFaseNegocio(FaseNegocioExpediente::Documentacion, EstadoFaseExpediente::DocumentacionEnProgreso)
                 ->withFechaVencimientoFase($fechaLimite)
                 ->touchEstadoCambio(),
         );
@@ -73,18 +65,20 @@ final class AvanzarTramitacionUseCase
         $this->contratacionRepository->saveHito(new ExpedienteHito(
             bin2hex(random_bytes(16)),
             $id,
-            'fase_tramitacion_iniciada',
+            'fase_completada',
             sprintf(
-                'Requerimientos completados. El expediente pasa a fase de tramitación (plazo hasta %s).',
+                'Contratación completada. El expediente pasa a fase de requerimientos (plazo hasta %s).',
                 $fechaLimite->format('d/m/Y'),
             ),
             ActorHitoExpediente::Sistema,
             new \DateTimeImmutable('now'),
         ));
 
+        ($this->inicializarDocumentacion)($id);
+
         $this->realtime->publishContratacionUpdate($expedienteId, [
-            'type' => 'fase_tramitacion_iniciada',
-            'faseNegocio' => FaseNegocioExpediente::Tramitacion->value,
+            'type' => 'fase_completada',
+            'faseNegocio' => FaseNegocioExpediente::Documentacion->value,
             'fechaVencimientoFase' => $fechaLimite->format('Y-m-d'),
             'actor' => 'sistema',
             'expedienteNumero' => $expediente->numero(),

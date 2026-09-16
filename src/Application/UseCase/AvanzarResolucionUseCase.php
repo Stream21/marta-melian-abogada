@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Application\UseCase;
 
+use App\Application\Service\FechaVencimientoFaseParser;
 use App\Application\Service\NotificarTramitacionClienteService;
 use App\Domain\Entity\ActorHitoExpediente;
 use App\Domain\Entity\EstadoFaseExpediente;
@@ -26,10 +27,11 @@ final class AvanzarResolucionUseCase
         private ContratacionRepositoryInterface $contratacionRepository,
         private ClienteRepositoryInterface $clienteRepository,
         private NotificarTramitacionClienteService $notificar,
+        private FechaVencimientoFaseParser $fechaVencimientoParser,
     ) {
     }
 
-    public function __invoke(string $expedienteId): void
+    public function __invoke(string $expedienteId, ?string $fechaVencimientoFase): void
     {
         $id = new ExpedienteId($expedienteId);
         $expediente = $this->expedienteRepository->findById($id);
@@ -51,8 +53,11 @@ final class AvanzarResolucionUseCase
             throw new \InvalidArgumentException('Hay requerimientos Mercurio abiertos.');
         }
 
+        $fechaLimite = $this->fechaVencimientoParser->parseRequired($fechaVencimientoFase);
+
         $actualizado = $expediente
             ->withFaseNegocio(FaseNegocioExpediente::Resolucion, EstadoFaseExpediente::PendienteCliente)
+            ->withFechaVencimientoFase($fechaLimite)
             ->touchEstadoCambio();
 
         $this->expedienteRepository->save($actualizado);
@@ -61,7 +66,10 @@ final class AvanzarResolucionUseCase
             bin2hex(random_bytes(16)),
             $id,
             'fase_resolucion_iniciada',
-            'Tramitación completada. El expediente pasa a fase de resolución.',
+            sprintf(
+                'Tramitación completada. El expediente pasa a fase de resolución (plazo hasta %s).',
+                $fechaLimite->format('d/m/Y'),
+            ),
             ActorHitoExpediente::Sistema,
             new \DateTimeImmutable('now'),
         ));

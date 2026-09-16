@@ -8,6 +8,7 @@ import {
   type DocumentoRequeridoFormValues,
 } from '@/components/config/tramite/DocumentoRequeridoFormModal';
 import { EnlaceClienteModal } from '@/components/expedientes/contratacion/EnlaceClienteModal';
+import { PasarFaseDuracionModal } from '@/components/expedientes/PasarFaseDuracionModal';
 
 interface ExpedienteGestionToolbarActionsProps {
   expedienteId: string;
@@ -53,6 +54,7 @@ function ResolucionToolbarActions({ expedienteId }: { expedienteId: string }) {
 
 function TramitacionToolbarActions({ expedienteId }: { expedienteId: string }) {
   const queryClient = useQueryClient();
+  const [modalOpen, setModalOpen] = useState(false);
   const { data } = useQuery({
     queryKey: ['tramitacion', expedienteId],
     queryFn: () => api.getTramitacion(expedienteId),
@@ -60,8 +62,10 @@ function TramitacionToolbarActions({ expedienteId }: { expedienteId: string }) {
   });
 
   const avanzarMutation = useMutation({
-    mutationFn: () => api.avanzarResolucion(expedienteId),
+    mutationFn: (fechaVencimientoFase: string) =>
+      api.avanzarResolucion(expedienteId, { fechaVencimientoFase }),
     onSuccess: () => {
+      setModalOpen(false);
       void queryClient.invalidateQueries({ queryKey: ['tramitacion', expedienteId] });
       void queryClient.invalidateQueries({ queryKey: ['expediente', expedienteId] });
       void queryClient.invalidateQueries({ queryKey: ['expedientes'] });
@@ -80,18 +84,27 @@ function TramitacionToolbarActions({ expedienteId }: { expedienteId: string }) {
       <Button
         size="sm"
         disabled={!data.puedeAvanzarResolucion || avanzarMutation.isPending}
-        onClick={() => avanzarMutation.mutate()}
+        onClick={() => setModalOpen(true)}
       >
-        {avanzarMutation.isPending ? 'Avanzando…' : 'Pasar a Fase 4'}
+        Pasar a Fase 4
       </Button>
-      {avanzarMutation.error && (
-        <p className="text-sm text-destructive">{avanzarMutation.error.message}</p>
-      )}
+      <PasarFaseDuracionModal
+        open={modalOpen}
+        onOpenChange={setModalOpen}
+        faseDestinoNumero={4}
+        faseDestinoLabel="Resolución"
+        confirmLabel="Pasar a Fase 4"
+        pending={avanzarMutation.isPending}
+        error={avanzarMutation.error?.message ?? null}
+        onConfirm={(fechaVencimientoFase) => avanzarMutation.mutate(fechaVencimientoFase)}
+      />
     </div>
   );
 }
 
 function ContratacionToolbarActions({ expedienteId }: { expedienteId: string }) {
+  const queryClient = useQueryClient();
+  const [modalOpen, setModalOpen] = useState(false);
   const { data } = useQuery({
     queryKey: ['contratacion', expedienteId],
     queryFn: () => api.getContratacion(expedienteId),
@@ -99,13 +112,44 @@ function ContratacionToolbarActions({ expedienteId }: { expedienteId: string }) 
     staleTime: 0,
   });
 
+  const avanzarMutation = useMutation({
+    mutationFn: (fechaVencimientoFase: string) =>
+      api.avanzarDocumentacion(expedienteId, { fechaVencimientoFase }),
+    onSuccess: () => {
+      setModalOpen(false);
+      void queryClient.invalidateQueries({ queryKey: ['contratacion', expedienteId] });
+      void queryClient.invalidateQueries({ queryKey: ['expediente', expedienteId] });
+      void queryClient.invalidateQueries({ queryKey: ['expedientes'] });
+      void queryClient.invalidateQueries({ queryKey: ['documentacion-fase', expedienteId] });
+    },
+  });
+
   if (!data || data.faseNegocio !== 'contratacion') {
     return null;
   }
 
+  const puedeAvanzar = data.puedeAvanzarFase2 ?? data.contratacionCompletada;
+
   return (
     <div className="flex flex-wrap items-center gap-2">
       <EnlaceClienteModal expedienteId={expedienteId} accessUrl={data.accessUrl} />
+      <Button
+        size="sm"
+        disabled={!puedeAvanzar || avanzarMutation.isPending}
+        onClick={() => setModalOpen(true)}
+      >
+        Pasar a Fase 2
+      </Button>
+      <PasarFaseDuracionModal
+        open={modalOpen}
+        onOpenChange={setModalOpen}
+        faseDestinoNumero={2}
+        faseDestinoLabel="Documentación"
+        confirmLabel="Pasar a Fase 2"
+        pending={avanzarMutation.isPending}
+        error={avanzarMutation.error?.message ?? null}
+        onConfirm={(fechaVencimientoFase) => avanzarMutation.mutate(fechaVencimientoFase)}
+      />
     </div>
   );
 }
@@ -113,6 +157,7 @@ function ContratacionToolbarActions({ expedienteId }: { expedienteId: string }) 
 function DocumentacionToolbarActions({ expedienteId }: { expedienteId: string }) {
   const queryClient = useQueryClient();
   const [mostrarAddDoc, setMostrarAddDoc] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
 
   const { data } = useQuery({
     queryKey: ['documentacion-fase', expedienteId],
@@ -130,11 +175,14 @@ function DocumentacionToolbarActions({ expedienteId }: { expedienteId: string })
   });
 
   const avanzarMutation = useMutation({
-    mutationFn: () => api.avanzarTramitacion(expedienteId),
+    mutationFn: (fechaVencimientoFase: string) =>
+      api.avanzarTramitacion(expedienteId, { fechaVencimientoFase }),
     onSuccess: () => {
+      setModalOpen(false);
       void queryClient.invalidateQueries({ queryKey: ['documentacion-fase', expedienteId] });
       void queryClient.invalidateQueries({ queryKey: ['expediente', expedienteId] });
       void queryClient.invalidateQueries({ queryKey: ['expedientes'] });
+      void queryClient.invalidateQueries({ queryKey: ['tramitacion', expedienteId] });
     },
   });
 
@@ -153,16 +201,22 @@ function DocumentacionToolbarActions({ expedienteId }: { expedienteId: string })
         <Button
           size="sm"
           disabled={!data.puedeAvanzarFase3 || avanzarMutation.isPending}
-          onClick={() => avanzarMutation.mutate()}
+          onClick={() => setModalOpen(true)}
         >
-          {avanzarMutation.isPending ? 'Avanzando…' : 'Pasar a Fase 3'}
+          Pasar a Fase 3
         </Button>
-        {avanzarMutation.error && (
-          <p className="w-full text-sm text-destructive sm:w-auto">
-            {avanzarMutation.error.message}
-          </p>
-        )}
       </div>
+
+      <PasarFaseDuracionModal
+        open={modalOpen}
+        onOpenChange={setModalOpen}
+        faseDestinoNumero={3}
+        faseDestinoLabel="Tramitación"
+        confirmLabel="Pasar a Fase 3"
+        pending={avanzarMutation.isPending}
+        error={avanzarMutation.error?.message ?? null}
+        onConfirm={(fechaVencimientoFase) => avanzarMutation.mutate(fechaVencimientoFase)}
+      />
 
       <DocumentoRequeridoFormModal
         open={mostrarAddDoc}

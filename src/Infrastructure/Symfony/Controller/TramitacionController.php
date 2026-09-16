@@ -342,10 +342,15 @@ final class TramitacionController extends AbstractController
     }
 
     #[Route(path: '/avanzar-resolucion', name: 'avanzar_resolucion', methods: ['POST'])]
-    public function avanzarResolucion(string $id): JsonResponse
+    public function avanzarResolucion(string $id, Request $request): JsonResponse
     {
+        $data = json_decode($request->getContent(), true) ?? [];
+
         try {
-            ($this->avanzarResolucion)($id);
+            ($this->avanzarResolucion)(
+                $id,
+                isset($data['fechaVencimientoFase']) ? (string) $data['fechaVencimientoFase'] : null,
+            );
 
             return new JsonResponse(['message' => 'Expediente pasado a resolución.']);
         } catch (\InvalidArgumentException $e) {

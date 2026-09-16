@@ -187,10 +187,15 @@ final class DocumentacionController extends AbstractController
     }
 
     #[Route(path: '/avanzar-tramitacion', name: 'avanzar_tramitacion', methods: ['POST'])]
-    public function avanzarTramitacion(string $id): JsonResponse
+    public function avanzarTramitacion(string $id, Request $request): JsonResponse
     {
+        $data = json_decode($request->getContent(), true) ?? [];
+
         try {
-            ($this->avanzarTramitacion)($id);
+            ($this->avanzarTramitacion)(
+                $id,
+                isset($data['fechaVencimientoFase']) ? (string) $data['fechaVencimientoFase'] : null,
+            );
 
             return new JsonResponse(['message' => 'El expediente ha pasado a fase de tramitación.']);
         } catch (\InvalidArgumentException $e) {
