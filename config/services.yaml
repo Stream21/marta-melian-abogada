@@ -17,6 +17,7 @@ services:
     App\Domain\Repository\UserRepositoryInterface: '@App\Infrastructure\Persistence\Doctrine\Repository\DoctrineUserRepository'
     App\Domain\Repository\ExpedienteRepositoryInterface: '@App\Infrastructure\Persistence\Doctrine\Repository\ExpedienteRepository'
     App\Domain\Repository\PaymentRepositoryInterface: '@App\Infrastructure\Persistence\Doctrine\Repository\PaymentRepository'
+    App\Domain\Repository\GastoRepositoryInterface: '@App\Infrastructure\Persistence\Doctrine\Repository\GastoRepository'
     App\Domain\Repository\InvoiceRepositoryInterface: '@App\Infrastructure\Persistence\Doctrine\Repository\InvoiceRepository'
     App\Domain\Repository\ServicioRepositoryInterface: '@App\Infrastructure\Persistence\Doctrine\Repository\ServicioRepository'
     App\Domain\Repository\TramiteRepositoryInterface: '@App\Infrastructure\Persistence\Doctrine\Repository\TramiteRepository'
@@ -48,6 +49,7 @@ services:
     App\Application\Port\TwilioPort: '@App\Infrastructure\ApiClient\TwilioService'
     App\Application\Port\EmailPort: '@App\Infrastructure\Notification\SymfonyMailerEmailService'
     App\Application\Port\ExpedienteFileStoragePort: '@App\Infrastructure\Storage\ExpedienteFileStorage'
+    App\Application\Port\GastoFileStoragePort: '@App\Infrastructure\Storage\GastoFileStorage'
     App\Application\Port\DocumentToPdfConverterPort: '@App\Infrastructure\Document\ImagickDocumentToPdfConverter'
     App\Application\Port\EscritoPdfGeneratorPort: '@App\Infrastructure\Document\DompdfEscritoPdfGenerator'
     App\Application\Port\ContratacionRealtimePort: '@App\Infrastructure\Realtime\MercureContratacionPublisher'
@@ -122,6 +124,10 @@ services:
             $mailerDsn: '%env(MAILER_DSN)%'
 
     App\Infrastructure\Storage\ExpedienteFileStorage:
+        arguments:
+            $projectDir: '%kernel.project_dir%'
+
+    App\Infrastructure\Storage\GastoFileStorage:
         arguments:
             $projectDir: '%kernel.project_dir%'
 
