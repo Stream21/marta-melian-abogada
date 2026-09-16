@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Pencil } from 'lucide-react';
 import { api } from '@/api/client';
 import { TramiteForm } from '@/components/config/TramiteForm';
+import type { PlataformaTramitacionValue } from '@/lib/tramite-plataformas';
 
 interface TramitesEditPageProps {
   tramiteId: string;
@@ -46,7 +47,7 @@ export function TramitesEditPage({ tramiteId }: TramitesEditPageProps) {
               initialServicioId={data.servicioId}
               initialNombre={data.nombre}
               initialHonorarios={data.honorarios}
-              initialPlataforma={data.plataforma as 'mercurio' | 'lexnet'}
+              initialPlataforma={data.plataforma as PlataformaTramitacionValue}
               initialRequiereProcurador={data.requiereProcurador}
               initialRequiereOtpFirma={data.requiereOtpFirma}
             />

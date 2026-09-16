@@ -96,6 +96,8 @@ final class ObtenerContratacionExpedienteUseCase
             'fechaVencimientoFase' => $expediente->fechaVencimientoFase()?->format('Y-m-d'),
             'pasoActivo' => $pasoActivo?->value,
             'contratacionCompletada' => $todosValidados,
+            'puedeAvanzarFase2' => $todosValidados
+                && $expediente->faseNegocio() === FaseNegocioExpediente::Contratacion,
             'pasos' => array_map(
                 fn ($p) => [
                     'paso' => $p->paso()->value,

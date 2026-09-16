@@ -21,8 +21,7 @@ export function ClienteIdentidadEleccion({
         <h3 className="text-base font-semibold">Ya tenemos su documento de identidad</h3>
         <p className="mt-1 text-sm text-muted-foreground">
           Usted ya ha trabajado con nosotros en un trámite anterior. Puede reutilizar el documento
-          registrado o escanear uno nuevo si ha cambiado (renovación, cambio de domicilio en el DNI,
-          etc.).
+          registrado o escanear uno nuevo si lo ha renovado o ha cambiado.
         </p>
       </div>
 
@@ -68,7 +67,7 @@ export function ClienteIdentidadEleccion({
             Continuar sin escanear
           </span>
           <span className="text-xs font-normal opacity-90">
-            Usamos su documento y datos ya registrados. Pasará directamente al siguiente paso.
+            Usamos su documento registrado. Solo le pediremos confirmar el domicilio.
           </span>
         </Button>
 

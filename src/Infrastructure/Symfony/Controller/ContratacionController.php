@@ -9,6 +9,7 @@ use App\Application\Service\DocumentoIntegridadService;
 use App\Application\UseCase\ActualizarCondicionesPagoContratacionUseCase;
 use App\Application\UseCase\ActualizarDatosClienteContratacionUseCase;
 use App\Application\UseCase\ActualizarDocumentoIdentidadContratacionUseCase;
+use App\Application\UseCase\AvanzarDocumentacionUseCase;
 use App\Application\UseCase\DevolverPasoContratacionUseCase;
 use App\Application\UseCase\ListarDocumentosContratacionUseCase;
 use App\Application\UseCase\ObtenerContratacionExpedienteUseCase;
@@ -33,6 +34,7 @@ final class ContratacionController extends AbstractController
         private ObtenerContratacionExpedienteUseCase $obtenerContratacion,
         private ValidarPasoContratacionUseCase $validarPaso,
         private DevolverPasoContratacionUseCase $devolverPaso,
+        private AvanzarDocumentacionUseCase $avanzarDocumentacion,
         private ListarDocumentosContratacionUseCase $listarDocumentos,
         private ExpedienteDocumentoRepositoryInterface $documentoEntregadoRepository,
         private ExpedienteFirmaRepositoryInterface $firmaRepository,
@@ -198,6 +200,23 @@ final class ContratacionController extends AbstractController
             ($this->validarPaso)($id, $paso);
 
             return new JsonResponse(($this->obtenerContratacion)($id));
+        } catch (\InvalidArgumentException $e) {
+            return new JsonResponse(['message' => $e->getMessage()], Response::HTTP_BAD_REQUEST);
+        }
+    }
+
+    #[Route(path: '/avanzar-documentacion', name: 'avanzar_documentacion', methods: ['POST'])]
+    public function avanzarDocumentacion(string $id, Request $request): JsonResponse
+    {
+        $data = json_decode($request->getContent(), true) ?? [];
+
+        try {
+            ($this->avanzarDocumentacion)(
+                $id,
+                isset($data['fechaVencimientoFase']) ? (string) $data['fechaVencimientoFase'] : null,
+            );
+
+            return new JsonResponse(['message' => 'El expediente ha pasado a fase de documentación.']);
         } catch (\InvalidArgumentException $e) {
             return new JsonResponse(['message' => $e->getMessage()], Response::HTTP_BAD_REQUEST);
         }

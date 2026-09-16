@@ -27,7 +27,6 @@ final class ValidarPasoContratacionUseCase
         private SincronizarClienteHoldedUseCase $sincronizarClienteHolded,
         private CreateManualPaymentUseCase $createManualPayment,
         private CalendarioPagoService $calendarioPagoService,
-        private InicializarDocumentacionUseCase $inicializarDocumentacion,
     ) {
     }
 
@@ -100,30 +99,18 @@ final class ValidarPasoContratacionUseCase
             $pasoEnum,
         ));
 
-        $faseCompletada = $this->actualizarEstadoExpediente($id);
+        $this->actualizarEstadoExpediente($id);
 
-        $payload = [
+        $this->realtime->publishContratacionUpdate($id->value(), [
             'type' => 'paso_validado',
             'paso' => $pasoEnum->value,
             'actor' => 'abogado',
             'expedienteNumero' => $expediente->numero(),
             'clienteNombre' => $expediente->clientName(),
-        ];
-
-        if ($faseCompletada) {
-            $payload = [
-                'type' => 'fase_completada',
-                'faseNegocio' => FaseNegocioExpediente::Documentacion->value,
-                'actor' => 'sistema',
-                'expedienteNumero' => $expediente->numero(),
-                'clienteNombre' => $expediente->clientName(),
-            ];
-        }
-
-        $this->realtime->publishContratacionUpdate($id->value(), $payload);
+        ]);
     }
 
-    private function actualizarEstadoExpediente(ExpedienteId $id): bool
+    private function actualizarEstadoExpediente(ExpedienteId $id): void
     {
         $pasos = $this->contratacionRepository->findPasosByExpediente($id);
         $todosValidados = true;
@@ -140,28 +127,18 @@ final class ValidarPasoContratacionUseCase
 
         $expediente = $this->expedienteRepository->findById($id);
         if (null === $expediente) {
-            return false;
+            return;
         }
 
         if ($todosValidados) {
-            $this->expedienteRepository->save(
-                $expediente
-                    ->withFaseNegocio(FaseNegocioExpediente::Documentacion, EstadoFaseExpediente::DocumentacionEnProgreso)
-                    ->touchEstadoCambio(),
-            );
+            // La abogada debe indicar el plazo de la siguiente fase con «Pasar a Fase 2».
+            if ($expediente->estadoFase() !== EstadoFaseExpediente::Completada) {
+                $this->expedienteRepository->save(
+                    $expediente->withEstadoFase(EstadoFaseExpediente::Completada)->touchEstadoCambio(),
+                );
+            }
 
-            $this->contratacionRepository->saveHito(new ExpedienteHito(
-                bin2hex(random_bytes(16)),
-                $id,
-                'fase_completada',
-                'Contratación completada. El expediente pasa a fase de requerimientos.',
-                ActorHitoExpediente::Sistema,
-                new \DateTimeImmutable('now'),
-            ));
-
-            ($this->inicializarDocumentacion)($id);
-
-            return true;
+            return;
         }
 
         $nuevoEstado = $hayPendienteCliente
@@ -171,8 +148,6 @@ final class ValidarPasoContratacionUseCase
         if ($expediente->estadoFase() !== $nuevoEstado) {
             $this->expedienteRepository->save($expediente->withEstadoFase($nuevoEstado)->touchEstadoCambio());
         }
-
-        return false;
     }
 
     private function pasoFirmasValidado(ExpedienteId $id): bool

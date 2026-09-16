@@ -28,6 +28,7 @@ import {
   identidadBriefingRevision,
   identidadBriefingStepKey,
 } from './identidad-briefings';
+import { ClienteDomicilioConfirmacion } from './ClienteDomicilioConfirmacion';
 import { ClienteIdentidadCorreccion } from './ClienteIdentidadCorreccion';
 import { ClienteIdentidadEleccion } from './ClienteIdentidadEleccion';
 import { DocumentoIdentidadFlujo } from './DocumentoIdentidadFlujo';
@@ -35,7 +36,7 @@ import { DocumentoIdentidadRevision } from './DocumentoIdentidadRevision';
 import { PortalCapturaSubheader } from './PortalCapturaSubheader';
 import type { DocumentoIdentidadArchivos } from './types';
 
-type Paso = 'eleccion' | 'correccion' | 'documento' | 'revision';
+type Paso = 'eleccion' | 'domicilio' | 'correccion' | 'documento' | 'revision';
 
 interface InicioRapidoDoc {
   tipoEscaneo: TipoEscaneoDocumentoIdentidad;
@@ -224,6 +225,12 @@ export function ClienteIdentidadOnboarding({
     onConfirmar?.({ archivos, datos });
   };
 
+  const handleActualizarDomicilio = (datos: ClienteInput) => {
+    if (!token) return;
+    setSoloDatos(true);
+    guardarAccesoMutation.mutate({ archivos: null, datos, soloDatos: true });
+  };
+
   const irACorregirDatos = () => {
     setSoloDatos(true);
     setArchivos(null);
@@ -297,14 +304,24 @@ export function ClienteIdentidadOnboarding({
         paso !== 'documento' && paso !== 'revision' && 'min-h-0',
       )}
     >
-      {(paso === 'eleccion' || paso === 'correccion') && (
+      {(paso === 'eleccion' || paso === 'domicilio' || paso === 'correccion') && (
         <PortalScrollArea contentClassName="space-y-4 px-4 pb-4 pt-3 sm:px-5">
           {paso === 'eleccion' && identidadEdicion && (
             <ClienteIdentidadEleccion
               identidadEdicion={identidadEdicion}
-              onReutilizar={() => reutilizarMutation.mutate()}
+              onReutilizar={() => setPaso('domicilio')}
               onEscanearNuevo={() => irAActualizarDocumento()}
-              reutilizando={reutilizarMutation.isPending}
+              reutilizando={reutilizarMutation.isPending || guardarAccesoMutation.isPending}
+            />
+          )}
+
+          {paso === 'domicilio' && datosClienteEditables && (
+            <ClienteDomicilioConfirmacion
+              datosActuales={datosClienteEditables}
+              onSinCambios={() => reutilizarMutation.mutate()}
+              onActualizar={handleActualizarDomicilio}
+              onVolver={() => setPaso('eleccion')}
+              guardando={reutilizarMutation.isPending || guardarAccesoMutation.isPending}
             />
           )}
 
