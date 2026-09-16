@@ -1,5 +1,6 @@
 import { apiAbsoluteUrl, getApiBase } from './apiBase';
 import { mergeFetchHeaders } from '@/lib/ngrok-headers';
+import { clearAuthCookie } from '@/lib/auth-cookie';
 
 export { apiAbsoluteUrl, getApiBase };
 
@@ -11,6 +12,11 @@ function appendArchivosToFormData(formData: FormData, files: File[]): void {
   }
 }
 const TOKEN_KEY = 'bufete_jwt_token';
+
+function clearSessionToken(): void {
+  clearSessionToken();
+  clearAuthCookie();
+}
 
 function getAuthHeaders(): Record<string, string> {
   const token = localStorage.getItem(TOKEN_KEY);
@@ -82,7 +88,7 @@ async function uploadRequest<T>(path: string, file: File): Promise<T> {
   });
 
   if (res.status === 401) {
-    localStorage.removeItem(TOKEN_KEY);
+    clearSessionToken();
     if (!window.location.pathname.startsWith('/login')) {
       window.location.href = '/login';
     }
@@ -107,20 +113,25 @@ export async function fetchAuthenticatedAsset(path: string, cacheKey?: string): 
 }
 
 export async function fetchAuthenticatedBlob(path: string, cacheKey?: string): Promise<Blob> {
-  const basePath =
-    path.startsWith('http') ? path : API_BASE + path;
+  const token = localStorage.getItem(TOKEN_KEY);
+  if (!token) {
+    throw new Error('Sesión no encontrada. Inicie sesión de nuevo para ver el documento.');
+  }
+
+  const basePath = path.startsWith('http') ? path : API_BASE + path;
   const url =
     cacheKey != null && cacheKey !== ''
       ? `${basePath}${basePath.includes('?') ? '&' : '?'}v=${encodeURIComponent(cacheKey)}`
       : basePath;
 
   const res = await fetch(url, {
-    headers: mergeFetchHeaders(getAuthHeaders()),
+    headers: mergeFetchHeaders({ Authorization: `Bearer ${token}` }),
+    credentials: 'same-origin',
     cache: 'no-store',
   });
 
   if (res.status === 401) {
-    localStorage.removeItem(TOKEN_KEY);
+    clearSessionToken();
     if (!window.location.pathname.startsWith('/login')) {
       window.location.href = '/login';
     }
@@ -136,17 +147,40 @@ export async function fetchAuthenticatedBlob(path: string, cacheKey?: string): P
     );
   }
 
-  return res.blob();
+  const blob = await res.blob();
+  const type = blob.type || res.headers.get('Content-Type') || '';
+  if (type.includes('application/json')) {
+    const text = await blob.text();
+    try {
+      const err = JSON.parse(text) as { message?: string; error?: string };
+      throw new Error(err.message || err.error || 'No se pudo cargar el documento.');
+    } catch (e) {
+      if (e instanceof Error && e.message !== 'Unexpected end of JSON input') throw e;
+      throw new Error('No se pudo cargar el documento.');
+    }
+  }
+
+  return blob;
 }
 
 /** Abre un PDF o imagen protegido por JWT en una pestaña nueva. */
 export async function openAuthenticatedDocument(path: string): Promise<void> {
   const blob = await fetchAuthenticatedBlob(path);
-  const blobUrl = URL.createObjectURL(blob);
+  const pdfBlob =
+    blob.type === 'application/pdf' || path.toLowerCase().includes('/pdf')
+      ? new Blob([blob], { type: 'application/pdf' })
+      : blob;
+  const blobUrl = URL.createObjectURL(pdfBlob);
   const opened = window.open(blobUrl, '_blank', 'noopener,noreferrer');
   if (!opened) {
-    URL.revokeObjectURL(blobUrl);
-    throw new Error('Permita ventanas emergentes para ver el documento.');
+    // Fallback: forzar descarga si el navegador bloquea la pestaña.
+    const a = document.createElement('a');
+    a.href = blobUrl;
+    a.download = 'documento.pdf';
+    a.rel = 'noopener';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
   }
   window.setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
 }
@@ -242,7 +276,7 @@ async function multipartRequest<T>(path: string, formData: FormData, method = 'P
   });
 
   if (res.status === 401) {
-    localStorage.removeItem(TOKEN_KEY);
+    clearSessionToken();
     if (!window.location.pathname.startsWith('/login')) {
       window.location.href = '/login';
     }
@@ -268,7 +302,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   });
 
   if (res.status === 401) {
-    localStorage.removeItem(TOKEN_KEY);
+    clearSessionToken();
     // Evitar bucle de recargas si ya estamos en /login
     if (!window.location.pathname.startsWith('/login')) {
       window.location.href = '/login';
@@ -1365,7 +1399,7 @@ export const api = {
     );
 
     if (res.status === 401) {
-      localStorage.removeItem(TOKEN_KEY);
+      clearSessionToken();
       if (!window.location.pathname.startsWith('/login')) {
         window.location.href = '/login';
       }

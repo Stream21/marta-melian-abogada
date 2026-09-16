@@ -210,6 +210,7 @@ export function CobrosGlobalesTable({
                       )}
                       {item.holdedEstado === 'sincronizado' && item.pdfUrl && (
                         <Button
+                          type="button"
                           variant="ghost"
                           size="icon"
                           className="h-7 w-7"

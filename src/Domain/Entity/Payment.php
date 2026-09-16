@@ -74,7 +74,7 @@ final readonly class Payment
 
     public function invoicePdfUrl(): ?string
     {
-        if (PaymentHoldedEstado::Sincronizado !== $this->holdedEstado || null === $this->pdfPath || '' === $this->pdfPath) {
+        if (PaymentHoldedEstado::Sincronizado !== $this->holdedEstado) {
             return null;
         }
 

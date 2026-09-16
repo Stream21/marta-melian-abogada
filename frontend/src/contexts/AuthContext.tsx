@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useMemo, useState } from 'react';
+import { clearAuthCookie, setAuthCookie } from '@/lib/auth-cookie';
 
 const TOKEN_KEY = 'bufete_jwt_token';
 
@@ -43,18 +44,24 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [token, setToken] = useState<string | null>(() => {
     const stored = localStorage.getItem(TOKEN_KEY);
-    if (stored && isTokenValid(stored)) return stored;
+    if (stored && isTokenValid(stored)) {
+      setAuthCookie(stored);
+      return stored;
+    }
     localStorage.removeItem(TOKEN_KEY);
+    clearAuthCookie();
     return null;
   });
 
   const login = useCallback((newToken: string) => {
     localStorage.setItem(TOKEN_KEY, newToken);
+    setAuthCookie(newToken);
     setToken(newToken);
   }, []);
 
   const logout = useCallback(() => {
     localStorage.removeItem(TOKEN_KEY);
+    clearAuthCookie();
     setToken(null);
   }, []);
 

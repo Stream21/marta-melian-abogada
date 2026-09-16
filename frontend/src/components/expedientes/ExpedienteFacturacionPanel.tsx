@@ -142,6 +142,7 @@ function HoldedFacturaActions({
         )}
         {canDownload && (
           <Button
+            type="button"
             variant="outline"
             size="sm"
             disabled={abriendoPdf}
@@ -392,6 +393,7 @@ export function ExpedienteFacturacionPanel({ expedienteId }: ExpedienteFacturaci
   useMercureContratacion(expedienteId);
 
   const queryClient = useQueryClient();
+  const [abriendoFacturaHolded, setAbriendoFacturaHolded] = useState(false);
   const { data, isLoading, error } = useQuery({
     queryKey: ['facturacion', expedienteId],
     queryFn: () => api.getFacturacionExpediente(expedienteId),
@@ -491,14 +493,25 @@ export function ExpedienteFacturacionPanel({ expedienteId }: ExpedienteFacturaci
           <span className="text-muted-foreground">
             Factura única Holded{holdedResumen.invoiceId ? ` (${holdedResumen.invoiceId.slice(0, 8)}…)` : ''}
           </span>
-          <a
-            href={holdedResumen.invoicePdfUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="text-primary font-medium hover:underline"
+          <Button
+            type="button"
+            variant="link"
+            className="h-auto p-0 text-primary font-medium"
+            disabled={abriendoFacturaHolded}
+            onClick={() => {
+              if (!holdedResumen.invoicePdfUrl) return;
+              setAbriendoFacturaHolded(true);
+              void openAuthenticatedDocument(holdedResumen.invoicePdfUrl)
+                .catch((e) => {
+                  window.alert(
+                    e instanceof Error ? e.message : 'No se pudo abrir la factura.',
+                  );
+                })
+                .finally(() => setAbriendoFacturaHolded(false));
+            }}
           >
-            Descargar PDF
-          </a>
+            {abriendoFacturaHolded ? 'Abriendo…' : 'Descargar PDF'}
+          </Button>
         </div>
       )}
 
