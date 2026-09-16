@@ -68,10 +68,18 @@ final class PaymentHoldedSyncService
 
         try {
             $cliente = $this->resolveCliente($expediente);
-            $contactId = $this->ensureContact($cliente, $expediente);
+            try {
+                $contactId = $this->ensureContact($cliente, $expediente);
+            } catch (\Throwable $e) {
+                throw $this->wrapHoldedStep($e, 'contacto');
+            }
 
             if ('' === $holdedInvoiceId) {
-                $holdedInvoiceId = $this->createInvoiceForExpediente($contactId, $expediente);
+                try {
+                    $holdedInvoiceId = $this->createInvoiceForExpediente($contactId, $expediente);
+                } catch (\Throwable $e) {
+                    throw $this->wrapHoldedStep($e, 'crear factura');
+                }
                 $expediente = $expediente->withHoldedInvoiceId($holdedInvoiceId);
                 $this->expedienteRepository->save($expediente);
                 $reusedExistingInvoice = false;
@@ -82,7 +90,7 @@ final class PaymentHoldedSyncService
             } catch (\Throwable $payError) {
                 // Factura borrada en Holded (pruebas/demo): recrear con número nuevo y reintentar cobro.
                 if (!$reusedExistingInvoice || !$this->isMissingInHolded($payError)) {
-                    throw $payError;
+                    throw $this->wrapHoldedStep($payError, 'registrar cobro');
                 }
 
                 $this->logger->warning('PaymentHoldedSync: factura Holded inexistente; se recrea', [
@@ -312,5 +320,19 @@ final class PaymentHoldedSyncService
     private function isValidPdf(string $content): bool
     {
         return str_starts_with($content, '%PDF-');
+    }
+
+    private function wrapHoldedStep(\Throwable $e, string $step): \Throwable
+    {
+        $prefix = sprintf('Holded (%s): ', $step);
+        if ($e instanceof \App\Domain\Exception\HoldedApiException) {
+            return new \App\Domain\Exception\HoldedApiException(
+                $prefix . $e->getMessage(),
+                $e->getStatusCode(),
+                $e,
+            );
+        }
+
+        return new \RuntimeException($prefix . $e->getMessage(), 0, $e);
     }
 }

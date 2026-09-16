@@ -79,8 +79,17 @@ final class HoldedService implements HoldedPort
             if (404 === $e->getStatusCode()) {
                 return false;
             }
+            // Holded a veces responde 500 en GET contacto; tratamos el id local como no fiable.
+            if ($e->getStatusCode() >= 500) {
+                $this->logger->warning('Holded GET contacto falló; se buscará por documento o se creará de nuevo.', [
+                    'contactId' => $contactId,
+                    'status' => $e->getStatusCode(),
+                ]);
+
+                return false;
+            }
             // Si la API no permite GET por id, asumimos que el id local sigue siendo válido.
-            if ($e->getStatusCode() >= 400 && $e->getStatusCode() < 500) {
+            if ($e->getStatusCode() >= 400) {
                 return true;
             }
 
@@ -369,20 +378,9 @@ final class HoldedService implements HoldedPort
             return $explicit;
         }
 
-        if ('' === $this->envPrefix) {
-            return null;
-        }
-
-        $key = trim((string) ($caseData->numberKey ?? ''));
-        if ('' === $key) {
-            $key = 'DOC';
-        }
-        $safeKey = strtoupper(preg_replace('/[^A-Za-z0-9]+/', '-', $key) ?? 'DOC');
-        $safeKey = trim($safeKey, '-');
-        // Timestamp + sufijo corto: tras borrar en Holded, el siguiente sync crea otro número.
-        $suffix = (new \DateTimeImmutable('now'))->format('YmdHis') . '-' . substr(bin2hex(random_bytes(2)), 0, 4);
-
-        return sprintf('%s-%s-%s', $this->envPrefix, $safeKey, $suffix);
+        // No enviar número autogenerado (p. ej. STG-EXP-…): en cuentas reales Holded suele devolver 500
+        // si la serie no admite numeración manual. El aislamiento por entorno va en tags del contacto/factura.
+        return null;
     }
 
     private function prefixedDescription(string $description): string

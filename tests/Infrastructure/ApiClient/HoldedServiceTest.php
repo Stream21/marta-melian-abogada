@@ -150,8 +150,7 @@ final class HoldedServiceTest extends TestCase
         $invoiceBody = json_decode($requests[3]['options']['body'] ?? '{}', true);
         self::assertSame('[STG] Expediente EXP-1', $invoiceBody['description'] ?? null);
         self::assertSame(['STG'], $invoiceBody['tags'] ?? null);
-        self::assertIsString($invoiceBody['number'] ?? null);
-        self::assertStringStartsWith('STG-EXP-2026-0001-', (string) ($invoiceBody['number'] ?? ''));
+        self::assertArrayNotHasKey('number', $invoiceBody);
     }
 
     public function testFindOrCreateContactReusesHoldedIdWhenFoundByDocument(): void
