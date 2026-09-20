@@ -7,23 +7,29 @@ namespace App\Application\UseCase;
 use App\Application\DTO\ManualPaymentRequest;
 use App\Application\Port\ContratacionRealtimePort;
 use App\Application\Service\CalendarioPagoService;
+use App\Application\Service\NotificarContratacionClienteService;
 use App\Domain\Entity\ActorHitoExpediente;
 use App\Domain\Entity\EstadoFaseExpediente;
 use App\Domain\Entity\EstadoPasoContratacion;
+use App\Domain\Entity\Expediente;
 use App\Domain\Entity\ExpedienteHito;
 use App\Domain\Entity\FaseNegocioExpediente;
 use App\Domain\Entity\MetodoPagoExpediente;
 use App\Domain\Entity\PasoContratacionCliente;
+use App\Domain\Repository\ClienteRepositoryInterface;
 use App\Domain\Repository\ContratacionRepositoryInterface;
 use App\Domain\Repository\ExpedienteRepositoryInterface;
+use App\Domain\ValueObject\ClienteId;
 use App\Domain\ValueObject\ExpedienteId;
 
 final class ValidarPasoContratacionUseCase
 {
     public function __construct(
         private ExpedienteRepositoryInterface $expedienteRepository,
+        private ClienteRepositoryInterface $clienteRepository,
         private ContratacionRepositoryInterface $contratacionRepository,
         private ContratacionRealtimePort $realtime,
+        private NotificarContratacionClienteService $notificarCliente,
         private SincronizarClienteHoldedUseCase $sincronizarClienteHolded,
         private CreateManualPaymentUseCase $createManualPayment,
         private CalendarioPagoService $calendarioPagoService,
@@ -101,6 +107,8 @@ final class ValidarPasoContratacionUseCase
 
         $this->actualizarEstadoExpediente($id);
 
+        $this->notificarSiguientePasoSiProcede($expediente, $pasoEnum);
+
         $this->realtime->publishContratacionUpdate($id->value(), [
             'type' => 'paso_validado',
             'paso' => $pasoEnum->value,
@@ -108,6 +116,30 @@ final class ValidarPasoContratacionUseCase
             'expedienteNumero' => $expediente->numero(),
             'clienteNombre' => $expediente->clientName(),
         ]);
+    }
+
+    private function notificarSiguientePasoSiProcede(Expediente $expediente, PasoContratacionCliente $pasoValidado): void
+    {
+        $siguiente = match ($pasoValidado) {
+            PasoContratacionCliente::DatosCliente => PasoContratacionCliente::Firmas,
+            PasoContratacionCliente::Firmas => PasoContratacionCliente::Pago,
+            PasoContratacionCliente::Pago => null,
+        };
+        if (null === $siguiente) {
+            return;
+        }
+
+        $clienteId = $expediente->clienteId();
+        if (null === $clienteId || '' === $clienteId) {
+            return;
+        }
+
+        $cliente = $this->clienteRepository->findById(new ClienteId($clienteId));
+        if (null === $cliente) {
+            return;
+        }
+
+        $this->notificarCliente->notificarPasoDisponible($expediente, $cliente, $siguiente);
     }
 
     private function actualizarEstadoExpediente(ExpedienteId $id): void

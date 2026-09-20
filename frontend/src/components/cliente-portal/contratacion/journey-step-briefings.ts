@@ -34,7 +34,7 @@ function briefingFirma(tipo: string, label: string): JourneyStepBriefing {
         key: `firma-${tipo}`,
         title: label,
         description:
-          'Información sobre el uso de tus datos personales. ' +
+          'Contrato de protección de datos (RGPD): información sobre el uso de tus datos personales. ' +
           'Léelo completo, acéptalo y firma para que el despacho pueda gestionar tu expediente.',
         ctaLabel: 'Abrir documento',
       };

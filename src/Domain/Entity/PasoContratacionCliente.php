@@ -29,7 +29,7 @@ enum PasoContratacionCliente: string
     {
         return match ($this) {
             self::DatosCliente => 'Escaneo del DNI/NIE/pasaporte y verificación de datos personales',
-            self::Firmas => 'Firma de hoja de encargo, designación y RGPD',
+            self::Firmas => 'Firma de hoja de encargo, designación y RGPD (contrato protección de datos)',
             self::Pago => 'Instrucciones de pago según método acordado (el abogado confirma el cobro manual)',
         };
     }

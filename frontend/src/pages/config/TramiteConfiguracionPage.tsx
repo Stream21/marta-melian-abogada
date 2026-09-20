@@ -25,7 +25,7 @@ const ESCRITO_TABS: Array<{
 }> = [
   { value: 'hoja-encargo', tipo: 'hoja_encargo', label: 'Hoja de encargo', icon: FileText },
   { value: 'designacion', tipo: 'designacion', label: 'Designación', icon: UserCheck },
-  { value: 'rgpd', tipo: 'rgpd', label: 'RGPD', icon: Shield },
+  { value: 'rgpd', tipo: 'rgpd', label: 'RGPD (contrato protección de datos)', icon: Shield },
 ];
 
 interface TramiteConfiguracionPageProps {

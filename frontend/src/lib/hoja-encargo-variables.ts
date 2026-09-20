@@ -102,7 +102,7 @@ export type TipoEscrito = 'hoja_encargo' | 'designacion' | 'rgpd';
 export const TIPOS_ESCRITO: Array<{ value: TipoEscrito; label: string }> = [
   { value: 'hoja_encargo', label: 'Hoja de encargo' },
   { value: 'designacion', label: 'Designación' },
-  { value: 'rgpd', label: 'RGPD' },
+  { value: 'rgpd', label: 'RGPD (contrato protección de datos)' },
 ];
 
 export interface VariablePreviewContext {

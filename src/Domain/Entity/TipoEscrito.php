@@ -15,7 +15,7 @@ enum TipoEscrito: string
         return match ($this) {
             self::HojaEncargo => 'Hoja de encargo',
             self::Designacion => 'Designación',
-            self::Rgpd => 'RGPD',
+            self::Rgpd => 'RGPD (contrato protección de datos)',
         };
     }
 

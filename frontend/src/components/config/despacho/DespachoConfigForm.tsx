@@ -399,7 +399,7 @@ export function DespachoConfigForm() {
 
             <DespachoConfigSection
               title="Cabecera y pie de página"
-              description="Aspecto común de todos los documentos generados (hoja de encargo, designación, RGPD, etc.)."
+              description="Aspecto común de todos los documentos generados (hoja de encargo, designación, RGPD — contrato protección de datos, etc.)."
             >
               <DespachoMembretePreview
                 nombreFirma={nombreFirma}

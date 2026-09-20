@@ -19,7 +19,7 @@ export const SUBFASES_CONTRATACION = [
     codigo: 'firmas',
     label: 'Firma de documentos',
     orden: 2,
-    descripcion: 'Hoja de encargo, designación y RGPD',
+    descripcion: 'Hoja de encargo, designación y RGPD (contrato protección de datos)',
   },
   {
     codigo: 'pago',
