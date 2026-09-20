@@ -6,6 +6,7 @@ namespace App\Application\UseCase;
 
 use App\Application\Port\ContratacionRealtimePort;
 use App\Application\Service\FechaVencimientoFaseParser;
+use App\Application\Service\NotificarCambioFaseClienteService;
 use App\Domain\Entity\ActorHitoExpediente;
 use App\Domain\Entity\EstadoFaseExpediente;
 use App\Domain\Entity\EstadoPasoContratacion;
@@ -23,6 +24,7 @@ final class AvanzarDocumentacionUseCase
         private InicializarDocumentacionUseCase $inicializarDocumentacion,
         private ContratacionRealtimePort $realtime,
         private FechaVencimientoFaseParser $fechaVencimientoParser,
+        private NotificarCambioFaseClienteService $notificarCambioFase,
     ) {
     }
 
@@ -55,12 +57,12 @@ final class AvanzarDocumentacionUseCase
 
         $fechaLimite = $this->fechaVencimientoParser->parseRequired($fechaVencimientoFase);
 
-        $this->expedienteRepository->save(
-            $expediente
-                ->withFaseNegocio(FaseNegocioExpediente::Documentacion, EstadoFaseExpediente::DocumentacionEnProgreso)
-                ->withFechaVencimientoFase($fechaLimite)
-                ->touchEstadoCambio(),
-        );
+        $actualizado = $expediente
+            ->withFaseNegocio(FaseNegocioExpediente::Documentacion, EstadoFaseExpediente::DocumentacionEnProgreso)
+            ->withFechaVencimientoFase($fechaLimite)
+            ->touchEstadoCambio();
+
+        $this->expedienteRepository->save($actualizado);
 
         $this->contratacionRepository->saveHito(new ExpedienteHito(
             bin2hex(random_bytes(16)),
@@ -76,13 +78,15 @@ final class AvanzarDocumentacionUseCase
 
         ($this->inicializarDocumentacion)($id);
 
+        $this->notificarCambioFase->notificar($actualizado, FaseNegocioExpediente::Documentacion);
+
         $this->realtime->publishContratacionUpdate($expedienteId, [
             'type' => 'fase_completada',
             'faseNegocio' => FaseNegocioExpediente::Documentacion->value,
             'fechaVencimientoFase' => $fechaLimite->format('Y-m-d'),
             'actor' => 'sistema',
-            'expedienteNumero' => $expediente->numero(),
-            'clienteNombre' => $expediente->clientName(),
+            'expedienteNumero' => $actualizado->numero(),
+            'clienteNombre' => $actualizado->clientName(),
         ]);
     }
 }

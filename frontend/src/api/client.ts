@@ -488,6 +488,15 @@ export const api = {
 
   getExpediente: (id: string) => request<ExpedienteResponse>('/api/expedientes/' + encodeURIComponent(id)),
 
+  actualizarCanalesNotificacion: (id: string, canales: ('whatsapp' | 'email')[]) =>
+    request<ExpedienteResponse>(
+      '/api/expedientes/' + encodeURIComponent(id) + '/canales-notificacion',
+      {
+        method: 'PUT',
+        body: JSON.stringify({ canales }),
+      },
+    ),
+
   cancelarExpediente: (id: string, motivo?: string) =>
     request<ExpedienteResponse>('/api/expedientes/' + encodeURIComponent(id) + '/cancelar', {
       method: 'POST',
@@ -1026,7 +1035,7 @@ export const api = {
   agregarRequerimientoMercurio: (
     expedienteId: string,
     body: {
-      tipo?: 'documento' | 'escrito';
+      tipo?: 'documentacion' | 'tasas' | 'documento' | 'escrito';
       destino?: 'cliente' | 'despacho';
       nombre: string;
       descripcion?: string;
@@ -1154,6 +1163,19 @@ export const api = {
         encodeURIComponent(docId),
       { method: 'DELETE' },
     ),
+
+  subirOficioRequerimientoMercurio: (expedienteId: string, reqId: string, archivo: File) => {
+    const formData = new FormData();
+    formData.append('archivo', archivo);
+    return multipartRequest<TramitacionResponse>(
+      '/api/expedientes/' +
+        encodeURIComponent(expedienteId) +
+        '/tramitacion/requerimientos/' +
+        encodeURIComponent(reqId) +
+        '/oficio',
+      formData,
+    );
+  },
 
   subirArchivoRequerimientoMercurio: (expedienteId: string, reqId: string, archivo: File) => {
     const formData = new FormData();
@@ -1307,8 +1329,20 @@ export const api = {
   tramitacionRequerimientoArchivoUrl: (expedienteId: string, reqId: string) =>
     `/api/expedientes/${encodeURIComponent(expedienteId)}/tramitacion/requerimientos/${encodeURIComponent(reqId)}/archivo-descarga`,
 
+  tramitacionRequerimientoOficioUrl: (expedienteId: string, reqId: string) =>
+    `/api/expedientes/${encodeURIComponent(expedienteId)}/tramitacion/requerimientos/${encodeURIComponent(reqId)}/oficio`,
+
+  tramitacionRequerimientoDocumentoArchivoUrl: (expedienteId: string, reqId: string, docId: string) =>
+    `/api/expedientes/${encodeURIComponent(expedienteId)}/tramitacion/requerimientos/${encodeURIComponent(reqId)}/documentos/${encodeURIComponent(docId)}/archivo-descarga`,
+
   tramitacionRequerimientoJustificanteUrl: (expedienteId: string, reqId: string) =>
     `/api/expedientes/${encodeURIComponent(expedienteId)}/tramitacion/requerimientos/${encodeURIComponent(reqId)}/justificante`,
+
+  accesoTramitacionOficioUrl: (token: string, reqId: string) =>
+    `/api/acceso/${encodeURIComponent(token)}/tramitacion/requerimientos/${encodeURIComponent(reqId)}/oficio`,
+
+  accesoTramitacionDocumentoArchivoUrl: (token: string, reqId: string, docId: string) =>
+    `/api/acceso/${encodeURIComponent(token)}/tramitacion/requerimientos/${encodeURIComponent(reqId)}/documentos/${encodeURIComponent(docId)}/archivo-descarga`,
 
   subirArchivoDocumentoRequerimientoMercurioPortal: (
     token: string,
@@ -1515,10 +1549,13 @@ export const api = {
     );
   },
 
-  enviarOtpFirma: (token: string) =>
+  enviarOtpFirma: (token: string, telefono?: string) =>
     publicRequest<OtpFirmaEnviarResponse>(
       '/api/acceso/' + encodeURIComponent(token) + '/firma/otp/enviar',
-      { method: 'POST', body: '{}' },
+      {
+        method: 'POST',
+        body: JSON.stringify(telefono?.trim() ? { telefono: telefono.trim() } : {}),
+      },
     ),
 
   verificarOtpFirma: (token: string, codigo: string) =>
@@ -2006,6 +2043,10 @@ export interface ExpedienteResponse {
     createdAt: string;
     archivada: boolean;
   } | null;
+  /** Preferencia de canales de aviso automático al cliente. */
+  canalesNotificacion?: ('whatsapp' | 'email')[];
+  clienteTieneTelefono?: boolean;
+  clienteTieneEmail?: boolean;
 }
 
 export interface ExpedienteNotaResponse {
@@ -2044,6 +2085,7 @@ export interface ClienteBusquedaItem {
   email: string;
   tipoDocumento: string;
   numDocumento: string;
+  provisional?: boolean;
 }
 
 export interface BuscarClientesResponse {
@@ -2226,6 +2268,9 @@ export interface AccesoTramitacionRequerimientoResponse {
   estado: string;
   estadoLabel: string;
   tieneArchivo: boolean;
+  archivoNombre?: string | null;
+  tieneOficio?: boolean;
+  oficioNombre?: string | null;
   puedeSubir: boolean;
   /** YYYY-MM-DD cuando el requerimiento está presentado. */
   fechaPresentacion?: string | null;
@@ -2277,6 +2322,8 @@ export interface TramitacionRequerimientoResponse {
   estadoLabel: string;
   tieneArchivo: boolean;
   archivoNombre?: string | null;
+  tieneOficio?: boolean;
+  oficioNombre?: string | null;
   tieneJustificante: boolean;
   /** YYYY-MM-DD cuando el requerimiento está presentado. */
   fechaPresentacion?: string | null;

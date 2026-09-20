@@ -11,13 +11,10 @@ use App\Application\DTO\ExpedienteResponseMapper;
 use App\Application\Port\ExpedienteFileStoragePort;
 use App\Application\Service\NotificarAltaExpedienteService;
 use App\Application\Service\TelefonoNormalizer;
-use App\Domain\Entity\ActorHitoExpediente;
 use App\Domain\Entity\Expediente;
-use App\Domain\Entity\ExpedienteHito;
 use App\Domain\Entity\MetodoPagoExpediente;
 use App\Domain\Entity\PlanPagoExpediente;
 use App\Domain\Repository\ClienteRepositoryInterface;
-use App\Domain\Repository\ContratacionRepositoryInterface;
 use App\Domain\Repository\ExpedienteRepositoryInterface;
 use App\Domain\Repository\TramiteRepositoryInterface;
 use App\Domain\ValueObject\ClienteId;
@@ -34,7 +31,6 @@ final class AltaExpedienteUseCase
         private ExpedienteFileStoragePort $fileStorage,
         private NotificarAltaExpedienteService $notificarAlta,
         private InicializarContratacionUseCase $inicializarContratacion,
-        private ContratacionRepositoryInterface $contratacionRepository,
         private TelefonoNormalizer $telefonoNormalizer,
         private string $frontendBaseUrl,
     ) {
@@ -78,6 +74,11 @@ final class AltaExpedienteUseCase
         $folderPath = 'var/expedientes/' . $expedienteId->value() . '/';
         $this->fileStorage->getFolderPath($expedienteId);
 
+        $canalesPreferidos = Expediente::normalizarCanales($input->canalesNotificacion);
+        if ($input->notificar) {
+            $canalesPreferidos = $this->resolverCanalesNotificacion($input, $cliente);
+        }
+
         $expediente = Expediente::crearAlta(
             $expedienteId,
             $numero,
@@ -93,6 +94,7 @@ final class AltaExpedienteUseCase
             $numCuotas,
             $accessToken,
             $this->parseFechaVencimiento($input->fechaVencimientoFase),
+            $canalesPreferidos,
         );
 
         $this->expedienteRepository->save($expediente);
@@ -101,28 +103,7 @@ final class AltaExpedienteUseCase
         $accessUrl = rtrim($this->frontendBaseUrl, '/') . '/acceso/' . $accessToken;
         $canales = [];
         if ($input->notificar) {
-            $canalesSolicitados = $this->resolverCanalesNotificacion($input, $cliente);
-            $canales = $this->notificarAlta->notificar($expediente, $cliente, $tramite->nombre(), $canalesSolicitados);
-            if ([] !== $canales) {
-                $this->contratacionRepository->saveHito(new ExpedienteHito(
-                    bin2hex(random_bytes(16)),
-                    $expedienteId,
-                    'notificacion_alta_expediente',
-                    sprintf(
-                        'Se ha notificado al cliente el alta del expediente por %s.',
-                        implode(', ', array_map(
-                            fn (string $c) => match ($c) {
-                                'whatsapp' => 'WhatsApp',
-                                'email' => 'email',
-                                default => $c,
-                            },
-                            array_filter($canales, fn (string $c) => !str_ends_with($c, '_error')),
-                        )),
-                    ),
-                    ActorHitoExpediente::Abogado,
-                    new \DateTimeImmutable('now'),
-                ));
-            }
+            $canales = $this->notificarAlta->notificar($expediente, $cliente, $tramite->nombre(), $canalesPreferidos);
         }
 
         return new AltaExpedienteResult(
@@ -163,7 +144,8 @@ final class AltaExpedienteUseCase
     private function parseFechaVencimiento(?string $fecha): ?\DateTimeImmutable
     {
         if (null === $fecha || '' === trim($fecha)) {
-            return (new \DateTimeImmutable('now'))->modify('+1 month')->setTime(23, 59, 59);
+            // Fase 1 (contratación): plazo por defecto de 2 semanas desde la creación.
+            return (new \DateTimeImmutable('now'))->modify('+2 weeks')->setTime(23, 59, 59);
         }
 
         $parsed = \DateTimeImmutable::createFromFormat('Y-m-d', trim($fecha));

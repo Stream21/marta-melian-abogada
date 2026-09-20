@@ -48,6 +48,12 @@ class ExpedienteRequerimientoMercurioOrm
     #[ORM\Column(name: 'formulario_cometido', type: Types::TEXT, nullable: true)]
     private ?string $formularioCometido = null;
 
+    #[ORM\Column(name: 'oficio_path', type: Types::STRING, length: 500, nullable: true)]
+    private ?string $oficioPath = null;
+
+    #[ORM\Column(name: 'oficio_nombre', type: Types::STRING, length: 255, nullable: true)]
+    private ?string $oficioNombre = null;
+
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private \DateTimeImmutable $createdAt;
 
@@ -172,6 +178,26 @@ class ExpedienteRequerimientoMercurioOrm
     public function setFormularioCometido(?string $formularioCometido): void
     {
         $this->formularioCometido = $formularioCometido;
+    }
+
+    public function getOficioPath(): ?string
+    {
+        return $this->oficioPath;
+    }
+
+    public function setOficioPath(?string $oficioPath): void
+    {
+        $this->oficioPath = $oficioPath;
+    }
+
+    public function getOficioNombre(): ?string
+    {
+        return $this->oficioNombre;
+    }
+
+    public function setOficioNombre(?string $oficioNombre): void
+    {
+        $this->oficioNombre = $oficioNombre;
     }
 
     public function getCreatedAt(): \DateTimeImmutable

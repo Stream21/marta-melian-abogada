@@ -106,6 +106,10 @@ final readonly class ExpedienteResponse
         public int $notasActivas = 0,
         /** Última nota activa (más reciente) para preview en listado. */
         public ?array $ultimaNota = null,
+        /** @var list<string> Preferencia de canales de aviso al cliente. */
+        public array $canalesNotificacion = [],
+        public bool $clienteTieneTelefono = false,
+        public bool $clienteTieneEmail = false,
     ) {
     }
 }

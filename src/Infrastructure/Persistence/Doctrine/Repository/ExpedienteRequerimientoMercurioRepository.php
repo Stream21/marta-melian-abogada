@@ -40,6 +40,8 @@ final class ExpedienteRequerimientoMercurioRepository implements ExpedienteReque
         $orm->setJustificantePresentacionPath($requerimiento->justificantePresentacionPath());
         $orm->setFormularioNombre($requerimiento->formularioNombre());
         $orm->setFormularioCometido($requerimiento->formularioCometido());
+        $orm->setOficioPath($requerimiento->oficioPath());
+        $orm->setOficioNombre($requerimiento->oficioNombre());
         $orm->setCreatedAt($requerimiento->createdAt());
         $orm->setUpdatedAt($requerimiento->updatedAt());
 
@@ -111,7 +113,7 @@ final class ExpedienteRequerimientoMercurioRepository implements ExpedienteReque
         return new ExpedienteRequerimientoMercurio(
             new ExpedienteRequerimientoMercurioId($orm->getId()),
             new ExpedienteId($orm->getExpedienteId()),
-            TipoRequerimientoMercurio::from($orm->getTipo()),
+            TipoRequerimientoMercurio::fromString($orm->getTipo()),
             DestinoRequerimientoMercurio::from($orm->getDestino()),
             $orm->getNombre(),
             $orm->getDescripcion(),
@@ -121,6 +123,8 @@ final class ExpedienteRequerimientoMercurioRepository implements ExpedienteReque
             $orm->getJustificantePresentacionPath(),
             $orm->getFormularioNombre(),
             $orm->getFormularioCometido(),
+            $orm->getOficioPath(),
+            $orm->getOficioNombre(),
             $orm->getCreatedAt(),
             $orm->getUpdatedAt(),
         );

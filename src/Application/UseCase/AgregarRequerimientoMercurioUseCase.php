@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Application\UseCase;
 
-use App\Application\Service\NotificarTramitacionClienteService;
 use App\Application\Service\TramitacionSubfaseSyncService;
 use App\Domain\Entity\ActorHitoExpediente;
 use App\Domain\Entity\DestinoRequerimientoMercurio;
@@ -16,7 +15,6 @@ use App\Domain\Entity\FaseNegocioExpediente;
 use App\Domain\Entity\ResponsableRequerimientoDocumento;
 use App\Domain\Entity\TipoCampoFormulario;
 use App\Domain\Entity\TipoRequerimientoMercurio;
-use App\Domain\Repository\ClienteRepositoryInterface;
 use App\Domain\Repository\ContratacionRepositoryInterface;
 use App\Domain\Repository\ExpedienteRequerimientoCampoRepositoryInterface;
 use App\Domain\Repository\ExpedienteRequerimientoDocumentoRepositoryInterface;
@@ -24,7 +22,6 @@ use App\Domain\Repository\ExpedienteRequerimientoMercurioRepositoryInterface;
 use App\Domain\Repository\ExpedienteRepositoryInterface;
 use App\Domain\Repository\ServicioCampoFormularioRepositoryInterface;
 use App\Domain\Repository\TramiteCampoFormularioRepositoryInterface;
-use App\Domain\ValueObject\ClienteId;
 use App\Domain\ValueObject\ExpedienteId;
 use App\Domain\ValueObject\ExpedienteRequerimientoCampoId;
 use App\Domain\ValueObject\ExpedienteRequerimientoDocumentoId;
@@ -41,9 +38,7 @@ final class AgregarRequerimientoMercurioUseCase
         private ExpedienteRequerimientoCampoRepositoryInterface $campoRepository,
         private ServicioCampoFormularioRepositoryInterface $servicioCampoRepository,
         private TramiteCampoFormularioRepositoryInterface $tramiteCampoRepository,
-        private ClienteRepositoryInterface $clienteRepository,
         private ContratacionRepositoryInterface $contratacionRepository,
-        private NotificarTramitacionClienteService $notificar,
         private TramitacionSubfaseSyncService $subfaseSync,
     ) {
     }
@@ -112,6 +107,20 @@ final class AgregarRequerimientoMercurioUseCase
                 (int) ($item['maxArchivos'] ?? $item['numeroArchivos'] ?? 1),
             );
         }
+
+        if (TipoRequerimientoMercurio::Tasas === $requerimiento->tipo() && [] === $docsDomain) {
+            $docsDomain[] = ExpedienteRequerimientoDocumento::crear(
+                ExpedienteRequerimientoDocumentoId::generate(),
+                $reqId,
+                'Tasa solicitada por Mercurio',
+                'Impreso o justificante de la tasa. Lo aporta el cliente o lo genera el despacho.',
+                ResponsableRequerimientoDocumento::Cliente,
+                true,
+                0,
+                1,
+            );
+        }
+
         if ([] !== $docsDomain) {
             $this->documentoRepository->saveAll($docsDomain);
         }
@@ -156,21 +165,7 @@ final class AgregarRequerimientoMercurioUseCase
 
         $this->subfaseSync->sync($expediente);
 
-        if (
-            DestinoRequerimientoMercurio::Cliente === $requerimiento->destino()
-            && null !== $expediente->clienteId()
-            && '' !== $expediente->clienteId()
-        ) {
-            $cliente = $this->clienteRepository->findById(new ClienteId($expediente->clienteId()));
-            if (null !== $cliente) {
-                $this->notificar->notificarRequerimientoCliente(
-                    $expediente,
-                    $cliente,
-                    $requerimiento->nombre(),
-                    $descripcion,
-                );
-            }
-        }
+        // El cliente se notifica al adjuntar el oficio del requerimiento, para que pueda leerlo.
 
         return $reqId->value();
     }

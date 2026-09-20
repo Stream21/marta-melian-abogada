@@ -8,6 +8,7 @@ use App\Application\Service\RequerimientoMercurioCampoOpcionesNormalizer;
 use App\Domain\Entity\ExpedienteRequerimientoCampo;
 use App\Domain\Entity\FaseNegocioExpediente;
 use App\Domain\Entity\TipoCampoFormulario;
+use App\Domain\Entity\TipoRequerimientoMercurio;
 use App\Domain\Repository\ExpedienteRequerimientoCampoRepositoryInterface;
 use App\Domain\Repository\ExpedienteRequerimientoMercurioRepositoryInterface;
 use App\Domain\Repository\ExpedienteRepositoryInterface;
@@ -52,6 +53,9 @@ final class GestionarCamposRequerimientoMercurioUseCase
         }
         if (!$req->estado()->estaAbierto()) {
             throw new \InvalidArgumentException('El requerimiento ya está cerrado o presentado.');
+        }
+        if (TipoRequerimientoMercurio::Tasas === $req->tipo()) {
+            throw new \InvalidArgumentException('El requerimiento de tasas no admite formulario. Use el documento de tasa.');
         }
 
         $existentes = $this->campoRepository->findByRequerimientoId($reqId);

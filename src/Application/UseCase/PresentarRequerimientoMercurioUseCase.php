@@ -63,6 +63,14 @@ final class PresentarRequerimientoMercurioUseCase
             throw new \InvalidArgumentException('Requerimiento no encontrado.');
         }
 
+        if (!$req->estado()->estaAbierto()) {
+            throw new \InvalidArgumentException('El requerimiento ya está presentado.');
+        }
+
+        if (!$req->tieneOficio()) {
+            throw new \InvalidArgumentException('Adjunte primero el requerimiento de Mercurio para que el cliente y el despacho puedan leerlo.');
+        }
+
         $tieneItems = [] !== $this->documentoRepository->findByRequerimientoId($req->id())
             || [] !== $this->campoRepository->findByRequerimientoId($req->id());
 

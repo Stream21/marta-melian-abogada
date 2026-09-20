@@ -19,6 +19,7 @@ use App\Application\UseCase\RegistrarPresentacionTelematicaUseCase;
 use App\Application\UseCase\RegistrarSeguimientoExtranjeriaUseCase;
 use App\Application\UseCase\SubirArchivoDocumentoRequerimientoMercurioUseCase;
 use App\Application\UseCase\SubirArchivoRequerimientoMercurioUseCase;
+use App\Application\UseCase\SubirOficioRequerimientoMercurioUseCase;
 use App\Application\UseCase\ValidarDocumentoRequerimientoMercurioUseCase;
 use App\Application\UseCase\VincularEscritoRequerimientoMercurioUseCase;
 use App\Domain\Repository\ExpedientePresentacionTelematicaRepositoryInterface;
@@ -50,6 +51,7 @@ final class TramitacionController extends AbstractController
         private AgregarCamposARequerimientoMercurioUseCase $agregarCamposRequerimiento,
         private GestionarCamposRequerimientoMercurioUseCase $gestionarCamposRequerimiento,
         private SubirArchivoRequerimientoMercurioUseCase $subirArchivo,
+        private SubirOficioRequerimientoMercurioUseCase $subirOficio,
         private SubirArchivoDocumentoRequerimientoMercurioUseCase $subirArchivoDocumento,
         private ValidarDocumentoRequerimientoMercurioUseCase $validarDocumento,
         private GuardarCamposRequerimientoMercurioUseCase $guardarCampos,
@@ -129,7 +131,7 @@ final class TramitacionController extends AbstractController
 
             $reqId = ($this->agregarRequerimiento)(
                 $id,
-                (string) ($data['tipo'] ?? 'documento'),
+                (string) ($data['tipo'] ?? 'documentacion'),
                 (string) ($data['destino'] ?? 'despacho'),
                 (string) ($data['nombre'] ?? ''),
                 (string) ($data['descripcion'] ?? ''),
@@ -240,6 +242,19 @@ final class TramitacionController extends AbstractController
         try {
             $file = $this->requireUploadedFile($request, 'archivo');
             ($this->subirArchivo)($id, $reqId, $file, false);
+
+            return new JsonResponse(($this->obtener)($id));
+        } catch (\InvalidArgumentException $e) {
+            return new JsonResponse(['message' => $e->getMessage()], Response::HTTP_BAD_REQUEST);
+        }
+    }
+
+    #[Route(path: '/requerimientos/{reqId}/oficio', name: 'requerimiento_oficio', methods: ['POST'])]
+    public function subirOficioRequerimiento(string $id, string $reqId, Request $request): JsonResponse
+    {
+        try {
+            $file = $this->requireUploadedFile($request, 'archivo');
+            ($this->subirOficio)($id, $reqId, $file);
 
             return new JsonResponse(($this->obtener)($id));
         } catch (\InvalidArgumentException $e) {
@@ -382,6 +397,17 @@ final class TramitacionController extends AbstractController
         }
 
         return $this->fileResponse($req->archivoPath(), $req->archivoNombre() ?? 'documento.pdf');
+    }
+
+    #[Route(path: '/requerimientos/{reqId}/oficio', name: 'requerimiento_oficio_get', methods: ['GET'])]
+    public function descargarOficioRequerimiento(string $id, string $reqId): Response
+    {
+        $req = $this->requerimientoRepository->findById(new ExpedienteRequerimientoMercurioId($reqId));
+        if (null === $req || $req->expedienteId()->value() !== $id || !$req->tieneOficio() || null === $req->oficioPath()) {
+            return new JsonResponse(['message' => 'Requerimiento no encontrado.'], Response::HTTP_NOT_FOUND);
+        }
+
+        return $this->fileResponse($req->oficioPath(), $req->oficioNombre() ?? 'requerimiento.pdf');
     }
 
     #[Route(path: '/requerimientos/{reqId}/justificante', name: 'requerimiento_justificante_get', methods: ['GET'])]

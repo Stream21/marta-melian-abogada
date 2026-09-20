@@ -12,11 +12,9 @@ use App\Domain\Entity\ExpedienteHito;
 use App\Domain\Entity\FaseNegocioExpediente;
 use App\Domain\Entity\OrigenDocumentoRequeridoExpediente;
 use App\Domain\Entity\TipoDocumentoRequerido;
-use App\Domain\Repository\ClienteRepositoryInterface;
 use App\Domain\Repository\ContratacionRepositoryInterface;
 use App\Domain\Repository\ExpedienteDocumentoRequeridoRepositoryInterface;
 use App\Domain\Repository\ExpedienteRepositoryInterface;
-use App\Domain\ValueObject\ClienteId;
 use App\Domain\ValueObject\ExpedienteDocumentoRequeridoId;
 use App\Domain\ValueObject\ExpedienteId;
 
@@ -24,7 +22,6 @@ final class AgregarDocumentoRequerimientoExpedienteUseCase
 {
     public function __construct(
         private ExpedienteRepositoryInterface $expedienteRepository,
-        private ClienteRepositoryInterface $clienteRepository,
         private ExpedienteDocumentoRequeridoRepositoryInterface $documentoRepository,
         private ContratacionRepositoryInterface $contratacionRepository,
         private NotificarExpedienteClienteService $notificarCliente,
@@ -91,10 +88,7 @@ final class AgregarDocumentoRequerimientoExpedienteUseCase
 
         $clienteId = $expediente->clienteId();
         if (null !== $clienteId && '' !== $clienteId) {
-            $cliente = $this->clienteRepository->findById(new ClienteId($clienteId));
-            if (null !== $cliente) {
-                $this->notificarCliente->notificarNuevoDocumentoRequerido($expediente, $cliente->email(), $documento);
-            }
+            $this->notificarCliente->notificarNuevoDocumentoRequerido($expediente, $documento);
         }
 
         $this->realtime->publishContratacionUpdate($id->value(), [

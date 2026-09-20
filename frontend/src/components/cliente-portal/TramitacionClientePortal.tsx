@@ -22,6 +22,7 @@ import {
   type RequerimientoMercurioCampoResponse,
 } from '@/api/client';
 import { DocumentoArchivoUploadControl } from '@/components/cliente-portal/DocumentoArchivoUploadControl';
+import { DocumentoMiniatura } from '@/components/expedientes/tramitacion/DocumentoMiniatura';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -80,6 +81,13 @@ export function TramitacionClientePortal({ token, data }: TramitacionClientePort
   );
   const presentados = tramitacion.requerimientosCliente.filter(
     (r) => r.estado === 'presentado' || r.estado === 'cerrado',
+  );
+  const paraLeer = tramitacion.requerimientosCliente.filter(
+    (r) =>
+      Boolean(r.tieneOficio) &&
+      r.estado !== 'presentado' &&
+      r.estado !== 'cerrado' &&
+      !pendientes.some((p) => p.id === r.id),
   );
   const seguimiento = tramitacion.instruccionesSeguimiento;
   const numeroExpediente =
@@ -240,6 +248,33 @@ export function TramitacionClientePortal({ token, data }: TramitacionClientePort
         </section>
       )}
 
+      {paraLeer.length > 0 && (
+        <section className="space-y-4">
+          <div>
+            <h3 className="font-semibold">Requerimiento de la Administración</h3>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Su abogado ha adjuntado el oficio para que pueda leerlo.
+            </p>
+          </div>
+          {paraLeer.map((req) => (
+            <article key={req.id} className="space-y-3 rounded-xl border border-border bg-card p-4 shadow-sm">
+              <p className="font-semibold text-foreground">{req.nombre}</p>
+              {req.descripcion?.trim() ? (
+                <p className="text-sm text-muted-foreground">{req.descripcion}</p>
+              ) : null}
+              <div className="max-w-[12rem]">
+                <DocumentoMiniatura
+                  url={api.accesoTramitacionOficioUrl(token, req.id)}
+                  title={req.oficioNombre ?? 'Requerimiento Mercurio'}
+                  publicAccess
+                  badge="Oficio"
+                />
+              </div>
+            </article>
+          ))}
+        </section>
+      )}
+
       {pendientes.length > 0 && (
         <section className="space-y-4">
           <div>
@@ -384,6 +419,21 @@ function RequerimientoClienteCard({
           <Badge variant="warning">{req.estadoLabel}</Badge>
         </div>
       </header>
+
+      {req.tieneOficio ? (
+        <section className="space-y-2 border-b border-border p-4">
+          <p className="section-label">Oficio del requerimiento</p>
+          <p className="text-xs text-muted-foreground">Léalo aquí; no hace falta descargarlo.</p>
+          <div className="max-w-[12rem]">
+            <DocumentoMiniatura
+              url={api.accesoTramitacionOficioUrl(token, req.id)}
+              title={req.oficioNombre ?? 'Requerimiento Mercurio'}
+              publicAccess
+              badge="Oficio"
+            />
+          </div>
+        </section>
+      ) : null}
 
       {docsCliente.length > 0 && (
         <section className="space-y-3 border-b border-border p-4">

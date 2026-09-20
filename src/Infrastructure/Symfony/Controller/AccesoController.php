@@ -28,10 +28,14 @@ use App\Domain\Repository\ClienteRepositoryInterface;
 use App\Domain\Repository\DespachoConfigRepositoryInterface;
 use App\Domain\Repository\ExpedienteDocumentoRepositoryInterface;
 use App\Domain\Repository\ExpedienteFirmaRepositoryInterface;
+use App\Domain\Repository\ExpedienteRequerimientoDocumentoRepositoryInterface;
+use App\Domain\Repository\ExpedienteRequerimientoMercurioRepositoryInterface;
 use App\Domain\Repository\ExpedienteRepositoryInterface;
 use App\Domain\ValueObject\ClienteId;
 use App\Domain\ValueObject\ExpedienteDocumentoRequeridoId;
 use App\Domain\ValueObject\ExpedienteId;
+use App\Domain\ValueObject\ExpedienteRequerimientoDocumentoId;
+use App\Domain\ValueObject\ExpedienteRequerimientoMercurioId;
 use App\Domain\ValueObject\TramiteDocumentoRequeridoId;
 use App\Application\Port\DespachoFileStoragePort;
 use App\Domain\Exception\ClienteDuplicadoExceptionInterface;
@@ -71,6 +75,8 @@ final class AccesoController extends AbstractController
         private ExpedienteRepositoryInterface $expedienteRepository,
         private ExpedienteDocumentoRepositoryInterface $documentoEntregadoRepository,
         private ExpedienteFirmaRepositoryInterface $firmaRepository,
+        private ExpedienteRequerimientoMercurioRepositoryInterface $requerimientoMercurioRepository,
+        private ExpedienteRequerimientoDocumentoRepositoryInterface $requerimientoDocumentoRepository,
         private ExpedienteFileStoragePort $fileStorage,
         private DocumentoIntegridadService $integridadService,
         private MercureJwtFactory $jwtFactory,
@@ -238,6 +244,65 @@ final class AccesoController extends AbstractController
         }
     }
 
+    #[Route(path: '/{token}/tramitacion/requerimientos/{reqId}/oficio', name: 'tramitacion_req_oficio_get', methods: ['GET'])]
+    public function descargarOficioRequerimientoMercurio(string $token, string $reqId): Response
+    {
+        $expediente = $this->expedienteRepository->findByAccessToken($token);
+        if (null === $expediente) {
+            return new JsonResponse(['message' => 'Enlace no válido.'], Response::HTTP_NOT_FOUND);
+        }
+
+        $req = $this->requerimientoMercurioRepository->findById(new ExpedienteRequerimientoMercurioId($reqId));
+        if (null === $req || !$req->expedienteId()->equals($expediente->id()) || !$req->tieneOficio() || null === $req->oficioPath()) {
+            return new JsonResponse(['message' => 'Requerimiento no encontrado.'], Response::HTTP_NOT_FOUND);
+        }
+
+        try {
+            $content = $this->fileStorage->readRelativePath($req->oficioPath());
+        } catch (\InvalidArgumentException $e) {
+            return new JsonResponse(['message' => $e->getMessage()], Response::HTTP_NOT_FOUND);
+        }
+
+        $absolute = $this->fileStorage->getAbsolutePath($req->oficioPath());
+
+        return new Response($content, Response::HTTP_OK, [
+            'Content-Type' => $this->mimeDetector->detectFromPath($absolute),
+            'Content-Disposition' => sprintf('inline; filename="%s"', $req->oficioNombre() ?? 'requerimiento.pdf'),
+        ]);
+    }
+
+    #[Route(path: '/{token}/tramitacion/requerimientos/{reqId}/documentos/{docId}/archivo-descarga', name: 'tramitacion_req_documento_archivo_get', methods: ['GET'])]
+    public function descargarArchivoDocumentoRequerimientoMercurio(string $token, string $reqId, string $docId): Response
+    {
+        $expediente = $this->expedienteRepository->findByAccessToken($token);
+        if (null === $expediente) {
+            return new JsonResponse(['message' => 'Enlace no válido.'], Response::HTTP_NOT_FOUND);
+        }
+
+        $req = $this->requerimientoMercurioRepository->findById(new ExpedienteRequerimientoMercurioId($reqId));
+        if (null === $req || !$req->expedienteId()->equals($expediente->id())) {
+            return new JsonResponse(['message' => 'Requerimiento no encontrado.'], Response::HTTP_NOT_FOUND);
+        }
+
+        $doc = $this->requerimientoDocumentoRepository->findById(new ExpedienteRequerimientoDocumentoId($docId));
+        if (null === $doc || $doc->requerimientoId()->value() !== $reqId || null === $doc->archivoPath()) {
+            return new JsonResponse(['message' => 'Archivo no encontrado.'], Response::HTTP_NOT_FOUND);
+        }
+
+        try {
+            $content = $this->fileStorage->readRelativePath($doc->archivoPath());
+        } catch (\InvalidArgumentException $e) {
+            return new JsonResponse(['message' => $e->getMessage()], Response::HTTP_NOT_FOUND);
+        }
+
+        $absolute = $this->fileStorage->getAbsolutePath($doc->archivoPath());
+
+        return new Response($content, Response::HTTP_OK, [
+            'Content-Type' => $this->mimeDetector->detectFromPath($absolute),
+            'Content-Disposition' => sprintf('inline; filename="%s"', $doc->nombre() . '.pdf'),
+        ]);
+    }
+
     #[Route(path: '/{token}/documentacion/documentos/{docId}/archivo', name: 'documento_documentacion_archivo', methods: ['GET'])]
     public function documentoRequerimientosArchivo(string $token, string $docId, Request $request): Response
     {
@@ -301,10 +366,16 @@ final class AccesoController extends AbstractController
     }
 
     #[Route(path: '/{token}/firma/otp/enviar', name: 'firma_otp_enviar', methods: ['POST'])]
-    public function enviarOtpFirma(string $token): JsonResponse
+    public function enviarOtpFirma(string $token, Request $request): JsonResponse
     {
+        $data = json_decode($request->getContent(), true) ?? [];
+        $telefono = isset($data['telefono']) ? trim((string) $data['telefono']) : null;
+        if ('' === $telefono) {
+            $telefono = null;
+        }
+
         try {
-            return new JsonResponse(($this->enviarOtpFirma)($token));
+            return new JsonResponse(($this->enviarOtpFirma)($token, $telefono));
         } catch (\InvalidArgumentException $e) {
             return new JsonResponse(['message' => $e->getMessage()], Response::HTTP_BAD_REQUEST);
         } catch (\RuntimeException $e) {

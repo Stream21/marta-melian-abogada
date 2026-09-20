@@ -6,6 +6,7 @@ namespace App\Application\UseCase;
 
 use App\Application\Port\ContratacionRealtimePort;
 use App\Application\Service\FechaVencimientoFaseParser;
+use App\Application\Service\NotificarCambioFaseClienteService;
 use App\Application\Service\RequerimientosProgresoCalculator;
 use App\Domain\Entity\ActorHitoExpediente;
 use App\Domain\Entity\EstadoFaseExpediente;
@@ -28,6 +29,7 @@ final class AvanzarTramitacionUseCase
         private ContratacionRepositoryInterface $contratacionRepository,
         private ContratacionRealtimePort $realtime,
         private FechaVencimientoFaseParser $fechaVencimientoParser,
+        private NotificarCambioFaseClienteService $notificarCambioFase,
     ) {
     }
 
@@ -62,13 +64,13 @@ final class AvanzarTramitacionUseCase
 
         $fechaLimite = $this->fechaVencimientoParser->parseRequired($fechaVencimientoFase);
 
-        $this->expedienteRepository->save(
-            $expediente
-                ->withFaseNegocio(FaseNegocioExpediente::Tramitacion, EstadoFaseExpediente::Completada)
-                ->withSubfaseTramitacion(SubfaseTramitacion::PendienteTramitacion)
-                ->withFechaVencimientoFase($fechaLimite)
-                ->touchEstadoCambio(),
-        );
+        $actualizado = $expediente
+            ->withFaseNegocio(FaseNegocioExpediente::Tramitacion, EstadoFaseExpediente::Completada)
+            ->withSubfaseTramitacion(SubfaseTramitacion::PendienteTramitacion)
+            ->withFechaVencimientoFase($fechaLimite)
+            ->touchEstadoCambio();
+
+        $this->expedienteRepository->save($actualizado);
 
         $this->contratacionRepository->saveHito(new ExpedienteHito(
             bin2hex(random_bytes(16)),
@@ -82,13 +84,15 @@ final class AvanzarTramitacionUseCase
             new \DateTimeImmutable('now'),
         ));
 
+        $this->notificarCambioFase->notificar($actualizado, FaseNegocioExpediente::Tramitacion);
+
         $this->realtime->publishContratacionUpdate($expedienteId, [
             'type' => 'fase_tramitacion_iniciada',
             'faseNegocio' => FaseNegocioExpediente::Tramitacion->value,
             'fechaVencimientoFase' => $fechaLimite->format('Y-m-d'),
             'actor' => 'sistema',
-            'expedienteNumero' => $expediente->numero(),
-            'clienteNombre' => $expediente->clientName(),
+            'expedienteNumero' => $actualizado->numero(),
+            'clienteNombre' => $actualizado->clientName(),
         ]);
     }
 }

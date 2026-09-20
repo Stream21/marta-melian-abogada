@@ -105,6 +105,8 @@ final class ExpedienteAuditoriaCatalog
             'notificacion_enviada' => 'Notificación enviada',
             'notificacion_alta_expediente' => 'Alta expediente notificada',
             'notificacion_enlace_enviado' => 'Enlace enviado al cliente',
+            'notificacion_cambio_fase' => 'Cambio de fase notificado al cliente',
+            'canales_notificacion_actualizados' => 'Canales de comunicación actualizados',
             'fase_requerimientos_iniciada' => 'Inicio documentación',
             'fase_documentacion_iniciada' => 'Inicio documentación',
             'fase_tramitacion_iniciada' => 'Inicio tramitación',

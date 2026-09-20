@@ -156,6 +156,7 @@ final class ExpedienteRepository implements ExpedienteRepositoryInterface
             $this->normalizarCalendarioPagos($orm->getCalendarioPagos()),
             SubfaseTramitacion::fromString($orm->getSubfaseTramitacion()),
             $orm->getHoldedInvoiceId(),
+            Expediente::normalizarCanales($orm->getCanalesNotificacion() ?? []),
         );
     }
 
@@ -221,5 +222,8 @@ final class ExpedienteRepository implements ExpedienteRepositoryInterface
         $orm->setFechaFirmaContrato($expediente->fechaFirmaContrato());
         $orm->setCalendarioPagos($expediente->calendarioPagos());
         $orm->setHoldedInvoiceId($expediente->holdedInvoiceId());
+        $orm->setCanalesNotificacion(
+            [] === $expediente->canalesNotificacion() ? null : $expediente->canalesNotificacion(),
+        );
     }
 }

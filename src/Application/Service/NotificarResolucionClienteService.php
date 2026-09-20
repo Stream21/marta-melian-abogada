@@ -13,6 +13,7 @@ use Psr\Log\LoggerInterface;
 final class NotificarResolucionClienteService
 {
     public function __construct(
+        private DespacharNotificacionClienteService $despachar,
         private EmailPort $emailPort,
         private LoggerInterface $logger,
         private string $frontendBaseUrl,
@@ -23,7 +24,7 @@ final class NotificarResolucionClienteService
         Expediente $expediente,
         Cliente $cliente,
         OutcomeResolucion $outcome,
-    ): bool {
+    ): void {
         $sentido = OutcomeResolucion::Concedida === $outcome
             ? 'favorable (concedida)'
             : 'desfavorable (denegada)';
@@ -32,8 +33,9 @@ final class NotificarResolucionClienteService
             ? "En su portal encontrará los pasos siguientes (cita TIE, tasas, modelos u otras gestiones según su caso).\n\n"
             : "Consulte la resolución en su portal y hable con su abogado sobre posibles recursos.\n\n";
 
-        return $this->enviar(
-            $cliente,
+        $this->despachar->despachar(
+            $expediente,
+            'resolucion',
             sprintf('Resolución %s — Expediente %s', $outcome->label(), $expediente->numero()),
             sprintf(
                 "Se ha registrado la resolución administrativa de su expediente %s: %s.\n\n"
@@ -44,8 +46,11 @@ final class NotificarResolucionClienteService
                 $extra,
                 $this->accessUrl($expediente),
             ),
-            $expediente->numero(),
-            'resolucion',
+            'notificacion_resolucion',
+            sprintf(
+                'Se ha notificado al cliente la resolución (%s) por %%s.',
+                $outcome->label(),
+            ),
         );
     }
 
@@ -54,9 +59,10 @@ final class NotificarResolucionClienteService
         Cliente $cliente,
         string $motivo,
         \DateTimeImmutable $fecha,
-    ): bool {
-        return $this->enviar(
-            $cliente,
+    ): void {
+        $this->despachar->despachar(
+            $expediente,
+            'recordatorio_futuro',
             sprintf('Recordatorio — Expediente %s', $expediente->numero()),
             sprintf(
                 "Le recordamos una gestión pendiente relacionada con el expediente %s.\n\n"
@@ -69,8 +75,8 @@ final class NotificarResolucionClienteService
                 $fecha->format('d/m/Y'),
                 $this->accessUrl($expediente),
             ),
-            $expediente->numero(),
-            'recordatorio_cliente',
+            'notificacion_recordatorio_futuro',
+            'Se ha notificado al cliente el recordatorio futuro por %s.',
         );
     }
 
@@ -121,38 +127,5 @@ final class NotificarResolucionClienteService
     private function accessUrl(Expediente $expediente): string
     {
         return rtrim($this->frontendBaseUrl, '/') . '/acceso/' . $expediente->accessToken();
-    }
-
-    private function enviar(
-        Cliente $cliente,
-        string $asunto,
-        string $mensaje,
-        string $expedienteNumero,
-        string $contexto,
-    ): bool {
-        $email = trim($cliente->email());
-        if ('' === $email) {
-            $this->logger->warning('No se pudo notificar resolución al cliente: sin correo.', [
-                'expediente' => $expedienteNumero,
-                'contexto' => $contexto,
-            ]);
-
-            return false;
-        }
-
-        try {
-            $this->emailPort->send($email, $asunto, $mensaje);
-
-            return true;
-        } catch (\Throwable $e) {
-            $this->logger->error('Error enviando notificación de resolución', [
-                'email' => $email,
-                'expediente' => $expedienteNumero,
-                'contexto' => $contexto,
-                'error' => $e->getMessage(),
-            ]);
-
-            return false;
-        }
     }
 }

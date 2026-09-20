@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Application\UseCase;
 
 use App\Application\Port\ContratacionRealtimePort;
+use App\Application\Service\NotificarExpedienteClienteService;
 use App\Application\Service\RequerimientosProgresoCalculator;
 use App\Domain\Entity\ActorHitoExpediente;
 use App\Domain\Entity\EstadoDocumentoEntregado;
@@ -27,6 +28,7 @@ final class DevolverDocumentoRequerimientosUseCase
         private ExpedienteDocumentoRepositoryInterface $documentoEntregadoRepository,
         private ContratacionRepositoryInterface $contratacionRepository,
         private RequerimientosProgresoCalculator $progresoCalculator,
+        private NotificarExpedienteClienteService $notificarCliente,
         private ContratacionRealtimePort $realtime,
     ) {
     }
@@ -81,6 +83,8 @@ final class DevolverDocumentoRequerimientosUseCase
             null,
             $documentoId,
         ));
+
+        $this->notificarCliente->notificarDocumentoDevuelto($expediente, $doc, $nota);
 
         $this->realtime->publishContratacionUpdate($expedienteId, [
             'type' => 'documento_requerimientos_devuelto',

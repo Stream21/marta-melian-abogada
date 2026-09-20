@@ -79,6 +79,8 @@ final class RequerimientoMercurioPayloadBuilder
             'estadoLabel' => $req->estado()->label(),
             'tieneArchivo' => null !== $req->archivoPath() && '' !== $req->archivoPath(),
             'archivoNombre' => $req->archivoNombre(),
+            'tieneOficio' => $req->tieneOficio(),
+            'oficioNombre' => $req->oficioNombre(),
             'tieneJustificante' => null !== $req->justificantePresentacionPath()
                 && '' !== $req->justificantePresentacionPath(),
             'fechaPresentacion' => $fechaPresentacion,

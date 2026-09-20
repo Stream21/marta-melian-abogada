@@ -43,6 +43,7 @@ services:
     App\Domain\Repository\ExpedienteResolucionRepositoryInterface: '@App\Infrastructure\Persistence\Doctrine\Repository\ExpedienteResolucionRepository'
     App\Domain\Repository\ExpedienteRecordatorioFuturoRepositoryInterface: '@App\Infrastructure\Persistence\Doctrine\Repository\ExpedienteRecordatorioFuturoRepository'
     App\Domain\Repository\ExpedienteNotaRepositoryInterface: '@App\Infrastructure\Persistence\Doctrine\Repository\ExpedienteNotaRepository'
+    App\Domain\Repository\NotificacionVencimientoEnviadaRepositoryInterface: '@App\Infrastructure\Persistence\Doctrine\Repository\NotificacionVencimientoEnviadaRepository'
     App\Application\Port\DespachoFileStoragePort: '@App\Infrastructure\Storage\DespachoFileStorage'
     App\Application\Port\HoldedPort: '@App\Infrastructure\ApiClient\HoldedService'
     App\Application\Port\StripePort: '@App\Infrastructure\ApiClient\StripeService'
@@ -169,6 +170,14 @@ services:
         arguments:
             $frontendBaseUrl: '%env(FRONTEND_BASE_URL)%'
 
+    App\Application\Service\NotificarCambioFaseClienteService:
+        arguments:
+            $frontendBaseUrl: '%env(FRONTEND_BASE_URL)%'
+
+    App\Application\UseCase\VerificarVencimientosExpedienteUseCase:
+        arguments:
+            $frontendBaseUrl: '%env(FRONTEND_BASE_URL)%'
+
     App\Application\UseCase\ProbarEmailUseCase:
         arguments:
             $mailerDsn: '%env(MAILER_DSN)%'
@@ -182,6 +191,10 @@ services:
             $frontendBaseUrl: '%env(FRONTEND_BASE_URL)%'
 
     App\Application\UseCase\ObtenerExpedienteUseCase:
+        arguments:
+            $frontendBaseUrl: '%env(FRONTEND_BASE_URL)%'
+
+    App\Application\UseCase\ActualizarCanalesNotificacionExpedienteUseCase:
         arguments:
             $frontendBaseUrl: '%env(FRONTEND_BASE_URL)%'
 

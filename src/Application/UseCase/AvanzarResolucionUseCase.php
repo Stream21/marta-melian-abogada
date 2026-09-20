@@ -5,17 +5,14 @@ declare(strict_types=1);
 namespace App\Application\UseCase;
 
 use App\Application\Service\FechaVencimientoFaseParser;
-use App\Application\Service\NotificarTramitacionClienteService;
 use App\Domain\Entity\ActorHitoExpediente;
 use App\Domain\Entity\EstadoFaseExpediente;
 use App\Domain\Entity\ExpedienteHito;
 use App\Domain\Entity\FaseNegocioExpediente;
-use App\Domain\Repository\ClienteRepositoryInterface;
 use App\Domain\Repository\ContratacionRepositoryInterface;
 use App\Domain\Repository\ExpedientePresentacionTelematicaRepositoryInterface;
 use App\Domain\Repository\ExpedienteRequerimientoMercurioRepositoryInterface;
 use App\Domain\Repository\ExpedienteRepositoryInterface;
-use App\Domain\ValueObject\ClienteId;
 use App\Domain\ValueObject\ExpedienteId;
 
 final class AvanzarResolucionUseCase
@@ -25,8 +22,6 @@ final class AvanzarResolucionUseCase
         private ExpedientePresentacionTelematicaRepositoryInterface $presentacionRepository,
         private ExpedienteRequerimientoMercurioRepositoryInterface $requerimientoRepository,
         private ContratacionRepositoryInterface $contratacionRepository,
-        private ClienteRepositoryInterface $clienteRepository,
-        private NotificarTramitacionClienteService $notificar,
         private FechaVencimientoFaseParser $fechaVencimientoParser,
     ) {
     }
@@ -73,12 +68,6 @@ final class AvanzarResolucionUseCase
             ActorHitoExpediente::Sistema,
             new \DateTimeImmutable('now'),
         ));
-
-        if (null !== $actualizado->clienteId() && '' !== $actualizado->clienteId()) {
-            $cliente = $this->clienteRepository->findById(new ClienteId($actualizado->clienteId()));
-            if (null !== $cliente) {
-                $this->notificar->notificarAvanceResolucion($actualizado, $cliente);
-            }
-        }
+        // El cliente se notifica solo al registrar la resolución (RegistrarResolucionUseCase).
     }
 }

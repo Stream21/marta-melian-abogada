@@ -49,9 +49,14 @@ final class TramitacionAccesoPresenter
             $payload = $this->requerimientoPayload->buildRequerimiento($req, true);
             $hasClientDocs = [] !== ($payload['documentos'] ?? []);
             $hasCampos = [] !== ($payload['campos'] ?? []);
-            $visibleCliente = DestinoRequerimientoMercurio::Cliente === $req->destino()
-                || $hasClientDocs
-                || $hasCampos;
+            $visibleCliente = $req->estado()->estaAbierto()
+                ? $req->tieneOficio()
+                : (
+                    DestinoRequerimientoMercurio::Cliente === $req->destino()
+                    || $hasClientDocs
+                    || $hasCampos
+                    || $req->tieneOficio()
+                );
 
             if ($visibleCliente) {
                 $requerimientosCliente[] = $payload;

@@ -4,17 +4,14 @@ declare(strict_types=1);
 
 namespace App\Application\Service;
 
-use App\Application\Port\EmailPort;
 use App\Domain\Entity\Cliente;
 use App\Domain\Entity\Expediente;
 use App\Domain\Entity\PasoContratacionCliente;
-use Psr\Log\LoggerInterface;
 
 final class NotificarContratacionClienteService
 {
     public function __construct(
-        private EmailPort $emailPort,
-        private LoggerInterface $logger,
+        private DespacharNotificacionClienteService $despachar,
         private string $frontendBaseUrl,
     ) {
     }
@@ -24,43 +21,23 @@ final class NotificarContratacionClienteService
         Cliente $cliente,
         PasoContratacionCliente $paso,
         string $nota,
-    ): bool {
-        $email = trim($cliente->email());
-        if ('' === $email) {
-            $this->logger->warning('No se pudo notificar al cliente por email: sin correo registrado.', [
-                'expediente' => $expediente->numero(),
-                'paso' => $paso->value,
-            ]);
-
-            return false;
-        }
-
+    ): void {
         $accessUrl = rtrim($this->frontendBaseUrl, '/') . '/acceso/' . $expediente->accessToken();
         $mensaje = sprintf(
             "Su abogado le ha enviado un mensaje sobre el paso «%s» de su expediente %s:\n\n%s\n\nAcceda a su portal para continuar:\n%s",
             $paso->label(),
             $expediente->numero(),
-            $nota,
+            $nota !== '' ? $nota : 'Revise el paso indicado y complete la acción pendiente en su portal.',
             $accessUrl,
         );
 
-        try {
-            $this->emailPort->send(
-                $email,
-                sprintf('Acción requerida — Expediente %s', $expediente->numero()),
-                $mensaje,
-            );
-
-            return true;
-        } catch (\Throwable $e) {
-            $this->logger->error('Error enviando notificación de contratación al cliente', [
-                'email' => $email,
-                'expediente' => $expediente->numero(),
-                'paso' => $paso->value,
-                'error' => $e->getMessage(),
-            ]);
-
-            return false;
-        }
+        $this->despachar->despachar(
+            $expediente,
+            'contratacion_accion',
+            sprintf('Acción requerida — Expediente %s', $expediente->numero()),
+            $mensaje,
+            'notificacion_contratacion_accion',
+            'Se ha notificado al cliente una acción requerida en contratación por %s.',
+        );
     }
 }

@@ -314,8 +314,7 @@ final readonly class Cliente
         );
     }
 
-    /** Vacía el teléfono (p. ej. para reasignarlo a otro cliente manteniendo la unicidad en BD). */
-    public function withoutTelefono(): self
+    public function withTelefono(string $telefono): self
     {
         return $this->withDatos(
             $this->nombre,
@@ -331,9 +330,15 @@ final readonly class Cliente
             $this->provincia,
             $this->nombrePadre,
             $this->nombreMadre,
-            '',
+            $telefono,
             $this->email,
         );
+    }
+
+    /** Vacía el teléfono (p. ej. para reasignarlo a otro cliente manteniendo la unicidad en BD). */
+    public function withoutTelefono(): self
+    {
+        return $this->withTelefono('');
     }
 
     public function withHoldedSincronizado(string $holdedContactId): self

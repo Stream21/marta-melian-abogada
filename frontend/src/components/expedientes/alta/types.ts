@@ -1,10 +1,17 @@
 import type { MetodoPago, PlanPago } from '@/api/client';
 import type { TipoServicioValue } from '@/lib/servicio-tipos';
 
+/** Plazo por defecto de la fase 1 (contratación): 2 semanas desde hoy. */
+const DIAS_VENCIMIENTO_FASE_1 = 14;
+
 function defaultFechaVencimientoFase(): string {
   const d = new Date();
-  d.setMonth(d.getMonth() + 1);
-  return d.toISOString().slice(0, 10);
+  d.setHours(12, 0, 0, 0);
+  d.setDate(d.getDate() + DIAS_VENCIMIENTO_FASE_1);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
 }
 
 export interface ExpedienteAltaState {
@@ -15,8 +22,17 @@ export interface ExpedienteAltaState {
   email: string;
   clienteId: string | null;
   clienteNombre: string;
-  telefonoDuplicado: { id: string; nombre: string } | null;
-  /** El abogado confirma crear cliente nuevo aunque el teléfono ya exista. */
+  /** Cliente detectado al introducir teléfono o email en modo «nuevo». */
+  clienteDetectado: {
+    id: string;
+    nombre: string;
+    telefono: string;
+    email: string;
+    campo: 'telefono' | 'email';
+  } | null;
+  /** True mientras se consulta si el teléfono/email ya existen. */
+  contactoVerificando: boolean;
+  /** El abogado confirma crear cliente nuevo aunque el teléfono/email ya exista. */
   permitirDuplicado: boolean;
   areaTipo: TipoServicioValue | '';
   servicioId: string;
@@ -42,7 +58,8 @@ export const initialAltaState: ExpedienteAltaState = {
   email: '',
   clienteId: null,
   clienteNombre: '',
-  telefonoDuplicado: null,
+  clienteDetectado: null,
+  contactoVerificando: false,
   permitirDuplicado: false,
   areaTipo: '',
   servicioId: '',

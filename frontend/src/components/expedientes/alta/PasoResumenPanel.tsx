@@ -57,7 +57,7 @@ export function PasoResumenPanel({ state, onChange }: PasoResumenPanelProps) {
             Fecha límite de la fase
           </Label>
           <p className="text-xs text-muted-foreground mt-1 mb-2">
-            Por defecto, un mes desde hoy. Puede ajustarla antes de crear el expediente.
+            Por defecto, 2 semanas desde hoy. Puede ajustarla antes de crear el expediente.
           </p>
           <Input
             id="fechaVencimiento"

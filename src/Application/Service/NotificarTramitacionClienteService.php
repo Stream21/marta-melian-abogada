@@ -6,24 +6,22 @@ namespace App\Application\Service;
 
 use App\Domain\Entity\Cliente;
 use App\Domain\Entity\Expediente;
-use App\Application\Port\EmailPort;
-use Psr\Log\LoggerInterface;
 
 final class NotificarTramitacionClienteService
 {
     private const INFOEXT_URL = 'https://sede.administracionespublicas.gob.es/pagina/index/directorio/infoext2';
 
     public function __construct(
-        private EmailPort $emailPort,
-        private LoggerInterface $logger,
+        private DespacharNotificacionClienteService $despachar,
         private string $frontendBaseUrl,
     ) {
     }
 
-    public function notificarPresentacionRegistrada(Expediente $expediente, Cliente $cliente): bool
+    public function notificarPresentacionRegistrada(Expediente $expediente, Cliente $cliente): void
     {
-        return $this->enviar(
-            $cliente,
+        $this->despachar->despachar(
+            $expediente,
+            'presentacion',
             sprintf('Solicitud presentada — Expediente %s', $expediente->numero()),
             sprintf(
                 "Su solicitud del expediente %s ha sido presentada ante la Administración.\n\n"
@@ -34,8 +32,8 @@ final class NotificarTramitacionClienteService
                 $expediente->numero(),
                 $this->accessUrl($expediente),
             ),
-            $expediente->numero(),
-            'presentacion',
+            'notificacion_presentacion',
+            'Se ha notificado al cliente la presentación del trámite por %s.',
         );
     }
 
@@ -44,7 +42,7 @@ final class NotificarTramitacionClienteService
         Cliente $cliente,
         string $numeroExpedienteExtranjeria,
         bool $esActualizacion = false,
-    ): bool {
+    ): void {
         $asunto = $esActualizacion
             ? sprintf('Seguimiento actualizado — Expediente %s', $expediente->numero())
             : sprintf('Seguimiento disponible — Expediente %s', $expediente->numero());
@@ -62,8 +60,9 @@ final class NotificarTramitacionClienteService
                 $numeroExpedienteExtranjeria,
             );
 
-        return $this->enviar(
-            $cliente,
+        $this->despachar->despachar(
+            $expediente,
+            $esActualizacion ? 'seguimiento_actualizado' : 'seguimiento',
             $asunto,
             $intro
             . "Cómo consultar:\n"
@@ -71,8 +70,8 @@ final class NotificarTramitacionClienteService
             . sprintf("2) SMS gratuito: envíe el texto «EXPE %s» al 651 714 610\n\n", $numeroExpedienteExtranjeria)
             . "Los datos que facilite la Administración tienen carácter meramente informativo.\n\n"
             . "Portal del expediente:\n".$this->accessUrl($expediente),
-            $expediente->numero(),
-            $esActualizacion ? 'seguimiento_actualizado' : 'seguimiento',
+            'notificacion_seguimiento',
+            'Se ha notificado al cliente el número de seguimiento por %s.',
         );
     }
 
@@ -81,13 +80,14 @@ final class NotificarTramitacionClienteService
         Cliente $cliente,
         string $documentoNombre,
         string $nota = '',
-    ): bool {
+    ): void {
         $cuerpoNota = '' !== trim($nota)
             ? sprintf("\n\nMensaje de su abogado:\n%s", trim($nota))
             : '';
 
-        return $this->enviar(
-            $cliente,
+        $this->despachar->despachar(
+            $expediente,
+            'requerimiento',
             sprintf('Acción requerida — Expediente %s', $expediente->numero()),
             sprintf(
                 "Su abogado le ha solicitado completar «%s» para continuar la tramitación del expediente %s.%s\n\n"
@@ -97,15 +97,16 @@ final class NotificarTramitacionClienteService
                 $cuerpoNota,
                 $this->accessUrl($expediente),
             ),
-            $expediente->numero(),
-            'requerimiento',
+            'notificacion_requerimiento',
+            'Se ha notificado al cliente un requerimiento de tramitación por %s.',
         );
     }
 
-    public function notificarVueltaSeguimiento(Expediente $expediente, Cliente $cliente): bool
+    public function notificarVueltaSeguimiento(Expediente $expediente, Cliente $cliente): void
     {
-        return $this->enviar(
-            $cliente,
+        $this->despachar->despachar(
+            $expediente,
+            'vuelta_seguimiento',
             sprintf('Tramitación actualizada — Expediente %s', $expediente->numero()),
             sprintf(
                 "El expediente %s vuelve a estar en seguimiento ante la Administración.\n"
@@ -114,8 +115,8 @@ final class NotificarTramitacionClienteService
                 $expediente->numero(),
                 $this->accessUrl($expediente),
             ),
-            $expediente->numero(),
-            'vuelta_seguimiento',
+            'notificacion_vuelta_seguimiento',
+            'Se ha notificado al cliente la vuelta a seguimiento por %s.',
         );
     }
 
@@ -123,9 +124,10 @@ final class NotificarTramitacionClienteService
         Expediente $expediente,
         Cliente $cliente,
         string $requerimientoNombre,
-    ): bool {
-        return $this->enviar(
-            $cliente,
+    ): void {
+        $this->despachar->despachar(
+            $expediente,
+            'requerimiento_presentado',
             sprintf('Requerimiento presentado — Expediente %s', $expediente->numero()),
             sprintf(
                 "Su abogado ha presentado ante la Administración el requerimiento «%s» "
@@ -135,64 +137,13 @@ final class NotificarTramitacionClienteService
                 $expediente->numero(),
                 $this->accessUrl($expediente),
             ),
-            $expediente->numero(),
-            'requerimiento_presentado',
-        );
-    }
-
-    public function notificarAvanceResolucion(Expediente $expediente, Cliente $cliente): bool
-    {
-        return $this->enviar(
-            $cliente,
-            sprintf('Tramitación completada — Expediente %s', $expediente->numero()),
-            sprintf(
-                "La tramitación del expediente %s ha finalizado.\n"
-                . "Su expediente pasa ahora a la fase de resolución: su abogado aguardará "
-                . "la decisión de la Administración y le avisará cuando haya novedades.\n\n"
-                . "Portal:\n%s",
-                $expediente->numero(),
-                $this->accessUrl($expediente),
-            ),
-            $expediente->numero(),
-            'avance_resolucion',
+            'notificacion_requerimiento_presentado',
+            'Se ha notificado al cliente la presentación del requerimiento por %s.',
         );
     }
 
     private function accessUrl(Expediente $expediente): string
     {
         return rtrim($this->frontendBaseUrl, '/') . '/acceso/' . $expediente->accessToken();
-    }
-
-    private function enviar(
-        Cliente $cliente,
-        string $asunto,
-        string $mensaje,
-        string $expedienteNumero,
-        string $contexto,
-    ): bool {
-        $email = trim($cliente->email());
-        if ('' === $email) {
-            $this->logger->warning('No se pudo notificar tramitación al cliente: sin correo.', [
-                'expediente' => $expedienteNumero,
-                'contexto' => $contexto,
-            ]);
-
-            return false;
-        }
-
-        try {
-            $this->emailPort->send($email, $asunto, $mensaje);
-
-            return true;
-        } catch (\Throwable $e) {
-            $this->logger->error('Error enviando notificación de tramitación', [
-                'email' => $email,
-                'expediente' => $expedienteNumero,
-                'contexto' => $contexto,
-                'error' => $e->getMessage(),
-            ]);
-
-            return false;
-        }
     }
 }

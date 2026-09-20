@@ -178,7 +178,35 @@ Después de editar `.env`, reinicia los contenedores si hace falta: `bash script
 
 ---
 
-## 6. Frontend: proxy API (Docker vs local)
+## 6. Notificaciones al cliente (Messenger + crons)
+
+Las notificaciones al cliente (WhatsApp/email según `canales_notificacion` del expediente) se encolan con **Symfony Messenger** (transport Doctrine `async`).
+
+### Worker
+
+En desarrollo, en una terminal aparte:
+
+```bash
+docker compose exec php php bin/console messenger:consume async -vv
+```
+
+Sin el worker, los mensajes quedan en la tabla `messenger_messages` y no se envían.
+
+### Crons diarios
+
+```bash
+# Vencimientos de fase al cliente (7 / 3 / 0 días restantes)
+docker compose exec php php bin/console app:expedientes:verificar-vencimientos
+
+# Recordatorios futuros (p. ej. renovación nacionalidad a 1 año)
+docker compose exec php php bin/console app:expedientes:enviar-recordatorios-futuros
+```
+
+Tras desplegar, aplicar migraciones (`doctrine:migrations:migrate`) para crear `messenger_messages` y `notificacion_vencimiento_enviada`.
+
+---
+
+## 7. Frontend: proxy API (Docker vs local)
 
 - **Frontend en Docker** (contenedor `node`): El compose define `PROXY_TARGET=http://nginx:80`. Las peticiones a `/api/*` las reenvía Vite al backend (nginx). No hace falta configurar nada más.
 - **Frontend en local** (`npm run dev` en tu máquina): Por defecto el proxy usa `http://localhost:8080`. Asegúrate de tener el backend levantado en ese puerto (p. ej. `docker compose up` con php + nginx). Si tu API está en otra URL, define `PROXY_TARGET` antes de `npm run dev`.

@@ -4,12 +4,16 @@ declare(strict_types=1);
 
 namespace App\Application\UseCase;
 
+use App\Application\Service\ClienteUnicidadValidator;
 use App\Application\Service\ContratacionCompletitudValidator;
 use App\Application\Service\FirmaOtpService;
 use App\Application\Service\TelefonoNormalizer;
+use App\Domain\Entity\ActorHitoExpediente;
+use App\Domain\Entity\ExpedienteHito;
 use App\Domain\Entity\FaseNegocioExpediente;
 use App\Domain\Entity\PasoContratacionCliente;
 use App\Domain\Repository\ClienteRepositoryInterface;
+use App\Domain\Repository\ContratacionRepositoryInterface;
 use App\Domain\Repository\ExpedienteRepositoryInterface;
 use App\Domain\Repository\TramiteRepositoryInterface;
 use App\Domain\ValueObject\ClienteId;
@@ -21,17 +25,19 @@ final class EnviarOtpFirmaAccesoUseCase
     public function __construct(
         private ExpedienteRepositoryInterface $expedienteRepository,
         private ClienteRepositoryInterface $clienteRepository,
+        private ContratacionRepositoryInterface $contratacionRepository,
         private TramiteRepositoryInterface $tramiteRepository,
         private ContratacionCompletitudValidator $completitudValidator,
         private FirmaOtpService $firmaOtpService,
         private TelefonoNormalizer $telefonoNormalizer,
+        private ClienteUnicidadValidator $unicidadValidator,
     ) {
     }
 
     /**
      * @return array{telefonoMascara: string, expiraEnSegundos: int, otpVerificado: bool}
      */
-    public function __invoke(string $token): array
+    public function __invoke(string $token, ?string $telefonoNuevo = null): array
     {
         $expediente = $this->expedienteRepository->findByAccessToken($token);
         if (null === $expediente) {
@@ -49,6 +55,10 @@ final class EnviarOtpFirmaAccesoUseCase
             ];
         }
 
+        if (null !== $telefonoNuevo && '' !== trim($telefonoNuevo)) {
+            $this->actualizarTelefonoCliente($expediente->clienteId(), trim($telefonoNuevo), $expediente->id());
+        }
+
         $telefono = $this->resolverTelefonoCliente($expediente->clienteId());
         $resultado = $this->firmaOtpService->enviar($expediente->id(), $telefono);
 
@@ -56,6 +66,40 @@ final class EnviarOtpFirmaAccesoUseCase
             ...$resultado,
             'otpVerificado' => false,
         ];
+    }
+
+    private function actualizarTelefonoCliente(?string $clienteId, string $telefonoRaw, ExpedienteId $expedienteId): void
+    {
+        if (null === $clienteId || '' === $clienteId) {
+            throw new \InvalidArgumentException('Expediente sin cliente vinculado.');
+        }
+
+        $telefono = $this->telefonoNormalizer->normalize($telefonoRaw);
+        if (null === $telefono || !$this->telefonoNormalizer->isValid($telefono)) {
+            throw new \InvalidArgumentException('Indique un teléfono móvil válido.');
+        }
+
+        $cliente = $this->clienteRepository->findById(new ClienteId($clienteId));
+        if (null === $cliente) {
+            throw new \InvalidArgumentException('Cliente no encontrado.');
+        }
+
+        $actual = $this->telefonoNormalizer->normalize($cliente->telefono());
+        if ($actual === $telefono) {
+            return;
+        }
+
+        $this->unicidadValidator->assertTelefonoUnico($telefono, $clienteId, false);
+        $this->clienteRepository->save($cliente->withTelefono($telefono));
+
+        $this->contratacionRepository->saveHito(new ExpedienteHito(
+            bin2hex(random_bytes(16)),
+            $expedienteId,
+            'telefono_cliente_corregido',
+            'El cliente ha corregido su teléfono móvil antes de la verificación SMS.',
+            ActorHitoExpediente::Cliente,
+            new \DateTimeImmutable('now'),
+        ));
     }
 
     private function assertFirmaDisponible(ExpedienteId $expedienteId): void

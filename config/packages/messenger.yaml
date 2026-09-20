@@ -1,0 +1,17 @@
+framework:
+    messenger:
+        failure_transport: failed
+        transports:
+            async:
+                dsn: 'doctrine://default?queue_name=async'
+                options:
+                    auto_setup: false
+                retry_strategy:
+                    max_retries: 3
+                    delay: 1000
+                    multiplier: 2
+                    max_delay: 60000
+            failed: 'doctrine://default?queue_name=failed'
+            sync: 'sync://'
+        routing:
+            App\Application\Message\NotificarClienteMessage: async

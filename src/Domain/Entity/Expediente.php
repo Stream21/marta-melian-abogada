@@ -35,6 +35,8 @@ final readonly class Expediente
         private ?array $calendarioPagos = null,
         private ?SubfaseTramitacion $subfaseTramitacion = null,
         private ?string $holdedInvoiceId = null,
+        /** @var list<string> Canales preferidos de aviso al cliente: whatsapp, email. */
+        private array $canalesNotificacion = [],
     ) {
     }
 
@@ -86,6 +88,14 @@ final readonly class Expediente
     public function holdedInvoiceId(): ?string
     {
         return $this->holdedInvoiceId;
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function canalesNotificacion(): array
+    {
+        return $this->canalesNotificacion;
     }
 
     public function clienteId(): ?string
@@ -234,6 +244,14 @@ final readonly class Expediente
         );
     }
 
+    /**
+     * @param list<string> $canalesNotificacion
+     */
+    public function withCanalesNotificacion(array $canalesNotificacion): self
+    {
+        return $this->rebuild(canalesNotificacion: self::normalizarCanales($canalesNotificacion));
+    }
+
     public function withClientName(string $clientName): self
     {
         return $this->rebuild(clientName: $clientName);
@@ -311,6 +329,7 @@ final readonly class Expediente
         bool $subfaseTramitacionProvided = false,
         ?string $holdedInvoiceId = null,
         bool $holdedInvoiceIdProvided = false,
+        ?array $canalesNotificacion = null,
     ): self {
         return new self(
             $this->id,
@@ -338,9 +357,13 @@ final readonly class Expediente
             $calendarioPagosProvided ? $calendarioPagos : $this->calendarioPagos,
             $subfaseTramitacionProvided ? $subfaseTramitacion : $this->subfaseTramitacion,
             $holdedInvoiceIdProvided ? $holdedInvoiceId : $this->holdedInvoiceId,
+            $canalesNotificacion ?? $this->canalesNotificacion,
         );
     }
 
+    /**
+     * @param list<string> $canalesNotificacion
+     */
     public static function crearAlta(
         ExpedienteId $id,
         string $numero,
@@ -356,6 +379,7 @@ final readonly class Expediente
         int $numCuotas,
         string $accessToken,
         ?\DateTimeImmutable $fechaVencimientoFase = null,
+        array $canalesNotificacion = [],
     ): self {
         return new self(
             $id,
@@ -379,6 +403,32 @@ final readonly class Expediente
             $accessToken,
             $fechaVencimientoFase,
             new \DateTimeImmutable('now'),
+            null,
+            null,
+            null,
+            null,
+            self::normalizarCanales($canalesNotificacion),
         );
+    }
+
+    /**
+     * @param list<string>|array<int, mixed> $canales
+     *
+     * @return list<string>
+     */
+    public static function normalizarCanales(array $canales): array
+    {
+        $validos = [];
+        foreach ($canales as $canal) {
+            if (!is_string($canal)) {
+                continue;
+            }
+            if (!in_array($canal, ['whatsapp', 'email'], true)) {
+                continue;
+            }
+            $validos[] = $canal;
+        }
+
+        return array_values(array_unique($validos));
     }
 }

@@ -47,8 +47,8 @@ final class VincularEscritoRequerimientoMercurioUseCase
         if (null === $req || $req->expedienteId()->value() !== $id->value()) {
             throw new \InvalidArgumentException('Requerimiento no encontrado.');
         }
-        if (TipoRequerimientoMercurio::Escrito !== $req->tipo()) {
-            throw new \InvalidArgumentException('Este requerimiento no es de tipo escrito.');
+        if (TipoRequerimientoMercurio::Tasas === $req->tipo()) {
+            throw new \InvalidArgumentException('El requerimiento de tasas no admite un escrito. Adjunte la tasa como documento.');
         }
 
         $escrito = $this->escritoRepository->findById($escritoId);

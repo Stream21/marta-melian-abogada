@@ -13,6 +13,7 @@ use App\Application\Service\CobrosResumenListadoService;
 use App\Application\Service\DocumentacionSubfaseListadoService;
 use App\Application\Service\TramitacionSubfaseListadoService;
 use App\Application\UseCase\AltaExpedienteUseCase;
+use App\Application\UseCase\ActualizarCanalesNotificacionExpedienteUseCase;
 use App\Application\UseCase\CancelarExpedienteUseCase;
 use App\Application\UseCase\CrearExpedienteUseCase;
 use App\Application\UseCase\ListarAuditoriaExpedienteUseCase;
@@ -49,6 +50,7 @@ final class ExpedienteController extends AbstractController
         private SincronizarCobrosExpedienteHoldedUseCase $sincronizarCobrosHolded,
         private CancelarExpedienteUseCase $cancelarExpediente,
         private ReabrirExpedienteUseCase $reabrirExpediente,
+        private ActualizarCanalesNotificacionExpedienteUseCase $actualizarCanalesNotificacion,
         private ExpedienteAvisosAggregator $avisosAggregator,
         private ContratacionCompletitudValidator $contratacionCompletitud,
         private string $frontendBaseUrl = 'http://localhost:5173',
@@ -267,6 +269,23 @@ final class ExpedienteController extends AbstractController
         }
 
         return new JsonResponse(['success' => true]);
+    }
+
+    #[Route(path: '/{id}/canales-notificacion', name: 'canales_notificacion', methods: ['PUT'])]
+    public function actualizarCanalesNotificacion(string $id, Request $request): JsonResponse
+    {
+        $data = json_decode($request->getContent(), true) ?? [];
+        $canales = is_array($data['canales'] ?? null) ? $data['canales'] : [];
+        $canales = array_values(array_filter(
+            array_map('strval', $canales),
+            static fn (string $c) => in_array($c, ['whatsapp', 'email'], true),
+        ));
+
+        try {
+            return new JsonResponse(($this->actualizarCanalesNotificacion)($id, $canales));
+        } catch (\InvalidArgumentException $e) {
+            return new JsonResponse(['message' => $e->getMessage()], Response::HTTP_BAD_REQUEST);
+        }
     }
 
     #[Route(path: '/{id}/cancelar', name: 'cancelar', methods: ['POST'])]

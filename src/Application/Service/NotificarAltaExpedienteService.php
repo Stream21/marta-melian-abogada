@@ -4,11 +4,8 @@ declare(strict_types=1);
 
 namespace App\Application\Service;
 
-use App\Application\Port\EmailPort;
-use App\Application\Port\TwilioPort;
 use App\Domain\Entity\Cliente;
 use App\Domain\Entity\Expediente;
-use Psr\Log\LoggerInterface;
 
 /**
  * Notificaciones al cliente (alta, enlace de acceso): WhatsApp o email.
@@ -17,9 +14,7 @@ use Psr\Log\LoggerInterface;
 final class NotificarAltaExpedienteService
 {
     public function __construct(
-        private TwilioPort $twilioPort,
-        private EmailPort $emailPort,
-        private LoggerInterface $logger,
+        private DespacharNotificacionClienteService $despachar,
         private string $frontendBaseUrl,
     ) {
     }
@@ -27,7 +22,7 @@ final class NotificarAltaExpedienteService
     /**
      * @param string[] $canalesSolicitados
      *
-     * @return string[]
+     * @return string[] Canales encolados
      */
     public function notificar(
         Expediente $expediente,
@@ -35,7 +30,7 @@ final class NotificarAltaExpedienteService
         string $tramiteNombre,
         array $canalesSolicitados,
     ): array {
-        $accessUrl = rtrim($this->frontendBaseUrl, '/') . '/acceso/' . $expediente->accessToken();
+        $accessUrl = $this->accessUrl($expediente);
         $mensaje = sprintf(
             'Bienvenido/a a Marta Melián Abogados. Su expediente %s (%s) ha sido abierto. Acceda aquí para iniciar la contratación: %s',
             $expediente->numero(),
@@ -43,13 +38,21 @@ final class NotificarAltaExpedienteService
             $accessUrl,
         );
 
-        return $this->enviarPorCanales($cliente, $expediente->numero(), $mensaje, $canalesSolicitados);
+        return $this->despachar->despachar(
+            $expediente,
+            'alta',
+            'Expediente ' . $expediente->numero(),
+            $mensaje,
+            'notificacion_alta_expediente',
+            'Se ha notificado al cliente el alta del expediente por %s.',
+            Expediente::normalizarCanales($canalesSolicitados),
+        );
     }
 
     /**
      * @param string[] $canalesSolicitados
      *
-     * @return string[]
+     * @return string[] Canales encolados
      */
     public function enviarEnlace(
         Expediente $expediente,
@@ -57,7 +60,7 @@ final class NotificarAltaExpedienteService
         string $tramiteNombre,
         array $canalesSolicitados,
     ): array {
-        $accessUrl = rtrim($this->frontendBaseUrl, '/') . '/acceso/' . $expediente->accessToken();
+        $accessUrl = $this->accessUrl($expediente);
         $mensaje = sprintf(
             'Acceda a su expediente %s (%s) en Marta Melián Abogados: %s',
             $expediente->numero(),
@@ -65,52 +68,19 @@ final class NotificarAltaExpedienteService
             $accessUrl,
         );
 
-        return $this->enviarPorCanales($cliente, $expediente->numero(), $mensaje, $canalesSolicitados);
+        return $this->despachar->despachar(
+            $expediente,
+            'enlace',
+            'Expediente ' . $expediente->numero(),
+            $mensaje,
+            'notificacion_enlace_enviado',
+            'Se ha enviado el enlace de acceso al cliente por %s.',
+            Expediente::normalizarCanales($canalesSolicitados),
+        );
     }
 
-    /**
-     * @param string[] $canalesSolicitados
-     *
-     * @return string[]
-     */
-    private function enviarPorCanales(Cliente $cliente, string $numeroExpediente, string $mensaje, array $canalesSolicitados): array
+    private function accessUrl(Expediente $expediente): string
     {
-        $canales = [];
-        $telefono = trim($cliente->telefono());
-        $email = trim($cliente->email());
-
-        if (in_array('whatsapp', $canalesSolicitados, true) && '' !== $telefono) {
-            try {
-                $this->twilioPort->sendWhatsAppMessage($telefono, $mensaje);
-                $canales[] = 'whatsapp';
-            } catch (\Throwable $e) {
-                $this->logger->error('Error enviando notificación por WhatsApp', [
-                    'telefono' => $telefono,
-                    'expediente' => $numeroExpediente,
-                    'error' => $e->getMessage(),
-                ]);
-                $canales[] = 'whatsapp_error';
-            }
-        }
-
-        if (in_array('email', $canalesSolicitados, true) && '' !== $email) {
-            try {
-                $this->emailPort->send(
-                    $email,
-                    'Expediente ' . $numeroExpediente,
-                    $mensaje,
-                );
-                $canales[] = 'email';
-            } catch (\Throwable $e) {
-                $this->logger->error('Error enviando notificación por email', [
-                    'email' => $email,
-                    'expediente' => $numeroExpediente,
-                    'error' => $e->getMessage(),
-                ]);
-                $canales[] = 'email_error';
-            }
-        }
-
-        return $canales;
+        return rtrim($this->frontendBaseUrl, '/') . '/acceso/' . $expediente->accessToken();
     }
 }

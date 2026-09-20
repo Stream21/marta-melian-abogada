@@ -87,7 +87,8 @@ export function NuevoExpedientePage() {
       case 1:
         if (state.modoCliente === 'nuevo') {
           if (!state.telefono.trim() || !isValidTelefono(state.telefono)) return false;
-          if (state.telefonoDuplicado && !state.permitirDuplicado) return false;
+          if (state.contactoVerificando) return false;
+          if (state.clienteDetectado && !state.permitirDuplicado) return false;
           if (state.email.trim() && !isValidEmail(state.email)) return false;
           return true;
         }
@@ -173,10 +174,10 @@ export function NuevoExpedientePage() {
           </p>
         )}
 
-        {state.step === 1 && state.telefonoDuplicado && !state.permitirDuplicado && (
+        {state.step === 1 && state.clienteDetectado && !state.permitirDuplicado && (
           <p className="mt-4 text-sm text-amber-800" role="status">
-            El teléfono ya está registrado. Use el cliente existente o confirme «Continuar como
-            cliente nuevo» para poder seguir.
+            Hay un cliente con ese dato. Vincúlelo o confirme «Continuar como nuevo» en el aviso
+            para poder seguir.
           </p>
         )}
 

@@ -22,6 +22,8 @@ final readonly class ExpedienteRequerimientoMercurio
         private ?string $justificantePresentacionPath = null,
         private ?string $formularioNombre = null,
         private ?string $formularioCometido = null,
+        private ?string $oficioPath = null,
+        private ?string $oficioNombre = null,
         private \DateTimeImmutable $createdAt = new \DateTimeImmutable('now'),
         private \DateTimeImmutable $updatedAt = new \DateTimeImmutable('now'),
     ) {
@@ -113,6 +115,21 @@ final readonly class ExpedienteRequerimientoMercurio
         return $this->formularioCometido;
     }
 
+    public function oficioPath(): ?string
+    {
+        return $this->oficioPath;
+    }
+
+    public function oficioNombre(): ?string
+    {
+        return $this->oficioNombre;
+    }
+
+    public function tieneOficio(): bool
+    {
+        return null !== $this->oficioPath && '' !== trim($this->oficioPath);
+    }
+
     public function createdAt(): \DateTimeImmutable
     {
         return $this->createdAt;
@@ -128,21 +145,9 @@ final readonly class ExpedienteRequerimientoMercurio
         $nombreTrim = null !== $nombre ? trim($nombre) : null;
         $cometidoTrim = null !== $cometido ? trim($cometido) : null;
 
-        return new self(
-            $this->id,
-            $this->expedienteId,
-            $this->tipo,
-            $this->destino,
-            $this->nombre,
-            $this->descripcion,
-            $this->estado,
-            $this->archivoPath,
-            $this->archivoNombre,
-            $this->justificantePresentacionPath,
-            '' !== ($nombreTrim ?? '') ? $nombreTrim : null,
-            '' !== ($cometidoTrim ?? '') ? $cometidoTrim : null,
-            $this->createdAt,
-            new \DateTimeImmutable('now'),
+        return $this->copy(
+            formularioNombre: '' !== ($nombreTrim ?? '') ? $nombreTrim : null,
+            formularioCometido: '' !== ($cometidoTrim ?? '') ? $cometidoTrim : null,
         );
     }
 
@@ -153,21 +158,22 @@ final readonly class ExpedienteRequerimientoMercurio
             ? EstadoRequerimientoMercurio::PendienteDespacho
             : $this->estado;
 
-        return new self(
-            $this->id,
-            $this->expedienteId,
-            $this->tipo,
-            $this->destino,
-            $this->nombre,
-            $this->descripcion,
-            $estado,
-            $path,
-            $nombre,
-            $this->justificantePresentacionPath,
-            $this->formularioNombre,
-            $this->formularioCometido,
-            $this->createdAt,
-            new \DateTimeImmutable('now'),
+        return $this->copy(
+            estado: $estado,
+            archivoPath: $path,
+            archivoNombre: $nombre,
+        );
+    }
+
+    public function withOficio(string $path, string $nombre): self
+    {
+        if ('' === trim($path)) {
+            throw new \InvalidArgumentException('La ruta del requerimiento no puede estar vacía.');
+        }
+
+        return $this->copy(
+            oficioPath: $path,
+            oficioNombre: '' !== trim($nombre) ? trim($nombre) : 'Requerimiento Mercurio.pdf',
         );
     }
 
@@ -185,62 +191,22 @@ final readonly class ExpedienteRequerimientoMercurio
             throw new \InvalidArgumentException('Debe adjuntar el justificante de presentación en Mercurio.');
         }
 
-        return new self(
-            $this->id,
-            $this->expedienteId,
-            $this->tipo,
-            $this->destino,
-            $this->nombre,
-            $this->descripcion,
-            EstadoRequerimientoMercurio::Presentado,
-            $path,
-            $nombre,
-            $justificantePath,
-            $this->formularioNombre,
-            $this->formularioCometido,
-            $this->createdAt,
-            new \DateTimeImmutable('now'),
+        return $this->copy(
+            estado: EstadoRequerimientoMercurio::Presentado,
+            archivoPath: $path,
+            archivoNombre: $nombre,
+            justificantePresentacionPath: $justificantePath,
         );
     }
 
     public function cerrar(): self
     {
-        return new self(
-            $this->id,
-            $this->expedienteId,
-            $this->tipo,
-            $this->destino,
-            $this->nombre,
-            $this->descripcion,
-            EstadoRequerimientoMercurio::Presentado,
-            $this->archivoPath,
-            $this->archivoNombre,
-            $this->justificantePresentacionPath,
-            $this->formularioNombre,
-            $this->formularioCometido,
-            $this->createdAt,
-            new \DateTimeImmutable('now'),
-        );
+        return $this->copy(estado: EstadoRequerimientoMercurio::Presentado);
     }
 
     public function withEstado(EstadoRequerimientoMercurio $estado): self
     {
-        return new self(
-            $this->id,
-            $this->expedienteId,
-            $this->tipo,
-            $this->destino,
-            $this->nombre,
-            $this->descripcion,
-            $estado,
-            $this->archivoPath,
-            $this->archivoNombre,
-            $this->justificantePresentacionPath,
-            $this->formularioNombre,
-            $this->formularioCometido,
-            $this->createdAt,
-            new \DateTimeImmutable('now'),
-        );
+        return $this->copy(estado: $estado);
     }
 
     /**
@@ -252,21 +218,9 @@ final readonly class ExpedienteRequerimientoMercurio
             return $this;
         }
 
-        return new self(
-            $this->id,
-            $this->expedienteId,
-            $this->tipo,
-            DestinoRequerimientoMercurio::Cliente,
-            $this->nombre,
-            $this->descripcion,
-            EstadoRequerimientoMercurio::PendienteCliente,
-            $this->archivoPath,
-            $this->archivoNombre,
-            $this->justificantePresentacionPath,
-            $this->formularioNombre,
-            $this->formularioCometido,
-            $this->createdAt,
-            new \DateTimeImmutable('now'),
+        return $this->copy(
+            destino: DestinoRequerimientoMercurio::Cliente,
+            estado: EstadoRequerimientoMercurio::PendienteCliente,
         );
     }
 
@@ -285,19 +239,44 @@ final readonly class ExpedienteRequerimientoMercurio
             throw new \InvalidArgumentException('Debe adjuntar el justificante de presentación en Mercurio.');
         }
 
+        return $this->copy(
+            estado: EstadoRequerimientoMercurio::Presentado,
+            archivoPath: $presentacionPath,
+            archivoNombre: $presentacionNombre,
+            justificantePresentacionPath: $justificantePath,
+        );
+    }
+
+    private function copy(
+        ?DestinoRequerimientoMercurio $destino = null,
+        ?string $nombre = null,
+        ?string $descripcion = null,
+        ?EstadoRequerimientoMercurio $estado = null,
+        ?string $archivoPath = '__keep',
+        ?string $archivoNombre = '__keep',
+        ?string $justificantePresentacionPath = '__keep',
+        ?string $formularioNombre = '__keep',
+        ?string $formularioCometido = '__keep',
+        ?string $oficioPath = '__keep',
+        ?string $oficioNombre = '__keep',
+    ): self {
         return new self(
             $this->id,
             $this->expedienteId,
             $this->tipo,
-            $this->destino,
-            $this->nombre,
-            $this->descripcion,
-            EstadoRequerimientoMercurio::Presentado,
-            $presentacionPath,
-            $presentacionNombre,
-            $justificantePath,
-            $this->formularioNombre,
-            $this->formularioCometido,
+            $destino ?? $this->destino,
+            $nombre ?? $this->nombre,
+            $descripcion ?? $this->descripcion,
+            $estado ?? $this->estado,
+            '__keep' === $archivoPath ? $this->archivoPath : $archivoPath,
+            '__keep' === $archivoNombre ? $this->archivoNombre : $archivoNombre,
+            '__keep' === $justificantePresentacionPath
+                ? $this->justificantePresentacionPath
+                : $justificantePresentacionPath,
+            '__keep' === $formularioNombre ? $this->formularioNombre : $formularioNombre,
+            '__keep' === $formularioCometido ? $this->formularioCometido : $formularioCometido,
+            '__keep' === $oficioPath ? $this->oficioPath : $oficioPath,
+            '__keep' === $oficioNombre ? $this->oficioNombre : $oficioNombre,
             $this->createdAt,
             new \DateTimeImmutable('now'),
         );

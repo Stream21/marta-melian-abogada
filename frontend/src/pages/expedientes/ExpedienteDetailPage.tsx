@@ -18,6 +18,7 @@ import { Badge } from '@/components/ui/badge';
 import { ExpedienteSubfaseBadge } from '@/components/expedientes/ExpedienteSubfaseBadge';
 import { ExpedienteGestionToolbarActions } from '@/components/expedientes/ExpedienteGestionToolbarActions';
 import { ExpedienteEstadoActions } from '@/components/expedientes/ExpedienteEstadoActions';
+import { ExpedienteConfiguracionModal } from '@/components/expedientes/ExpedienteConfiguracionModal';
 import { consumirNotificacionAlta } from '@/lib/email-notificacion';
 import { capitalizeDisplay } from '@/lib/capitalize-display';
 import { cn } from '@/lib/utils';
@@ -83,7 +84,8 @@ export function ExpedienteDetailPage({ expedienteId, notificacionSearch }: Exped
         <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
           <h1 className="page-title min-w-0">{titulo}</h1>
           {expediente && (
-            <div className="ml-auto shrink-0">
+            <div className="ml-auto flex shrink-0 flex-wrap items-center gap-2">
+              <ExpedienteConfiguracionModal expediente={expediente} />
               <ExpedienteEstadoActions expediente={expediente} />
             </div>
           )}

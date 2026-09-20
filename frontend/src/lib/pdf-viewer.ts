@@ -59,6 +59,26 @@ export async function renderPdfPages(container: HTMLElement, blobUrl: string): P
   return pdf.numPages;
 }
 
+export async function renderPdfThumbnail(blobUrl: string, maxWidth = 320): Promise<string> {
+  await ensurePdfWorker();
+
+  const loadingTask = pdfjsLib.getDocument(blobUrl);
+  const pdf = await loadingTask.promise;
+  const page = await pdf.getPage(1);
+  const unscaled = page.getViewport({ scale: 1 });
+  const scale = maxWidth / unscaled.width;
+  const viewport = page.getViewport({ scale: Math.max(0.35, Math.min(scale, 1.6)) });
+  const canvas = document.createElement('canvas');
+  canvas.width = viewport.width;
+  canvas.height = viewport.height;
+  const context = canvas.getContext('2d');
+  if (!context) {
+    throw new Error('No se pudo generar la miniatura del documento.');
+  }
+  await page.render({ canvasContext: context, viewport }).promise;
+  return canvas.toDataURL('image/jpeg', 0.78);
+}
+
 export function isScrollAtEnd(element: HTMLElement, threshold = 32): boolean {
   return element.scrollHeight - element.scrollTop - element.clientHeight <= threshold;
 }

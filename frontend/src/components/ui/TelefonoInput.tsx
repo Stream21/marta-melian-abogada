@@ -6,7 +6,7 @@ type TelefonoInputProps = {
   id?: string;
   value: string;
   onChange: (value: string) => void;
-  onBlur?: () => void;
+  onBlur?: (value: string) => void;
   required?: boolean;
   disabled?: boolean;
   className?: string;
@@ -33,7 +33,7 @@ export function TelefonoInput({
       value={value}
       onChange={(e) => onChange(sanitizarTelefono(e.target.value))}
       onKeyDown={cerrarTecladoAlEnter}
-      onBlur={onBlur}
+      onBlur={(e) => onBlur?.(sanitizarTelefono(e.target.value))}
       placeholder={placeholder}
       required={required}
       disabled={disabled}

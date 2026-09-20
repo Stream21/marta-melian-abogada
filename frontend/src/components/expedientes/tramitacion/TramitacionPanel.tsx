@@ -45,6 +45,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
+import { DocumentoMiniatura, DocumentoMiniaturaPlaceholder } from './DocumentoMiniatura';
 
 interface TramitacionPanelProps {
   expedienteId: string;
@@ -449,8 +450,8 @@ function RequerimientosBlock({
         <div>
           <h3 className="font-semibold">Requerimientos Mercurio</h3>
           <p className="mt-1 text-sm text-muted-foreground">
-            Si Mercurio pide más documentación, añada un requerimiento para el cliente o interno del
-            despacho.
+            Si Mercurio pide más documentación o una tasa, cree un requerimiento. Lo primero será
+            adjuntar el oficio para que el despacho y el cliente puedan leerlo.
           </p>
         </div>
         {!hayRequerimientoAbierto && (
@@ -462,11 +463,11 @@ function RequerimientosBlock({
       </div>
 
       <Dialog open={nuevoOpen} onOpenChange={setNuevoOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>Nuevo requerimiento</DialogTitle>
             <DialogDescription>
-              Indique un nombre y, si lo desea, instrucciones para el despacho o el cliente.
+              Elija si Mercurio pide documentación o una tasa. Después adjuntará el oficio.
             </DialogDescription>
           </DialogHeader>
           <NuevoRequerimientoForm
@@ -585,6 +586,7 @@ function NuevoRequerimientoForm({
   onDone: (id?: string) => void;
   onCancel: () => void;
 }) {
+  const [tipo, setTipo] = useState<'documentacion' | 'tasas'>('documentacion');
   const [nombre, setNombre] = useState('');
   const [descripcion, setDescripcion] = useState('');
 
@@ -595,21 +597,71 @@ function NuevoRequerimientoForm({
       api.agregarRequerimientoMercurio(expedienteId, {
         nombre: nombre.trim(),
         descripcion: descripcion.trim() || undefined,
-        tipo: 'documento',
+        tipo,
         destino: 'despacho',
       }),
     onSuccess: (data) => onDone(data.id),
   });
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
+      <div className="space-y-2">
+        <Label>Tipo de requerimiento</Label>
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          {(
+            [
+              {
+                value: 'documentacion' as const,
+                title: 'Documentación adjunta',
+                description: 'Formulario, documento o escrito que pide Mercurio.',
+                icon: FileText,
+              },
+              {
+                value: 'tasas' as const,
+                title: 'Tasas',
+                description: 'Incluye de inicio el documento de la tasa de Mercurio.',
+                icon: Receipt,
+              },
+            ]
+          ).map((option) => {
+            const selected = tipo === option.value;
+            const Icon = option.icon;
+            return (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => {
+                  setTipo(option.value);
+                  if (option.value === 'tasas' && !nombre.trim()) {
+                    setNombre('Tasa Mercurio');
+                  }
+                }}
+                className={cn(
+                  'flex cursor-pointer items-start gap-3 rounded-lg border p-3 text-left transition-shadow hover:shadow-md',
+                  selected ? 'border-primary bg-primary/5 ring-1 ring-primary/20' : 'border-border bg-card',
+                )}
+              >
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                  <Icon className="h-4 w-4" />
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-sm font-medium">{option.title}</span>
+                  <span className="mt-0.5 block text-xs text-muted-foreground">{option.description}</span>
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
       <div className="space-y-3">
         <div className="space-y-2">
           <Label>Nombre</Label>
           <Input
             value={nombre}
             onChange={(e) => setNombre(e.target.value)}
-            placeholder="Ej. Certificado literal de nacimiento"
+            placeholder={
+              tipo === 'tasas' ? 'Tasa Mercurio' : 'Ej. Certificado literal de nacimiento'
+            }
           />
         </div>
         <div className="space-y-2">
@@ -622,6 +674,17 @@ function NuevoRequerimientoForm({
             placeholder="Instrucciones para el despacho o el cliente"
           />
         </div>
+        {tipo === 'tasas' ? (
+          <p className="text-xs text-muted-foreground">
+            Se creará el documento «Tasa solicitada por Mercurio». El cliente o la abogada podrán
+            adjuntarlo. Primero hay que subir el oficio del requerimiento.
+          </p>
+        ) : (
+          <p className="text-xs text-muted-foreground">
+            Después podrá añadir un formulario, un documento o un escrito. Primero hay que subir el
+            oficio del requerimiento.
+          </p>
+        )}
       </div>
 
       {mutation.error && (
@@ -1043,7 +1106,7 @@ function EscritoModal({
           <DialogDescription>Elija un escrito del expediente para este requerimiento.</DialogDescription>
         </DialogHeader>
         <div className="space-y-3 py-2">
-          {req.tieneArchivo && req.tipo === 'escrito' && (
+          {req.tieneArchivo && (
             <p className="text-sm text-muted-foreground">
               Vinculado: {req.archivoNombre ?? 'escrito'}
             </p>
@@ -1372,6 +1435,8 @@ function EntregablesSection({
 
   const docs = req.documentos ?? [];
   const campos = req.campos ?? [];
+  const esTasas = req.tipo === 'tasas';
+  const tieneOficio = Boolean(req.tieneOficio);
   const formularioCompleto =
     campos.length > 0 && campos.every((c) => Boolean(c.valor?.trim()));
 
@@ -1464,7 +1529,9 @@ function EntregablesSection({
             <p className="mt-0.5 text-xs text-muted-foreground">
               {soloLectura
                 ? 'Documentos y formulario gestionados en este requerimiento.'
-                : 'Documentos, datos del cliente o un escrito antes de presentar.'}
+                : esTasas
+                  ? 'La tasa de Mercurio. El cliente o la abogada pueden adjuntarla.'
+                  : 'Formulario, documento o un escrito nuevo del expediente.'}
             </p>
           </div>
           {!soloLectura && (
@@ -1473,6 +1540,7 @@ function EntregablesSection({
                 type="button"
                 size="sm"
                 variant="outline"
+                disabled={!tieneOficio}
                 onClick={() => setMenuOpen((v) => !v)}
                 aria-expanded={menuOpen}
               >
@@ -1492,25 +1560,29 @@ function EntregablesSection({
                     <FileText className="h-3.5 w-3.5" />
                     Documento
                   </button>
-                  <button
-                    type="button"
-                    className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-muted"
-                    onClick={openFormCreate}
-                  >
-                    <ClipboardList className="h-3.5 w-3.5" />
-                    Formulario
-                  </button>
-                  <button
-                    type="button"
-                    className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-muted"
-                    onClick={() => {
-                      setEscritoModalOpen(true);
-                      setMenuOpen(false);
-                    }}
-                  >
-                    <ScrollText className="h-3.5 w-3.5" />
-                    Escrito
-                  </button>
+                  {!esTasas && (
+                    <>
+                      <button
+                        type="button"
+                        className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-muted"
+                        onClick={openFormCreate}
+                      >
+                        <ClipboardList className="h-3.5 w-3.5" />
+                        Formulario
+                      </button>
+                      <button
+                        type="button"
+                        className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-muted"
+                        onClick={() => {
+                          setEscritoModalOpen(true);
+                          setMenuOpen(false);
+                        }}
+                      >
+                        <ScrollText className="h-3.5 w-3.5" />
+                        Escrito
+                      </button>
+                    </>
+                  )}
                 </div>
               )}
             </div>
@@ -1664,12 +1736,18 @@ function EntregablesSection({
           </div>
         )}
 
-        {req.tieneArchivo && req.tipo === 'escrito' && (
+        {req.tieneArchivo && !soloLectura && (
           <div className="flex items-center gap-2 border-t border-border bg-card px-3 py-3 text-sm">
             <ScrollText className="h-4 w-4 text-muted-foreground" />
             <span>{req.archivoNombre ?? 'Escrito vinculado'}</span>
             <Badge variant="outline">Escrito</Badge>
           </div>
+        )}
+
+        {!tieneOficio && !soloLectura && (
+          <p className="p-3 text-sm text-muted-foreground">
+            Adjunte primero el oficio del requerimiento para poder añadir documentos.
+          </p>
         )}
 
         {soloLectura && docs.length === 0 && campos.length === 0 && !req.tieneArchivo && (
@@ -1710,6 +1788,101 @@ function EntregablesSection({
   );
 }
 
+function OficioYPreviews({
+  req,
+  expedienteId,
+  onDone,
+  cerrado,
+}: {
+  req: TramitacionRequerimientoResponse;
+  expedienteId: string;
+  onDone: () => void;
+  cerrado: boolean;
+}) {
+  const oficioInputId = useId();
+  const oficioMutation = useMutation({
+    mutationFn: (file: File) => api.subirOficioRequerimientoMercurio(expedienteId, req.id, file),
+    onSuccess: onDone,
+  });
+
+  const docsConArchivo = (req.documentos ?? []).filter((d) => d.tieneArchivo);
+
+  return (
+    <div className="space-y-3">
+      <div>
+        <p className="section-label">Vista previa</p>
+        <p className="mt-0.5 text-xs text-muted-foreground">
+          El oficio del requerimiento y los adjuntos, sin salir de esta pestaña. Pulse una miniatura
+          para abrirla.
+        </p>
+      </div>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+        {req.tieneOficio ? (
+          <div className="space-y-2">
+            <DocumentoMiniatura
+              url={`${api.tramitacionRequerimientoOficioUrl(expedienteId, req.id)}?v=${encodeURIComponent(req.updatedAt)}`}
+              title={req.oficioNombre ?? 'Requerimiento Mercurio'}
+              subtitle="Oficio para abogado y cliente"
+              badge="Requerimiento"
+            />
+            {!cerrado && (
+              <>
+                <input
+                  id={oficioInputId}
+                  type="file"
+                  accept=".pdf,application/pdf"
+                  className="sr-only"
+                  disabled={oficioMutation.isPending}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) oficioMutation.mutate(file);
+                    e.target.value = '';
+                  }}
+                />
+                <Button size="sm" variant="outline" className="w-full" disabled={oficioMutation.isPending} asChild>
+                  <label htmlFor={oficioInputId} className="cursor-pointer">
+                    {oficioMutation.isPending ? 'Subiendo…' : 'Cambiar oficio'}
+                  </label>
+                </Button>
+              </>
+            )}
+          </div>
+        ) : !cerrado ? (
+          <DocumentoMiniaturaPlaceholder
+            title="Requerimiento de Mercurio"
+            subtitle="Adjunte el oficio para que el cliente pueda leerlo"
+            pending={oficioMutation.isPending}
+            onSelectFile={(file) => oficioMutation.mutate(file)}
+          />
+        ) : null}
+
+        {docsConArchivo.map((doc) => (
+          <DocumentoMiniatura
+            key={doc.id}
+            url={api.tramitacionRequerimientoDocumentoArchivoUrl(expedienteId, req.id, doc.id)}
+            title={doc.nombre}
+            subtitle={doc.responsableLabel}
+            badge="Adjunto"
+          />
+        ))}
+
+        {req.tieneArchivo && !cerrado && (
+          <DocumentoMiniatura
+            url={api.tramitacionRequerimientoArchivoUrl(expedienteId, req.id)}
+            title={req.archivoNombre ?? 'Escrito vinculado'}
+            badge="Escrito"
+          />
+        )}
+      </div>
+      {oficioMutation.error && (
+        <p className="text-sm text-destructive">
+          {oficioMutation.error instanceof Error ? oficioMutation.error.message : 'Error'}
+        </p>
+      )}
+    </div>
+  );
+}
+
 function RequerimientoItem({
   req,
   expedienteId,
@@ -1731,14 +1904,13 @@ function RequerimientoItem({
 
   const cerrado = requerimientoCerrado(req.estado);
   const esEscrito = req.tipo === 'escrito';
+  const tieneOficio = Boolean(req.tieneOficio);
   const tieneItems =
     (req.documentos?.length ?? 0) > 0 || (req.campos?.length ?? 0) > 0;
   const flujoEntregables = !esEscrito;
-  const puedePresentarEnMercurio = flujoEntregables
-    ? tieneItems
-      ? req.listoParaPresentar
-      : true
-    : req.tieneArchivo;
+  const puedePresentarEnMercurio =
+    tieneOficio &&
+    (flujoEntregables ? (tieneItems ? req.listoParaPresentar : true) : req.tieneArchivo);
   const puedeConfirmarPresentacion = flujoEntregables
     ? Boolean(presentacion) && Boolean(justificante)
     : Boolean(justificante);
@@ -1786,6 +1958,7 @@ function RequerimientoItem({
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <p className="text-sm font-medium">{req.nombre}</p>
+            <Badge variant={req.tipo === 'tasas' ? 'warning' : 'info'}>{req.tipoLabel}</Badge>
             {cerrado && <Badge variant="success">{req.estadoLabel}</Badge>}
           </div>
           {cerrado && (
@@ -1807,6 +1980,13 @@ function RequerimientoItem({
       {open && (
         <div className="space-y-4 border-t border-border px-4 py-3">
           {req.descripcion && <p className="text-sm text-muted-foreground">{req.descripcion}</p>}
+
+          <OficioYPreviews
+            req={req}
+            expedienteId={expedienteId}
+            onDone={onDone}
+            cerrado={cerrado}
+          />
 
           <EntregablesSection
             req={req}
@@ -1851,6 +2031,11 @@ function RequerimientoItem({
 
           {!cerrado && (
             <>
+              {!tieneOficio && (
+                <p className="text-sm text-muted-foreground">
+                  Adjunte el oficio del requerimiento antes de presentar en Mercurio.
+                </p>
+              )}
               <div className="flex justify-end border-t border-border pt-3">
                 <Button
                   disabled={!puedePresentarEnMercurio || presentarMutation.isPending}

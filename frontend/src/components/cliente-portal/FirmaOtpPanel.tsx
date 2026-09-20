@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { Loader2, ShieldCheck, Smartphone } from 'lucide-react';
+import { Loader2, Pencil, ShieldCheck, Smartphone } from 'lucide-react';
 import { api } from '@/api/client';
+import { TelefonoInput } from '@/components/ui/TelefonoInput';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { telefonoValido } from '@/lib/telefono';
 
 interface FirmaOtpPanelProps {
   token: string;
@@ -25,15 +27,23 @@ export function FirmaOtpPanel({
   const [codigo, setCodigo] = useState('');
   const [telefonoDestino, setTelefonoDestino] = useState(telefonoMascara ?? '');
   const [codigoEnviado, setCodigoEnviado] = useState(false);
+  const [editandoTelefono, setEditandoTelefono] = useState(false);
+  const [telefonoNuevo, setTelefonoNuevo] = useState('');
 
   useEffect(() => {
     setOtpVerificado(otpVerificadoInicial);
   }, [otpVerificadoInicial]);
 
+  useEffect(() => {
+    if (telefonoMascara) setTelefonoDestino(telefonoMascara);
+  }, [telefonoMascara]);
+
   const enviarMutation = useMutation({
-    mutationFn: () => api.enviarOtpFirma(token),
+    mutationFn: (telefono?: string) => api.enviarOtpFirma(token, telefono),
     onSuccess: (data) => {
       setCodigoEnviado(true);
+      setEditandoTelefono(false);
+      setTelefonoNuevo('');
       if (data.telefonoMascara) setTelefonoDestino(data.telefonoMascara);
       if (data.otpVerificado) {
         setOtpVerificado(true);
@@ -69,6 +79,8 @@ export function FirmaOtpPanel({
     );
   }
 
+  const puedeEnviarCorregido = telefonoValido(telefonoNuevo) && !enviarMutation.isPending;
+
   return (
     <div className="rounded-lg border border-amber-200 bg-amber-50/50 p-4 space-y-4">
       <div className="flex items-start gap-3">
@@ -77,27 +89,81 @@ export function FirmaOtpPanel({
           <p className="font-medium text-amber-950">Verificación por SMS</p>
           <p className="text-amber-900/90">
             Antes de firmar, le enviaremos un código de 6 dígitos al móvil registrado
-            {telefonoDestino ? ` (${telefonoDestino})` : ''}. Puede introducirlo en el ordenador o en el móvil.
+            {telefonoDestino ? ` (${telefonoDestino})` : ''}. Puede introducirlo en el ordenador o
+            en el móvil.
           </p>
         </div>
       </div>
 
-      {!codigoEnviado ? (
-        <Button
-          type="button"
-          onClick={() => enviarMutation.mutate()}
-          disabled={enviarMutation.isPending}
-          className="w-full sm:w-auto"
-        >
-          {enviarMutation.isPending ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Enviando código…
-            </>
-          ) : (
-            'Enviar código SMS'
-          )}
-        </Button>
+      {editandoTelefono ? (
+        <div className="space-y-3 rounded-lg border border-border bg-card p-3">
+          <div className="space-y-1.5">
+            <Label htmlFor="otp-telefono-nuevo">Nuevo teléfono móvil</Label>
+            <TelefonoInput
+              id="otp-telefono-nuevo"
+              value={telefonoNuevo}
+              onChange={setTelefonoNuevo}
+              required
+            />
+            <p className="text-xs text-muted-foreground">
+              Si es español, escríbalo sin prefijo. Para otro país, anteponga el prefijo (+…).
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              disabled={!puedeEnviarCorregido}
+              onClick={() => enviarMutation.mutate(telefonoNuevo.trim())}
+            >
+              {enviarMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Guardando…
+                </>
+              ) : (
+                'Guardar y enviar código'
+              )}
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              disabled={enviarMutation.isPending}
+              onClick={() => {
+                setEditandoTelefono(false);
+                setTelefonoNuevo('');
+              }}
+            >
+              Cancelar
+            </Button>
+          </div>
+        </div>
+      ) : !codigoEnviado ? (
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            type="button"
+            onClick={() => enviarMutation.mutate(undefined)}
+            disabled={enviarMutation.isPending}
+            className="w-full sm:w-auto"
+          >
+            {enviarMutation.isPending ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Enviando código…
+              </>
+            ) : (
+              'Enviar código SMS'
+            )}
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full sm:w-auto"
+            onClick={() => setEditandoTelefono(true)}
+          >
+            <Pencil className="mr-1.5 h-3.5 w-3.5" />
+            Número incorrecto
+          </Button>
+        </div>
       ) : (
         <div className="space-y-3 max-w-xs">
           <div className="space-y-1.5">
@@ -123,10 +189,22 @@ export function FirmaOtpPanel({
             <Button
               type="button"
               variant="outline"
-              onClick={() => enviarMutation.mutate()}
+              onClick={() => enviarMutation.mutate(undefined)}
               disabled={enviarMutation.isPending}
             >
               Reenviar
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => {
+                setEditandoTelefono(true);
+                setCodigoEnviado(false);
+                setCodigo('');
+              }}
+            >
+              <Pencil className="mr-1.5 h-3.5 w-3.5" />
+              Cambiar número
             </Button>
           </div>
         </div>

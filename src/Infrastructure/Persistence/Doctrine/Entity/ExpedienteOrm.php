@@ -88,6 +88,10 @@ class ExpedienteOrm
     #[ORM\Column(type: Types::STRING, length: 100, nullable: true)]
     private ?string $holdedInvoiceId = null;
 
+    /** @var list<string>|null */
+    #[ORM\Column(type: Types::JSON, nullable: true)]
+    private ?array $canalesNotificacion = null;
+
     public function getId(): string
     {
         return $this->id;
@@ -342,5 +346,21 @@ class ExpedienteOrm
     public function setHoldedInvoiceId(?string $holdedInvoiceId): void
     {
         $this->holdedInvoiceId = $holdedInvoiceId;
+    }
+
+    /**
+     * @return list<string>|null
+     */
+    public function getCanalesNotificacion(): ?array
+    {
+        return $this->canalesNotificacion;
+    }
+
+    /**
+     * @param list<string>|null $canalesNotificacion
+     */
+    public function setCanalesNotificacion(?array $canalesNotificacion): void
+    {
+        $this->canalesNotificacion = $canalesNotificacion;
     }
 }

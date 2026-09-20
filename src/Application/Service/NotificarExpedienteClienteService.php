@@ -4,56 +4,51 @@ declare(strict_types=1);
 
 namespace App\Application\Service;
 
-use App\Application\Port\EmailPort;
 use App\Domain\Entity\Expediente;
 use App\Domain\Entity\ExpedienteDocumentoRequerido;
-use Psr\Log\LoggerInterface;
 
 final class NotificarExpedienteClienteService
 {
     public function __construct(
-        private EmailPort $emailPort,
-        private LoggerInterface $logger,
+        private DespacharNotificacionClienteService $despachar,
         private string $frontendBaseUrl,
     ) {
     }
 
     public function notificarDocumentoDevuelto(
         Expediente $expediente,
-        string $clienteEmail,
         ExpedienteDocumentoRequerido $documento,
         string $nota,
-    ): bool {
-        $email = trim($clienteEmail);
-        if ('' === $email) {
-            return false;
-        }
-
+    ): void {
         $accessUrl = rtrim($this->frontendBaseUrl, '/') . '/acceso/' . $expediente->accessToken();
+        $detalle = '' !== trim($nota)
+            ? trim($nota)
+            : 'Revise el documento indicado y vuelva a subirlo correctamente.';
         $mensaje = sprintf(
             "Su abogado ha devuelto el documento «%s» del expediente %s:\n\n%s\n\nAcceda a su portal para volver a subirlo:\n%s",
             $documento->nombre(),
             $expediente->numero(),
-            $nota,
+            $detalle,
             $accessUrl,
         );
 
-        return $this->enviar($email, sprintf('Documento devuelto — Expediente %s', $expediente->numero()), $mensaje, [
-            'expediente' => $expediente->numero(),
-            'documento' => $documento->nombre(),
-        ]);
+        $this->despachar->despachar(
+            $expediente,
+            'documento_devuelto',
+            sprintf('Documento devuelto — Expediente %s', $expediente->numero()),
+            $mensaje,
+            'notificacion_documento_devuelto',
+            sprintf(
+                'Se ha notificado al cliente la devolución del documento «%s» por %%s.',
+                $documento->nombre(),
+            ),
+        );
     }
 
     public function notificarNuevoDocumentoRequerido(
         Expediente $expediente,
-        string $clienteEmail,
         ExpedienteDocumentoRequerido $documento,
-    ): bool {
-        $email = trim($clienteEmail);
-        if ('' === $email) {
-            return false;
-        }
-
+    ): void {
         $accessUrl = rtrim($this->frontendBaseUrl, '/') . '/acceso/' . $expediente->accessToken();
         $mensaje = sprintf(
             "Su abogado le ha solicitado un nuevo documento para el expediente %s:\n\n«%s»\n%s\n\nAcceda a su portal para subirlo:\n%s",
@@ -63,29 +58,16 @@ final class NotificarExpedienteClienteService
             $accessUrl,
         );
 
-        return $this->enviar($email, sprintf('Nuevo documento requerido — Expediente %s', $expediente->numero()), $mensaje, [
-            'expediente' => $expediente->numero(),
-            'documento' => $documento->nombre(),
-        ]);
-    }
-
-    /**
-     * @param array<string, mixed> $context
-     */
-    private function enviar(string $email, string $subject, string $body, array $context): bool
-    {
-        try {
-            $this->emailPort->send($email, $subject, $body);
-
-            return true;
-        } catch (\Throwable $e) {
-            $this->logger->error('Error enviando notificación al cliente', [
-                ...$context,
-                'email' => $email,
-                'error' => $e->getMessage(),
-            ]);
-
-            return false;
-        }
+        $this->despachar->despachar(
+            $expediente,
+            'nuevo_documento_requerido',
+            sprintf('Nuevo documento requerido — Expediente %s', $expediente->numero()),
+            $mensaje,
+            'notificacion_nuevo_documento',
+            sprintf(
+                'Se ha notificado al cliente el nuevo documento requerido «%s» por %%s.',
+                $documento->nombre(),
+            ),
+        );
     }
 }

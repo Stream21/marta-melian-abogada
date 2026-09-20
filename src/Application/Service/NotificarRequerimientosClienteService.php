@@ -4,16 +4,13 @@ declare(strict_types=1);
 
 namespace App\Application\Service;
 
-use App\Application\Port\EmailPort;
 use App\Domain\Entity\Cliente;
 use App\Domain\Entity\Expediente;
-use Psr\Log\LoggerInterface;
 
 final class NotificarRequerimientosClienteService
 {
     public function __construct(
-        private EmailPort $emailPort,
-        private LoggerInterface $logger,
+        private DespacharNotificacionClienteService $despachar,
         private string $frontendBaseUrl,
     ) {
     }
@@ -23,17 +20,7 @@ final class NotificarRequerimientosClienteService
         Cliente $cliente,
         string $documentoNombre,
         string $nota = '',
-    ): bool {
-        $email = trim($cliente->email());
-        if ('' === $email) {
-            $this->logger->warning('No se pudo notificar al cliente por email: sin correo registrado.', [
-                'expediente' => $expediente->numero(),
-                'documento' => $documentoNombre,
-            ]);
-
-            return false;
-        }
-
+    ): void {
         $accessUrl = rtrim($this->frontendBaseUrl, '/') . '/acceso/' . $expediente->accessToken();
         $cuerpoNota = '' !== trim($nota)
             ? sprintf("\n\nMensaje de su abogado:\n%s", trim($nota))
@@ -47,23 +34,16 @@ final class NotificarRequerimientosClienteService
             $accessUrl,
         );
 
-        try {
-            $this->emailPort->send(
-                $email,
-                sprintf('Documentación requerida — Expediente %s', $expediente->numero()),
-                $mensaje,
-            );
-
-            return true;
-        } catch (\Throwable $e) {
-            $this->logger->error('Error enviando notificación de requerimientos al cliente', [
-                'email' => $email,
-                'expediente' => $expediente->numero(),
-                'documento' => $documentoNombre,
-                'error' => $e->getMessage(),
-            ]);
-
-            return false;
-        }
+        $this->despachar->despachar(
+            $expediente,
+            'documento_derivado',
+            sprintf('Documentación requerida — Expediente %s', $expediente->numero()),
+            $mensaje,
+            'notificacion_documento_derivado',
+            sprintf(
+                'Se ha notificado al cliente la derivación del documento «%s» por %%s.',
+                $documentoNombre,
+            ),
+        );
     }
 }

@@ -6,20 +6,25 @@ namespace App\Domain\Entity;
 
 enum TipoRequerimientoMercurio: string
 {
-    case Documento = 'documento';
-    case Escrito = 'escrito';
+    case Documentacion = 'documentacion';
+    case Tasas = 'tasas';
 
     public function label(): string
     {
         return match ($this) {
-            self::Documento => 'Documento',
-            self::Escrito => 'Escrito',
+            self::Documentacion => 'Documentación adjunta',
+            self::Tasas => 'Tasas',
         };
     }
 
     public static function fromString(string $value): self
     {
-        return self::tryFrom($value)
+        $normalized = match ($value) {
+            'documento', 'escrito' => self::Documentacion->value,
+            default => $value,
+        };
+
+        return self::tryFrom($normalized)
             ?? throw new \InvalidArgumentException('Tipo de requerimiento Mercurio no válido.');
     }
 }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Persistence\Doctrine\Repository;
 
+use App\Application\Service\TelefonoNormalizer;
 use App\Domain\Entity\Cliente;
 use App\Domain\Entity\ClienteHoldedEstado;
 use App\Domain\Entity\TipoEscaneoDocumentoIdentidad;
@@ -17,6 +18,7 @@ final class ClienteRepository implements ClienteRepositoryInterface
 {
     public function __construct(
         private EntityManagerInterface $entityManager,
+        private TelefonoNormalizer $telefonoNormalizer,
     ) {
     }
 
@@ -65,9 +67,34 @@ final class ClienteRepository implements ClienteRepositoryInterface
 
     public function findByTelefono(string $telefono): ?Cliente
     {
-        $orm = $this->entityManager->getRepository(ClienteOrm::class)->findOneBy(['telefono' => $telefono]);
+        $normalized = $this->telefonoNormalizer->normalize($telefono) ?? $telefono;
+        $candidates = array_values(array_unique(array_filter([
+            $normalized,
+            $telefono,
+            $this->spanishNationalFromE164($normalized),
+        ], static fn (?string $v): bool => null !== $v && '' !== $v)));
 
-        return $orm instanceof ClienteOrm ? $this->ormToDomain($orm) : null;
+        foreach ($candidates as $candidate) {
+            $orm = $this->entityManager->getRepository(ClienteOrm::class)->findOneBy(['telefono' => $candidate]);
+            if ($orm instanceof ClienteOrm) {
+                return $this->ormToDomain($orm);
+            }
+        }
+
+        return null;
+    }
+
+    private function spanishNationalFromE164(string $telefono): ?string
+    {
+        $digits = preg_replace('/\D/', '', $telefono) ?? '';
+        if (str_starts_with($digits, '34') && 11 === strlen($digits)) {
+            $national = substr($digits, 2);
+            if (1 === preg_match('/^[67]\d{8}$/', $national)) {
+                return $national;
+            }
+        }
+
+        return null;
     }
 
     public function findByNumDocumento(string $numDocumento): ?Cliente
@@ -92,7 +119,10 @@ final class ClienteRepository implements ClienteRepositoryInterface
         }
 
         $like = '%' . addcslashes(mb_strtolower($trimmed), '%_\\') . '%';
-        $normalizedPhone = $this->normalizeTelefono($trimmed);
+        $normalizedPhone = $this->telefonoNormalizer->normalize($trimmed);
+        $phoneDigits = null !== $normalizedPhone
+            ? preg_replace('/\D/', '', $normalizedPhone)
+            : preg_replace('/\D/', '', $trimmed);
 
         $conditions = [
             'LOWER(c.nombre) LIKE :like',
@@ -102,6 +132,17 @@ final class ClienteRepository implements ClienteRepositoryInterface
         ];
         if (null !== $normalizedPhone) {
             $conditions[] = 'c.telefono = :phone';
+            $national = $this->spanishNationalFromE164($normalizedPhone);
+            if (null !== $national) {
+                $conditions[] = 'c.telefono = :phoneNational';
+            }
+        }
+        if (null !== $phoneDigits && '' !== $phoneDigits && strlen($phoneDigits) >= 6) {
+            $conditions[] = 'c.telefono LIKE :phoneDigits';
+            // También buscar por móvil nacional (sin 34) si la query viene en E.164.
+            if (str_starts_with($phoneDigits, '34') && strlen($phoneDigits) === 11) {
+                $conditions[] = 'c.telefono LIKE :phoneNationalDigits';
+            }
         }
 
         $qb = $this->entityManager->createQueryBuilder();
@@ -114,6 +155,16 @@ final class ClienteRepository implements ClienteRepositoryInterface
 
         if (null !== $normalizedPhone) {
             $qb->setParameter('phone', $normalizedPhone);
+            $national = $this->spanishNationalFromE164($normalizedPhone);
+            if (null !== $national) {
+                $qb->setParameter('phoneNational', $national);
+            }
+        }
+        if (null !== $phoneDigits && '' !== $phoneDigits && strlen($phoneDigits) >= 6) {
+            $qb->setParameter('phoneDigits', '%' . $phoneDigits . '%');
+            if (str_starts_with($phoneDigits, '34') && strlen($phoneDigits) === 11) {
+                $qb->setParameter('phoneNationalDigits', '%' . substr($phoneDigits, 2) . '%');
+            }
         }
 
         /** @var ClienteOrm[] $orms */
@@ -141,13 +192,6 @@ final class ClienteRepository implements ClienteRepositoryInterface
 
         $this->entityManager->remove($orm);
         $this->entityManager->flush();
-    }
-
-    private function normalizeTelefono(string $telefono): ?string
-    {
-        $collapsed = preg_replace('/\s+/', '', trim($telefono));
-
-        return ('' === $collapsed || null === $collapsed) ? null : $collapsed;
     }
 
     private function applyDomainToOrm(ClienteOrm $orm, Cliente $cliente, \DateTimeImmutable $now): void

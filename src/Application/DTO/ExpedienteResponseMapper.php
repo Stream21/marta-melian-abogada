@@ -93,6 +93,9 @@ final class ExpedienteResponseMapper
             resumenCobros: $resumenCobros,
             notasActivas: $notasActivas,
             ultimaNota: $ultimaNota,
+            canalesNotificacion: $expediente->canalesNotificacion(),
+            clienteTieneTelefono: null !== $cliente && '' !== trim($cliente->telefono()),
+            clienteTieneEmail: null !== $cliente && '' !== trim($cliente->email()),
         );
     }
 
