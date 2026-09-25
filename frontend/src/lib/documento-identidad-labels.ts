@@ -29,11 +29,11 @@ export function labelsDocumentoIdentidad(tipoServicio?: string | null): LabelsDo
 
   if (extranjeria) {
     return {
-      tarjetaIdentidad: 'NIE',
-      tarjetaIdentidadDescripcion: 'Tarjeta de identidad de extranjero (delantera y trasera)',
-      tipoDocumentoCorto: 'NIE',
-      numeroDocumento: 'Número de NIF',
-      tipoDocumentoSelect: ['NIE', 'PASAPORTE'],
+      tarjetaIdentidad: 'DNI / NIE',
+      tarjetaIdentidadDescripcion: 'Tarjeta de identidad (delantera y trasera)',
+      tipoDocumentoCorto: 'DNI / NIE',
+      numeroDocumento: 'Número de documento',
+      tipoDocumentoSelect: ['NIE', 'DNI', 'PASAPORTE'],
     };
   }
 
