@@ -1,6 +1,6 @@
 import type { ClienteInput } from '@/api/client';
 import { ClienteDatosForm } from '@/components/clientes/ClienteDatosForm';
-import { labelsDocumentoIdentidad } from '@/lib/documento-identidad-labels';
+import { labelsDocumentoIdentidad, etiquetaTipoDocumento } from '@/lib/documento-identidad-labels';
 import { ETIQUETAS_CAMPO_CLIENTE } from '@/lib/campos-devolucion';
 
 interface DocumentoIdentidadRevisionProps {
@@ -33,7 +33,7 @@ export function DocumentoIdentidadRevision({
 }: DocumentoIdentidadRevisionProps) {
   const esCliente = modo === 'cliente';
   const labels = labelsDocumentoIdentidad(tipoServicio);
-  const docTarjeta = labels.tipoDocumentoCorto;
+  const docTarjeta = etiquetaTipoDocumento(datosIniciales.tipoDocumento);
 
   return (
     <div className="space-y-4">

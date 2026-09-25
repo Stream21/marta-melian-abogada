@@ -366,11 +366,16 @@ export function ClienteIdentidadOnboarding({
               setSoloDatos(false);
               setExtraccionAutomatica(datosExtraidos.extraccionAutomatica === true);
               setCamposMrzBloqueados(inferirCamposMrz(datosExtraidos));
-              const extraidos = datosExtraidosAClienteInput(datosExtraidos, files.tipoEscaneo);
+              const extraidos = datosExtraidosAClienteInput(
+                datosExtraidos,
+                files.tipoEscaneo,
+                files.tipoDocumentoElegido,
+              );
               if ('' === extraidos.tipoDocumento) {
-                // Ni OCR ni número legibles: el documento habitual del servicio es mejor
-                // punto de partida que dejar el selector en blanco.
-                extraidos.tipoDocumento = labelsDocumentoIdentidad(tipoServicio).tipoDocumentoSelect[0];
+                // Ni OCR ni número legibles: el documento elegido por el cliente es el punto de partida.
+                extraidos.tipoDocumento =
+                  files.tipoDocumentoElegido
+                  ?? labelsDocumentoIdentidad(tipoServicio).tipoDocumentoSelect[0];
               }
               setDatosIniciales(
                 datosClienteEditables

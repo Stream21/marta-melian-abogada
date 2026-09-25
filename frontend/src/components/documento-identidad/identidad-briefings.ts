@@ -9,7 +9,7 @@ export function identidadBriefingTipo() {
   return {
     title: 'Elegir documento',
     description:
-      'Indique si va a identificarse con NIE/DNI o con pasaporte. A continuación le pediremos las fotos necesarias.',
+      'Indique si va a identificarse con DNI, NIE o pasaporte. A continuación le pediremos las fotos necesarias.',
     ctaLabel: 'Elegir documento',
   };
 }

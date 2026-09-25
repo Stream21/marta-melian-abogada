@@ -1,6 +1,6 @@
 import { FileImage, FormInput, ScanLine } from 'lucide-react';
 import type { AccesoIdentidadEdicionResponse } from '@/api/client';
-import { labelsDocumentoIdentidad } from '@/lib/documento-identidad-labels';
+import { etiquetaTipoDocumento } from '@/lib/documento-identidad-labels';
 import {
   ETIQUETAS_CAMPO_CLIENTE,
   analizarDevolucionIdentidad,
@@ -19,21 +19,22 @@ interface ClienteIdentidadCorreccionProps {
 export function ClienteIdentidadCorreccion({
   identidadEdicion,
   notaDevolucion,
-  tipoServicio,
   onCorregirDatos,
   onActualizarDocumento,
 }: ClienteIdentidadCorreccionProps) {
-  const labels = labelsDocumentoIdentidad(tipoServicio);
   const analisis = analizarDevolucionIdentidad(identidadEdicion.motivosDevolucion);
   const { campos, necesitaDatos, necesitaDocumento, ladoDocumento, documentacionAdicional } =
     analisis;
+  const etiquetaDoc = etiquetaTipoDocumento(
+    identidadEdicion.tipoEscaneo === 'pasaporte' ? 'PASAPORTE' : null,
+  );
 
   const etiquetaScan =
     ladoDocumento === 'anverso'
       ? 'Fotografiar la delantera'
       : ladoDocumento === 'reverso'
         ? 'Fotografiar la trasera'
-        : `Fotografiar el ${labels.tipoDocumentoCorto}`;
+        : `Fotografiar el ${etiquetaDoc === 'Documento' ? 'documento' : etiquetaDoc}`;
 
   const ayudaScan =
     ladoDocumento === 'anverso'
@@ -127,7 +128,7 @@ export function ClienteIdentidadCorreccion({
           >
             <FileImage className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
             <div>
-              <p className="font-medium">Actualizar documento ({labels.tipoDocumentoCorto})</p>
+              <p className="font-medium">Actualizar documento</p>
               <p className="mt-1 text-xs text-muted-foreground">
                 Escanee de nuevo el documento o corrija los datos si hace falta.
               </p>

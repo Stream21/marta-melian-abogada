@@ -59,7 +59,13 @@ export function ClienteNuevoPage() {
               onCompletado={({ archivos: files, datosExtraidos }) => {
                 setArchivos(files);
                 setExtraccionAutomatica(datosExtraidos.extraccionAutomatica === true);
-                setDatosIniciales(datosExtraidosAClienteInput(datosExtraidos, files.tipoEscaneo));
+                setDatosIniciales(
+                  datosExtraidosAClienteInput(
+                    datosExtraidos,
+                    files.tipoEscaneo,
+                    files.tipoDocumentoElegido,
+                  ),
+                );
                 setPaso('revision');
               }}
             />

@@ -47,13 +47,14 @@ export const ESTADOS_CIVILES = [
 
 /**
  * El selector de tipo no debe quedarse vacío cuando el OCR no lo reconoce: se deduce
- * del documento que el cliente eligió escanear y, si no, del formato del número.
+ * del formato del número, del documento elegido por el cliente y, si no, del escaneo.
  */
 export function resolverTipoDocumento(
   extraidos: DocumentoIdentidadExtraido,
   tipoEscaneo?: TipoEscaneoDocumentoIdentidad,
+  tipoDocumentoElegido?: string | null,
 ): string {
-  if ('pasaporte' === tipoEscaneo) return 'PASAPORTE';
+  if ('pasaporte' === tipoEscaneo || tipoDocumentoElegido === 'PASAPORTE') return 'PASAPORTE';
 
   const leido = (extraidos.tipoDocumento ?? '').trim().toUpperCase();
   if ((TIPOS_DOCUMENTO as readonly string[]).includes(leido)) return leido;
@@ -62,17 +63,21 @@ export function resolverTipoDocumento(
   if (/^[XYZ]\d{7}[A-Z]$/.test(numero)) return 'NIE';
   if (/^\d{8}[A-Z]$/.test(numero)) return 'DNI';
 
+  const elegido = (tipoDocumentoElegido ?? '').trim().toUpperCase();
+  if ((TIPOS_DOCUMENTO as readonly string[]).includes(elegido)) return elegido;
+
   return '';
 }
 
 export function datosExtraidosAClienteInput(
   extraidos: DocumentoIdentidadExtraido,
   tipoEscaneo?: TipoEscaneoDocumentoIdentidad,
+  tipoDocumentoElegido?: string | null,
 ): ClienteInput {
   return {
     nombre: extraidos.nombre ?? '',
     nacionalidad: extraidos.nacionalidad ?? '',
-    tipoDocumento: resolverTipoDocumento(extraidos, tipoEscaneo),
+    tipoDocumento: resolverTipoDocumento(extraidos, tipoEscaneo, tipoDocumentoElegido),
     numDocumento: extraidos.numDocumento ?? '',
     fechaNacimiento: extraidos.fechaNacimiento,
     lugarNacimiento: extraidos.lugarNacimiento ?? '',

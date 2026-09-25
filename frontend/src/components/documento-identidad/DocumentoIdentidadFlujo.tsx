@@ -8,7 +8,7 @@ import {
   ArrowLeft,
 } from 'lucide-react';
 import { api, type ExtraerDocumentoIdentidadResponse, type TipoEscaneoDocumentoIdentidad } from '@/api/client';
-import { labelsDocumentoIdentidad } from '@/lib/documento-identidad-labels';
+import { labelsDocumentoIdentidad, etiquetaTipoDocumento, type OpcionSeleccionDocumento, type TipoDocumentoIdentidadValor } from '@/lib/documento-identidad-labels';
 import { mergeFetchHeaders } from '@/lib/ngrok-headers';
 import { Button } from '@/components/ui/button';
 import { esDispositivoMovil } from '@/lib/device';
@@ -81,6 +81,10 @@ export function DocumentoIdentidadFlujo({
   const [tipoEscaneo, setTipoEscaneo] = useState<TipoEscaneoDocumentoIdentidad | null>(
     () => capturasPrevias?.tipoEscaneo ?? inicioRapido?.tipoEscaneo ?? null,
   );
+  const [tipoDocumentoElegido, setTipoDocumentoElegido] = useState<TipoDocumentoIdentidadValor | null>(
+    () => capturasPrevias?.tipoDocumentoElegido
+      ?? (inicioRapido?.tipoEscaneo === 'pasaporte' ? 'PASAPORTE' : null),
+  );
   const [ladoActivo, setLadoActivo] = useState<LadoCaptura>(
     () => inicioRapido?.ladoInicial ?? 'anverso',
   );
@@ -135,6 +139,7 @@ export function DocumentoIdentidadFlujo({
   useEffect(() => {
     if (!inicioRapido || capturasPrevias) return;
     setTipoEscaneo(inicioRapido.tipoEscaneo);
+    setTipoDocumentoElegido(inicioRapido.tipoEscaneo === 'pasaporte' ? 'PASAPORTE' : null);
     setLadoConservado(inicioRapido.conservarLado ?? null);
     setLadoActivo(inicioRapido.ladoInicial ?? 'anverso');
     setPaso('captura');
@@ -145,6 +150,9 @@ export function DocumentoIdentidadFlujo({
   const requiereReverso = tipoEscaneo === 'dni_nie';
   const totalLados = requiereReverso ? 2 : 1;
   const indiceLado = ladoActivo === 'anverso' ? 1 : 2;
+  const etiquetaDocumentoActivo = etiquetaTipoDocumento(
+    tipoDocumentoElegido ?? (tipoEscaneo === 'pasaporte' ? 'PASAPORTE' : null),
+  );
 
   const revocarPreview = (url: string | null) => {
     if (url?.startsWith('blob:')) URL.revokeObjectURL(url);
@@ -166,12 +174,19 @@ export function DocumentoIdentidadFlujo({
     previaCompletaRef.current = false;
   };
 
-  const seleccionarTipo = (tipo: TipoEscaneoDocumentoIdentidad) => {
-    if (tipoEscaneo === tipo && (anverso || reverso)) {
+  const seleccionarOpcion = (opcion: OpcionSeleccionDocumento) => {
+    if (tipoDocumentoElegido === opcion.valor && (anverso || reverso)) {
       setPaso('captura');
       return;
     }
-    setTipoEscaneo(tipo);
+    // DNI y NIE comparten formato de tarjeta: se pueden conservar las fotos al cambiar.
+    if (tipoEscaneo === opcion.tipoEscaneo && (anverso || reverso)) {
+      setTipoDocumentoElegido(opcion.valor);
+      setPaso('captura');
+      return;
+    }
+    setTipoDocumentoElegido(opcion.valor);
+    setTipoEscaneo(opcion.tipoEscaneo);
     resetCaptura();
     setPaso('captura');
   };
@@ -251,6 +266,7 @@ export function DocumentoIdentidadFlujo({
       onCompletado({
         archivos: {
           tipoEscaneo,
+          tipoDocumentoElegido: tipoDocumentoElegido ?? undefined,
           anverso: fileAnverso,
           reverso: fileReverso,
         },
@@ -319,23 +335,19 @@ export function DocumentoIdentidadFlujo({
             className={cn(
               esCliente
                 ? 'flex min-h-0 flex-1 flex-col gap-1.5'
-                : 'grid grid-cols-1 gap-3 sm:grid-cols-2',
+                : 'grid grid-cols-1 gap-3 sm:grid-cols-3',
             )}
           >
-            <TipoCard
-              icon={IdCard}
-              label={labels.tarjetaIdentidad}
-              descripcion={esCliente ? 'Tarjeta con foto y banda MRZ · 2 fotos' : undefined}
-              onClick={() => seleccionarTipo('dni_nie')}
-              grande={esCliente}
-            />
-            <TipoCard
-              icon={CreditCard}
-              label="Pasaporte"
-              descripcion={esCliente ? 'Página interior con sus datos · 1 foto' : undefined}
-              onClick={() => seleccionarTipo('pasaporte')}
-              grande={esCliente}
-            />
+            {labels.opcionesSeleccion.map((opcion) => (
+              <TipoCard
+                key={opcion.valor}
+                icon={opcion.tipoEscaneo === 'pasaporte' ? CreditCard : IdCard}
+                label={opcion.label}
+                descripcion={esCliente ? opcion.descripcionCliente : undefined}
+                onClick={() => seleccionarOpcion(opcion)}
+                grande={esCliente}
+              />
+            ))}
           </div>
           {esCliente && onVolver && (
             <button
@@ -427,7 +439,7 @@ export function DocumentoIdentidadFlujo({
                     varianteCaptura="identidad"
                     uiSimplificada
                     ladoCamara={ladoCamara('anverso')}
-                    etiquetaDocumento={tipoEscaneo === 'pasaporte' ? 'pasaporte' : labels.tipoDocumentoCorto}
+                    etiquetaDocumento={tipoEscaneo === 'pasaporte' ? 'pasaporte' : etiquetaDocumentoActivo}
                     preview={anversoPreview}
                     inputId={`${inputId}-anverso`}
                     inputRef={anversoInputRef}
@@ -455,7 +467,7 @@ export function DocumentoIdentidadFlujo({
                       varianteCaptura="identidad"
                       uiSimplificada
                       ladoCamara={ladoCamara('reverso')}
-                      etiquetaDocumento={labels.tipoDocumentoCorto}
+                      etiquetaDocumento={etiquetaDocumentoActivo}
                       preview={reversoPreview}
                       inputId={`${inputId}-reverso`}
                       inputRef={reversoInputRef}
@@ -518,7 +530,7 @@ export function DocumentoIdentidadFlujo({
 
                 <div className="space-y-1.5">
                   <h2 className="text-xl font-bold tracking-tight text-foreground">
-                    {tipoEscaneo === 'pasaporte' ? 'Pasaporte' : labels.tipoDocumentoCorto}
+                    {tipoEscaneo === 'pasaporte' ? 'Pasaporte' : etiquetaDocumentoActivo}
                   </h2>
                   <p className="text-sm text-muted-foreground">
                     {tipoEscaneo === 'pasaporte'
@@ -573,7 +585,7 @@ export function DocumentoIdentidadFlujo({
                     modo={modo}
                     uiSimplificada
                     ladoCamara={ladoCamara('anverso')}
-                    etiquetaDocumento={tipoEscaneo === 'pasaporte' ? 'pasaporte' : labels.tipoDocumentoCorto}
+                    etiquetaDocumento={tipoEscaneo === 'pasaporte' ? 'pasaporte' : etiquetaDocumentoActivo}
                     preview={anversoPreview}
                     inputId={`${inputId}-anverso`}
                     inputRef={anversoInputRef}
@@ -600,7 +612,7 @@ export function DocumentoIdentidadFlujo({
                       modo={modo}
                       uiSimplificada
                       ladoCamara={ladoCamara('reverso')}
-                      etiquetaDocumento={labels.tipoDocumentoCorto}
+                      etiquetaDocumento={etiquetaDocumentoActivo}
                       preview={reversoPreview}
                       inputId={`${inputId}-reverso`}
                       inputRef={reversoInputRef}

@@ -94,7 +94,7 @@ export function AbogadoContratacionIdentidadCarga({
           <div>
             <p className="text-sm font-semibold text-foreground">Cargar documento en nombre del cliente</p>
             <p className="text-xs text-muted-foreground">
-              Seleccione DNI/NIE o pasaporte y suba las imágenes JPG/PNG desde su equipo.
+              Seleccione DNI, NIE o pasaporte y suba las imágenes JPG/PNG desde su equipo.
             </p>
           </div>
         </div>
@@ -110,7 +110,13 @@ export function AbogadoContratacionIdentidadCarga({
               onCompletado={({ archivos: files, datosExtraidos }) => {
                 setArchivos(files);
                 setExtraccionAutomatica(datosExtraidos.extraccionAutomatica === true);
-                setDatosIniciales(datosExtraidosAClienteInput(datosExtraidos, files.tipoEscaneo));
+                setDatosIniciales(
+                  datosExtraidosAClienteInput(
+                    datosExtraidos,
+                    files.tipoEscaneo,
+                    files.tipoDocumentoElegido,
+                  ),
+                );
                 setPaso('revision');
               }}
             />
