@@ -26,6 +26,11 @@ final class EscritoBloqueValidator
         'signature_lawyer',
     ];
 
+    private const SIGNATURE_TYPES = [
+        'signature_client',
+        'signature_lawyer',
+    ];
+
     /**
      * @param list<array<string, mixed>> $bloques
      *
@@ -47,7 +52,10 @@ final class EscritoBloqueValidator
             throw new \InvalidArgumentException('La plantilla debe contener al menos un bloque.');
         }
 
+        // Solo firmas van en columns. Envolver title/text/section en columns(1)
+        // fuerza display:table en Dompdf y genera páginas casi vacías.
         $bloques = $this->migrateTopLevelSignaturesToColumns($bloques);
+        $bloques = $this->unwrapNonSignatureSingleColumns($bloques);
         $validated = [];
         foreach ($bloques as $index => $bloque) {
             if (!is_array($bloque)) {
@@ -69,7 +77,7 @@ final class EscritoBloqueValidator
                 throw new \InvalidArgumentException(sprintf('Tipo de bloque no válido en posición %d.', $index));
             }
 
-            if (in_array($type, self::COLUMN_CHILD_TYPES, true)) {
+            if (in_array($type, self::SIGNATURE_TYPES, true)) {
                 throw new \InvalidArgumentException(sprintf('Las firmas deben ir dentro de un bloque en columnas (posición %d).', $index));
             }
 
@@ -189,6 +197,8 @@ final class EscritoBloqueValidator
     }
 
     /**
+     * Envuelve firmas sueltas en columns (1 o 2). No toca title/text/section.
+     *
      * @param list<array<string, mixed>> $bloques
      *
      * @return list<array<string, mixed>>
@@ -201,18 +211,19 @@ final class EscritoBloqueValidator
         for ($i = 0; $i < $count; ++$i) {
             $current = $bloques[$i];
             $type = (string) ($current['type'] ?? '');
-            $next = $bloques[$i + 1] ?? null;
-            $nextType = is_array($next) ? (string) ($next['type'] ?? '') : '';
 
             if ('columns' === $type) {
                 $migrated[] = $current;
                 continue;
             }
 
-            if (!in_array($type, self::COLUMN_CHILD_TYPES, true)) {
+            if (!in_array($type, self::SIGNATURE_TYPES, true)) {
                 $migrated[] = $current;
                 continue;
             }
+
+            $next = $bloques[$i + 1] ?? null;
+            $nextType = is_array($next) ? (string) ($next['type'] ?? '') : '';
 
             if (
                 is_array($next)
@@ -240,6 +251,43 @@ final class EscritoBloqueValidator
         }
 
         return $migrated;
+    }
+
+    /**
+     * Deshace columns(1) heredados que solo envuelven texto (no firmas).
+     * Esas filas provocan páginas en blanco con Dompdf (display:table).
+     *
+     * @param list<array<string, mixed>> $bloques
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function unwrapNonSignatureSingleColumns(array $bloques): array
+    {
+        $unwrapped = [];
+
+        foreach ($bloques as $bloque) {
+            if (!is_array($bloque) || 'columns' !== ($bloque['type'] ?? null)) {
+                $unwrapped[] = $bloque;
+                continue;
+            }
+
+            $columnCount = (int) ($bloque['columnCount'] ?? 0);
+            $children = is_array($bloque['children'] ?? null) ? $bloque['children'] : [];
+            $first = $children[0] ?? null;
+
+            if (
+                1 === $columnCount
+                && is_array($first)
+                && !in_array((string) ($first['type'] ?? ''), self::SIGNATURE_TYPES, true)
+            ) {
+                $unwrapped[] = $first;
+                continue;
+            }
+
+            $unwrapped[] = $bloque;
+        }
+
+        return $unwrapped;
     }
 
     private function normalizeColumnCount(mixed $columnCount, int $index): int

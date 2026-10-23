@@ -92,7 +92,8 @@ main { position: relative; z-index: 1; }
   text-align: center;
   letter-spacing: 0.04em;
 }
-.legal-table-wrap { margin: 6px 0 10px; page-break-inside: avoid; }
+/* Sin page-break-inside:avoid: tablas altas (RGPD) dejan media página en blanco. */
+.legal-table-wrap { margin: 6px 0 10px; }
 .legal-table-title { font-weight: bold; text-align: center; margin: 0 0 4px; font-size: 10pt; color: #2c3e6b; }
 .legal-table-subtitle { text-align: center; font-size: 9pt; margin: 0 0 8px; color: #5c6b82; }
 .legal-table { width: 100%; border-collapse: collapse; font-size: 9.5pt; }
@@ -345,10 +346,20 @@ HTML;
             $cells .= '<div class="column-cell">' . $this->renderColumnSlot($child, $variables, $selloUri, $logoUri) . '</div>';
         }
 
+        // Una sola columna de texto: flujo de bloque normal (no display:table).
+        // Dompdf pagina mal las tablas multi-página y deja saltos enormes en blanco.
+        if (!$hasSignature && 1 === $columnCount) {
+            $only = $children[0] ?? null;
+
+            return is_array($only)
+                ? $this->renderBloque($only, $variables, $selloUri)
+                : '';
+        }
+
         if ($hasSignature) {
             $rowClass = 1 === $columnCount ? 'signature-row signature-row-single' : 'signature-row';
         } else {
-            $rowClass = 1 === $columnCount ? 'columns-row columns-row-single' : 'columns-row';
+            $rowClass = 'columns-row';
         }
 
         return '<div class="' . $rowClass . '">' . $cells . '</div>';

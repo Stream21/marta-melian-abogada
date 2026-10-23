@@ -1,4 +1,5 @@
-FROM php:8.4-fpm-bookworm
+# PHP2Shell (CVE-2026-109618 / CVE-2026-109619): mínimo 8.4.27 en la rama 8.4
+FROM php:8.4.27-fpm-bookworm
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq-dev \

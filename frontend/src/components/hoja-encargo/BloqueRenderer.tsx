@@ -240,7 +240,7 @@ export function BloqueRenderer({
               );
               onChange({ ...bloque, content });
             }}
-            minRows={bloque.type === 'section' ? 5 : 2}
+            minRows={2}
             className={cn(
               'rounded-md border border-input bg-background px-3 py-2 leading-relaxed focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
               styleClass || 'text-sm',

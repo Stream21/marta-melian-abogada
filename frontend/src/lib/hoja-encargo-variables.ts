@@ -276,9 +276,36 @@ export function normalizeLegacyBlocks(bloques: BloqueEscrito[]): BloqueEscrito[]
     });
   }
 
-  return migrateSignatureBlocksToColumns(normalized).map((bloque) =>
+  return unwrapNonSignatureSingleColumns(migrateSignatureBlocksToColumns(normalized)).map((bloque) =>
     bloque.type === 'columns' ? normalizeColumnsBlock(bloque) : bloque,
   );
+}
+
+/**
+ * Deshace columns(1) que solo envuelven título/texto/sección (legado del backend).
+ * Esas filas provocan páginas en blanco en Dompdf (display:table).
+ */
+export function unwrapNonSignatureSingleColumns(bloques: BloqueEscrito[]): BloqueEscrito[] {
+  const result: BloqueEscrito[] = [];
+
+  for (const bloque of bloques) {
+    if (
+      bloque.type === 'columns' &&
+      bloque.columnCount === 1 &&
+      bloque.children[0] &&
+      bloque.children[0].type !== 'signature_client' &&
+      bloque.children[0].type !== 'signature_lawyer'
+    ) {
+      const child = bloque.children[0];
+      if (child.type === 'title' || child.type === 'text' || child.type === 'section') {
+        result.push(child);
+        continue;
+      }
+    }
+    result.push(bloque);
+  }
+
+  return result;
 }
 
 export function normalizeColumnsBlock(bloque: BloqueColumns): BloqueColumns {
