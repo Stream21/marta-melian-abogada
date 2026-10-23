@@ -14,7 +14,7 @@ function appendArchivosToFormData(formData: FormData, files: File[]): void {
 const TOKEN_KEY = 'bufete_jwt_token';
 
 function clearSessionToken(): void {
-  clearSessionToken();
+  localStorage.removeItem(TOKEN_KEY);
   clearAuthCookie();
 }
 
