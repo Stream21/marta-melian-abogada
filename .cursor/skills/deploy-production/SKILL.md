@@ -13,7 +13,8 @@ URL: https://app.martamelianguerraabogados.com
 
 ## Preconditions
 
-- Changes committed and pushed to `origin/main` (or current deploy branch).
+- Changes committed. Prefer pushing to `origin/main` before/after deploy.
+- The VPS often has **no GitHub credentials** (`https://` remote → push fails). If so: commit + deploy on the VPS, then push from a machine with auth (laptop / `gh`).
 - Never overwrite `/opt/bufete-app/.env`.
 - Prefer `docker compose` v2 (`bash scripts/compose.sh` if unsure).
 
@@ -22,10 +23,13 @@ URL: https://app.martamelianguerraabogados.com
 ```bash
 cd /opt/bufete-app
 git status
+# Only if origin is reachable:
 git pull origin main
 bash scripts/deploy-staging.sh
 curl -sS -o /dev/null -w '%{http_code}\n' https://app.martamelianguerraabogados.com/health
 ```
+
+If you committed on the VPS and could not push, tell the user the branch is ahead of `origin/main` and they must `git push` from an authenticated machine so other clones stay in sync.
 
 `deploy-staging.sh` does: frontend `npm ci` + build → `docker compose` build php → up services → composer → migrations → `cache:clear --env=prod` → www-data permissions.
 
